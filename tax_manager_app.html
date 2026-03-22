@@ -2662,7 +2662,7 @@ function toast(msg){
 
   const firebaseConfig = {
     apiKey: "AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0",
-    authDomain: "dabelu.firebaseapp.com",
+    authDomain: "cosmic-daifuku-4d8c28.netlify.app",
     projectId: "dabelu",
     storageBucket: "dabelu.firebasestorage.app",
     messagingSenderId: "235359062774",
@@ -2675,6 +2675,8 @@ function toast(msg){
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
+
+
 
   // ── שמירת נתוני משתמש ב-Firestore ──
   async function saveUserData(uid, data) {
@@ -2730,10 +2732,7 @@ function toast(msg){
       const user = result.user;
       const nameParts = (user.displayName || user.email).split(' ');
       const initials = nameParts.map(n => n[0]).join('').slice(0,2).toUpperCase();
-
-      // טעינת נתונים קיימים
       const existing = await loadUserData(user.uid);
-
       if(typeof S !== 'undefined') {
         S.user = {
           uid: user.uid,
@@ -2743,26 +2742,19 @@ function toast(msg){
           photo: user.photoURL,
           officeName: existing?.officeName || 'משרד ייעוץ מס'
         };
-
-        // טעינת משימות ולקוחות
         if(existing) {
           const tasks = await window.loadTasksFromDB(user.uid);
           const clients = await window.loadClientsFromDB(user.uid);
           if(tasks.length) S.tasks = tasks;
           if(clients.length) S.clients = clients;
         }
-
-        // שמירת פרטי משתמש
         await saveUserData(user.uid, {
           name: S.user.name,
           email: S.user.email,
           officeName: S.user.officeName,
           lastLogin: new Date().toISOString()
         });
-
         enterApp();
-
-        // שמירה אוטומטית כל 30 שניות
         setInterval(async () => {
           if(S.user?.uid) {
             await window.saveTasksToDB(S.user.uid, S.tasks || []);
