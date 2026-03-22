@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -2656,7 +2657,7 @@ function toast(msg){
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -2719,11 +2720,39 @@ function toast(msg){
     } catch(e) { console.error('loadClients:', e); return []; }
   };
 
+  // ── בדיקת תוצאת Redirect בטעינה ──
+  getRedirectResult(auth).then(async (result) => {
+    if (result && result.user) {
+      const user = result.user;
+      const nameParts = (user.displayName || user.email).split(' ');
+      const initials = nameParts.map(n => n[0]).join('').slice(0,2).toUpperCase();
+      const existing = await loadUserData(user.uid);
+      if(typeof S !== 'undefined') {
+        S.user = {
+          uid: user.uid,
+          name: user.displayName || user.email.split('@')[0],
+          email: user.email,
+          initials: initials,
+        };
+        if(existing) {
+          if(existing.tasks) S.tasks = existing.tasks;
+          if(existing.clients) S.clients = existing.clients;
+          if(existing.office) S.office = existing.office;
+          if(existing.team) S.team = existing.team;
+        }
+        document.getElementById('screen-auth').style.display = 'none';
+        renderPage();
+      }
+    }
+  }).catch(e => console.error('redirect result:', e));
+
   // ── כניסה עם Google ──
   window.signInWithGoogle = async function() {
     try {
       const btn = document.getElementById('btn-google');
       btn.innerHTML = '⏳ מתחבר...';
+      await signInWithRedirect(auth, provider);
+      return; // הדף יטען מחדש
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       const nameParts = (user.displayName || user.email).split(' ');
