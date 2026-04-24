@@ -4,22 +4,30 @@ const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT = 'dabelu';
 
 async function isRegisteredEmail(email) {
-  const resp = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        structuredQuery: {
-          from: [{ collectionId: 'users' }],
-          where: { fieldFilter: { field: { fieldPath: 'email' }, op: 'EQUAL', value: { stringValue: email.toLowerCase() } } },
-          limit: 1
-        }
-      })
-    }
-  );
-  const data = await resp.json();
-  return Array.isArray(data) && data.length > 0 && data[0].document ? data[0].document : null;
+  const emailLower = email.toLowerCase();
+
+  // חיפוש לפי שדה email ראשי
+  const query = async (fieldPath, value) => {
+    const resp = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          structuredQuery: {
+            from: [{ collectionId: 'users' }],
+            where: { fieldFilter: { field: { fieldPath }, op: 'EQUAL', value: { stringValue: value } } },
+            limit: 1
+          }
+        })
+      }
+    );
+    const data = await resp.json();
+    return Array.isArray(data) && data.length > 0 && data[0].document ? data[0].document : null;
+  };
+
+  // נסה קודם email ראשי, אחר כך altEmail (מייל חלופי)
+  return (await query('email', emailLower)) || (await query('altEmail', emailLower));
 }
 
 async function saveTask(title, senderName, source, userId) {
@@ -61,15 +69,16 @@ async function sendReplyEmail(to, taskTitle, status) {
 
   let html, subject;
   if (status === 'not_registered') {
-    subject = '❌ אינך מנוי במערכת Dabelu';
+    subject = '👋 קיבלנו את המייל שלך!';
     html = `
     <div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0">
       ${header}
       <div style="padding:32px;background:#fff;text-align:center">
-        <p style="font-size:40px;margin:0">❌</p>
-        <h2 style="color:#1a1a2e;margin:12px 0 8px">אינך מנוי במערכת Dabelu</h2>
-        <p style="color:#666;margin:0 0 24px">כדי להתחיל ליצור משימות דרך מייל, יש להירשם למערכת.</p>
-        <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">לרישום לחץ כאן</a>
+        <p style="font-size:40px;margin:0">👋</p>
+        <h2 style="color:#1a1a2e;margin:12px 0 8px">שלום! קיבלנו את המייל שלך</h2>
+        <p style="color:#666;margin:0 0 8px">כתובת המייל שלך עדיין לא מחוברת לחשבון Dabelu.</p>
+        <p style="color:#666;margin:0 0 24px">כדי ליצור משימות דרך מייל, פשוט התחבר לאפליקציה 😊</p>
+        <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">כניסה לדבליו</a>
       </div>
       <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
     </div>`;
