@@ -52,16 +52,55 @@ async function sendReplyEmail(to, taskTitle, status) {
     auth: { user: 'tasks@dabelu.pro', pass: process.env.ZOHO_PASS }
   });
 
+  const SITE_URL = 'https://cosmic-daifuku-4d8c28.netlify.app';
+  const header = `
+    <div style="background:#1a1a2e;padding:24px;text-align:center;border-radius:12px 12px 0 0">
+      <img src="https://cosmic-daifuku-4d8c28.netlify.app/logo.png" alt="Dabelu" height="48" style="max-height:48px" onerror="this.style.display='none'"/>
+      <h1 style="color:#ffffff;margin:8px 0 0;font-family:Arial,sans-serif;font-size:28px;letter-spacing:2px">DABELU</h1>
+    </div>`;
+
   let html, subject;
   if (status === 'not_registered') {
-    html = `<div dir="rtl" style="font-family:Arial,sans-serif"><p>❌ אינך מחובר לדבליו.</p><p>לפרטים נוספים צור קשר עמנו.</p></div>`;
-    subject = '❌ אינך מחובר לדבליו';
+    subject = '❌ אינך מנוי במערכת Dabelu';
+    html = `
+    <div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0">
+      ${header}
+      <div style="padding:32px;background:#fff;text-align:center">
+        <p style="font-size:40px;margin:0">❌</p>
+        <h2 style="color:#1a1a2e;margin:12px 0 8px">אינך מנוי במערכת Dabelu</h2>
+        <p style="color:#666;margin:0 0 24px">כדי להתחיל ליצור משימות דרך מייל, יש להירשם למערכת.</p>
+        <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">לרישום לחץ כאן</a>
+      </div>
+      <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
+    </div>`;
   } else if (status === 'ok') {
-    html = `<div dir="rtl" style="font-family:Arial,sans-serif"><p>✅ המשימה נוצרה בהצלחה!</p><p>📝 <strong>${taskTitle}</strong></p></div>`;
     subject = `✅ משימה נוצרה: ${taskTitle}`;
+    html = `
+    <div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0">
+      ${header}
+      <div style="padding:32px;background:#fff;text-align:center">
+        <p style="font-size:40px;margin:0">✅</p>
+        <h2 style="color:#1a1a2e;margin:12px 0 8px">המשימה נוצרה בהצלחה!</h2>
+        <div style="background:#f0f4ff;border-radius:8px;padding:16px;margin:16px 0;text-align:right">
+          <span style="color:#666;font-size:13px">📝 משימה:</span>
+          <p style="color:#1a1a2e;font-weight:bold;margin:4px 0 0;font-size:16px">${taskTitle}</p>
+        </div>
+        <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">פתח את Dabelu</a>
+      </div>
+      <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
+    </div>`;
   } else {
-    html = `<div dir="rtl" style="font-family:Arial,sans-serif"><p>❌ לא ניתן היה ליצור את המשימה. נסה שנית.</p></div>`;
     subject = '❌ שגיאה ביצירת משימה';
+    html = `
+    <div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0">
+      ${header}
+      <div style="padding:32px;background:#fff;text-align:center">
+        <p style="font-size:40px;margin:0">⚠️</p>
+        <h2 style="color:#1a1a2e;margin:12px 0 8px">לא ניתן היה ליצור את המשימה</h2>
+        <p style="color:#666">אנא נסה שנית מאוחר יותר.</p>
+      </div>
+      <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
+    </div>`;
   }
 
   await transporter.sendMail({ from: '"Dabelu" <tasks@dabelu.pro>', to, subject, html });
