@@ -85,7 +85,7 @@ async function sendReplyEmail(to, subject, taskTitle, status) {
 
 module.exports = async (req, res) => {
   const client = new ImapFlow({
-    host: 'imappro.zoho.com',
+    host: 'imap.zoho.com',
     port: 993,
     secure: true,
     auth: { user: 'tasks@dabelu.pro', pass: process.env.ZOHO_PASS },
