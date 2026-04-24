@@ -85,10 +85,10 @@ async function sendReplyEmail(to, subject, taskTitle, status) {
 
 module.exports = async (req, res) => {
   const client = new ImapFlow({
-    host: 'imap.zoho.com',
+    host: 'imap.gmail.com',
     port: 993,
     secure: true,
-    auth: { user: 'tasks@dabelu.pro', pass: process.env.ZOHO_PASS },
+    auth: { user: 'sh0548501483@gmail.com', pass: process.env.GMAIL_PASS },
     logger: false,
     socketTimeout: 20000,
     greetingTimeout: 15000,
@@ -103,6 +103,16 @@ module.exports = async (req, res) => {
       // קרא מיילים שלא נקראו
       for await (const msg of client.fetch({ unseen: true }, { envelope: true, source: true })) {
         const parsed = await simpleParser(msg.source);
+
+        // עבד רק מיילים שהועברו מ-tasks@dabelu.pro (נשלחו ל-+dabelutasks)
+        const toAddresses = (parsed.to?.value || []).map(a => a.address?.toLowerCase() || '');
+        const isDabeluTask = toAddresses.some(a => a.includes('+dabelutasks') || a.includes('dabelutasks'));
+        if (!isDabeluTask) {
+          // סמן כנקרא כדי לא לעבד שוב
+          await client.messageFlagsAdd({ uid: msg.uid }, ['\\Seen']);
+          continue;
+        }
+
         const fromEmail = parsed.from?.value?.[0]?.address?.toLowerCase() || '';
         const fromName  = parsed.from?.value?.[0]?.name || fromEmail;
         const subject   = parsed.subject || '';
