@@ -33,7 +33,7 @@ async function isRegisteredEmail(email) {
   return Array.isArray(data) && data.length > 0 && data[0].document ? data[0].document : null;
 }
 
-async function saveTask(title, senderName, source) {
+async function saveTask(title, senderName, source, userId) {
   const resp = await fetch(
     `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/tasks?key=${FIREBASE_API_KEY}`,
     {
@@ -47,7 +47,8 @@ async function saveTask(title, senderName, source) {
           status:      { stringValue: 'pending' },
           priority:    { stringValue: 'normal' },
           createdAt:   { stringValue: new Date().toISOString() },
-          description: { stringValue: '' }
+          description: { stringValue: '' },
+          userId:      { stringValue: userId || '' }
         }
       })
     }
@@ -55,19 +56,29 @@ async function saveTask(title, senderName, source) {
   return resp.ok;
 }
 
-async function sendReplyEmail(to, subject, taskTitle, ok) {
+async function sendReplyEmail(to, subject, taskTitle, status) {
   const nodemailer = require('nodemailer');
   const transporter = nodemailer.createTransport({
     host: 'smtp.zoho.com', port: 587, secure: false,
     auth: { user: 'tasks@dabelu.pro', pass: process.env.ZOHO_PASS }
   });
-  const html = ok
-    ? `<div dir="rtl" style="font-family:Arial,sans-serif"><p>✅ המשימה נוצרה בהצלחה!</p><p>📝 <strong>${taskTitle}</strong></p></div>`
-    : `<div dir="rtl" style="font-family:Arial,sans-serif"><p>❌ לא ניתן היה ליצור את המשימה. נסה שנית.</p></div>`;
+
+  let html, emailSubject;
+  if (status === 'not_registered') {
+    html = `<div dir="rtl" style="font-family:Arial,sans-serif"><p>❌ אינך מחובר לדבליו.</p><p>לפרטים נוספים צור קשר עמנו.</p></div>`;
+    emailSubject = '❌ אינך מחובר לדבליו';
+  } else if (status === true) {
+    html = `<div dir="rtl" style="font-family:Arial,sans-serif"><p>✅ המשימה נוצרה בהצלחה!</p><p>📝 <strong>${taskTitle}</strong></p></div>`;
+    emailSubject = `✅ משימה נוצרה: ${taskTitle}`;
+  } else {
+    html = `<div dir="rtl" style="font-family:Arial,sans-serif"><p>❌ לא ניתן היה ליצור את המשימה. נסה שנית.</p></div>`;
+    emailSubject = '❌ שגיאה ביצירת משימה';
+  }
+
   await transporter.sendMail({
     from: '"Dabelu" <tasks@dabelu.pro>',
     to,
-    subject: ok ? `✅ משימה נוצרה: ${taskTitle}` : '❌ שגיאה ביצירת משימה',
+    subject: emailSubject,
     html
   });
 }
@@ -101,16 +112,19 @@ module.exports = async (req, res) => {
         // בדוק אם השולח רשום
         const userDoc = await isRegisteredEmail(fromEmail);
         if (!userDoc) {
-          await sendReplyEmail(fromEmail, 'לא רשום במערכת', '', false);
+          await sendReplyEmail(fromEmail, '', '', 'not_registered');
           await client.messageFlagsAdd({ uid: msg.uid }, ['\\Seen']);
           continue;
         }
 
-        // שמור משימה ב-Firestore
-        const ok = await saveTask(taskTitle, fromName, 'email');
+        // חלץ את ה-userId מהמסמך
+        const userId = userDoc.name?.split('/').pop() || '';
+
+        // שמור משימה ב-Firestore מקושרת למשתמש
+        const ok = await saveTask(taskTitle, fromName, 'email', userId);
 
         // שלח תשובה למייל
-        await sendReplyEmail(fromEmail, subject, taskTitle, ok);
+        await sendReplyEmail(fromEmail, subject, taskTitle, ok ? true : false);
 
         // שלח וואטסאפ אם יש chatId
         const chatId = userDoc.fields?.chatId?.stringValue;
