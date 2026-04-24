@@ -53,6 +53,30 @@ async function saveTask(title, senderName, source, userId) {
   return resp.ok;
 }
 
+async function isValidTask(taskTitle) {
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_KEY}` },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          { role: 'system', content: 'You decide if a Hebrew message is a valid work task. A valid task must contain a clear action or subject (name + action, job to do, reminder, etc). Answer only "כן" if valid, or "לא" if it is noise, test, single meaningless word, or unclear.' },
+          { role: 'user', content: taskTitle.trim() }
+        ],
+        max_tokens: 5,
+        temperature: 0
+      })
+    });
+    const data = await resp.json();
+    const answer = (data.choices?.[0]?.message?.content || '').trim();
+    return answer.startsWith('כן');
+  } catch (err) {
+    console.error('Groq validation error:', err);
+    return true; // במקרה של שגיאה — נמשיך לשמור
+  }
+}
+
 async function sendReplyEmail(to, taskTitle, status) {
   const nodemailer = require('nodemailer');
   const transporter = nodemailer.createTransport({
@@ -69,16 +93,15 @@ async function sendReplyEmail(to, taskTitle, status) {
 
   let html, subject;
   if (status === 'not_registered') {
-    subject = '👋 קיבלנו את המייל שלך!';
+    subject = '❌ אינך מנוי במערכת Dabelu';
     html = `
     <div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0">
       ${header}
       <div style="padding:32px;background:#fff;text-align:center">
-        <p style="font-size:40px;margin:0">👋</p>
-        <h2 style="color:#1a1a2e;margin:12px 0 8px">שלום! קיבלנו את המייל שלך</h2>
-        <p style="color:#666;margin:0 0 8px">כתובת המייל שלך עדיין לא מחוברת לחשבון Dabelu.</p>
-        <p style="color:#666;margin:0 0 24px">כדי ליצור משימות דרך מייל, פשוט התחבר לאפליקציה 😊</p>
-        <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">כניסה לדבליו</a>
+        <p style="font-size:40px;margin:0">❌</p>
+        <h2 style="color:#1a1a2e;margin:12px 0 8px">אינך מנוי במערכת Dabelu</h2>
+        <p style="color:#666;margin:0 0 24px">כדי להתחיל ליצור משימות דרך מייל, יש להירשם למערכת.</p>
+        <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">להרשמה לחץ כאן</a>
       </div>
       <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
     </div>`;
@@ -94,6 +117,19 @@ async function sendReplyEmail(to, taskTitle, status) {
           <span style="color:#666;font-size:13px">📝 משימה:</span>
           <p style="color:#1a1a2e;font-weight:bold;margin:4px 0 0;font-size:16px">${taskTitle}</p>
         </div>
+        <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">פתח את Dabelu</a>
+      </div>
+      <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
+    </div>`;
+  } else if (status === 'unclear') {
+    subject = '⚠️ ההודעה אינה ברורה';
+    html = `
+    <div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0">
+      ${header}
+      <div style="padding:32px;background:#fff;text-align:center">
+        <p style="font-size:40px;margin:0">⚠️</p>
+        <h2 style="color:#1a1a2e;margin:12px 0 8px">ההודעה אינה ברורה</h2>
+        <p style="color:#666;margin:0 0 24px">לא הצלחנו להבין את המשימה. אנא שלח שנית עם פירוט ברור יותר.</p>
         <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">פתח את Dabelu</a>
       </div>
       <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
@@ -148,6 +184,14 @@ module.exports = async (req, res) => {
     }
 
     const userId = userDoc.name?.split('/').pop() || '';
+
+    // בדוק אם המשימה ברורה (כמו בווצאפ)
+    const valid = await isValidTask(taskTitle);
+    if (!valid) {
+      await sendReplyEmail(fromEmail, taskTitle, 'unclear');
+      return res.status(200).json({ ok: false, reason: 'unclear' });
+    }
+
     const ok = await saveTask(taskTitle, fromName, 'email', userId);
 
     // שלח תגובה במייל בלבד (מקור מייל = תגובה במייל)
