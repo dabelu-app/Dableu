@@ -89,7 +89,10 @@ module.exports = async (req, res) => {
     port: 993,
     secure: true,
     auth: { user: 'tasks@dabelu.pro', pass: process.env.ZOHO_PASS },
-    logger: false
+    logger: false,
+    socketTimeout: 20000,
+    greetingTimeout: 15000,
+    connectionTimeout: 15000
   });
 
   let processed = 0;
