@@ -1,0 +1,23 @@
+{
+  "name": "Dabelu - ניהול משימות",
+  "short_name": "Dabelu",
+  "description": "מערכת ניהול משימות",
+  "start_url": "/tax_manager_app.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4CAF50",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/4CAF50/ffffff?text=D",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/4CAF50/ffffff?text=D",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dablu – פתרונות ניהול חכמים למשרדי מס</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --p:#7c5cbf;
+  --p2:#9b7dd4;
+  --p3:#5a3fa0;
+  --accent:#00d2a0;
+  --accent2:#ff6b6b;
+  --accent3:#ffb84d;
+  --dark:#1a1a2e;
+  --text:#2d2d3f;
+  --text2:#6b7280;
+  --white:#fff;
+  --bg:#fafbff;
+  --bg2:#f0f2ff;
+  --border:#e5e7f0;
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);direction:rtl;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;right:0;left:0;z-index:100;padding:14px 48px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.06);transition:box-shadow .3s}
+nav.scrolled{box-shadow:0 2px 20px rgba(0,0,0,.06)}
+.nav-logo{display:flex;align-items:center;gap:10px}
+.nav-logo svg{width:34px;height:34px}
+.nav-logo-name{font-size:22px;font-weight:900;letter-spacing:-1px;color:var(--dark)}
+.nav-logo-name span{color:var(--p)}
+.nav-links{display:flex;align-items:center;gap:32px}
+.nav-links a{font-size:14px;font-weight:500;color:var(--text2);text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:var(--p)}
+.nav-cta{padding:10px 24px;background:var(--p);color:#fff;border-radius:30px;font-size:14px;font-weight:700;text-decoration:none;transition:all .25s;box-shadow:0 4px 14px rgba(124,92,191,.3)}
+.nav-cta:hover{background:var(--p3);transform:translateY(-1px);box-shadow:0 6px 20px rgba(124,92,191,.4)}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;align-items:center;padding:120px 48px 80px;position:relative;overflow:hidden;background:linear-gradient(180deg,#fff 0%,var(--bg2) 100%)}
+.hero-deco{position:absolute;border-radius:50%;filter:blur(80px);opacity:.4;pointer-events:none}
+.hero-deco-1{width:500px;height:500px;background:rgba(124,92,191,.15);top:-100px;left:-100px}
+.hero-deco-2{width:400px;height:400px;background:rgba(0,210,160,.12);bottom:-50px;right:-50px}
+.hero-deco-3{width:300px;height:300px;background:rgba(255,107,107,.1);top:50%;left:50%}
+.hero-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:center;position:relative;z-index:1}
+.hero-tag{display:inline-flex;align-items:center;gap:8px;background:rgba(124,92,191,.08);border:1px solid rgba(124,92,191,.15);border-radius:30px;padding:7px 18px;font-size:12px;font-weight:700;color:var(--p);margin-bottom:22px;letter-spacing:.5px}
+.hero-tag-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+h1{font-size:56px;font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:22px;color:var(--dark)}
+h1 em{font-style:normal;background:linear-gradient(135deg,var(--p),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:18px;color:var(--text2);line-height:1.75;margin-bottom:36px;max-width:460px}
+.hero-btns{display:flex;gap:14px;flex-wrap:wrap}
+.btn-main{padding:15px 32px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border-radius:30px;font-size:15px;font-weight:700;text-decoration:none;transition:all .25s;box-shadow:0 6px 24px rgba(124,92,191,.35);display:inline-flex;align-items:center;gap:8px}
+.btn-main:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(124,92,191,.45)}
+.btn-ghost{padding:15px 28px;border:2px solid var(--border);color:var(--text);border-radius:30px;font-size:15px;font-weight:600;text-decoration:none;transition:all .2s;background:#fff}
+.btn-ghost:hover{border-color:var(--p);color:var(--p);box-shadow:0 4px 14px rgba(124,92,191,.1)}
+.hero-trust{display:flex;align-items:center;gap:8px;margin-top:24px;font-size:13px;color:var(--text2)}
+.hero-stars{color:#f59e0b;letter-spacing:2px}
+
+/* MOCKUP */
+.hero-mockup{position:relative;animation:float 5s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.mockup-wrap{background:#fff;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.04)}
+.mockup-top{background:var(--bg2);padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.mockup-dots span{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:4px}
+.mockup-dots span:nth-child(1){background:#ff5f57}
+.mockup-dots span:nth-child(2){background:#febc2e}
+.mockup-dots span:nth-child(3){background:#28c840}
+.mockup-title{font-size:11px;color:var(--text2);margin-right:auto}
+.mockup-body{padding:16px}
+.m-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.m-stat{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+.m-stat-n{font-size:24px;font-weight:800}
+.m-stat-l{font-size:9px;color:var(--text2);margin-top:2px}
+.m-stat.red .m-stat-n{color:var(--accent2)}
+.m-stat.amber .m-stat-n{color:var(--accent3)}
+.m-stat.green .m-stat-n{color:var(--accent)}
+.m-task{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;transition:box-shadow .2s}
+.m-task:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.m-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.m-task-title{font-size:12px;font-weight:600;flex:1;color:var(--text)}
+.m-badge{font-size:9px;padding:3px 8px;border-radius:10px;font-weight:700}
+.m-badge.r{background:rgba(255,107,107,.12);color:var(--accent2)}
+.m-badge.g{background:rgba(0,210,160,.12);color:#00b48a}
+.m-badge.a{background:rgba(255,184,77,.12);color:#e5a000}
+.m-wa{background:rgba(37,211,102,.06);border:1px solid rgba(37,211,102,.15);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px}
+.m-wa-text{font-size:10px;color:var(--text2);flex:1}
+.m-wa-ai{font-size:9px;background:rgba(0,210,160,.15);color:#00b48a;padding:3px 8px;border-radius:8px;font-weight:700;flex-shrink:0}
+
+/* COLOR BAR */
+.color-bar{height:4px;background:linear-gradient(90deg,var(--p),var(--accent),var(--accent3),var(--accent2),var(--p));background-size:200% 100%;animation:gradient-move 4s ease infinite}
+@keyframes gradient-move{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+/* SECTIONS */
+section{padding:90px 48px}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-tag{display:inline-block;background:rgba(124,92,191,.08);color:var(--p);font-size:11px;font-weight:700;padding:6px 16px;border-radius:20px;margin-bottom:14px;text-transform:uppercase;letter-spacing:1px;border:1px solid rgba(124,92,191,.12)}
+.section-title{font-size:42px;font-weight:900;letter-spacing:-1.5px;line-height:1.15;margin-bottom:14px;color:var(--dark)}
+.section-sub{font-size:16px;color:var(--text2);line-height:1.7;max-width:520px}
+
+/* FEATURES */
+#features{background:#fff}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:50px}
+.feat{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:30px;transition:all .3s;position:relative;overflow:hidden}
+.feat:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,.06);border-color:transparent}
+.feat:nth-child(1):hover{background:linear-gradient(135deg,rgba(124,92,191,.04),rgba(124,92,191,.08))}
+.feat:nth-child(2):hover{background:linear-gradient(135deg,rgba(0,210,160,.04),rgba(0,210,160,.08))}
+.feat:nth-child(3):hover{background:linear-gradient(135deg,rgba(255,184,77,.04),rgba(255,184,77,.08))}
+.feat:nth-child(4):hover{background:linear-gradient(135deg,rgba(255,107,107,.04),rgba(255,107,107,.08))}
+.feat:nth-child(5):hover{background:linear-gradient(135deg,rgba(124,92,191,.04),rgba(0,210,160,.08))}
+.feat:nth-child(6):hover{background:linear-gradient(135deg,rgba(255,184,77,.04),rgba(124,92,191,.08))}
+.feat-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px}
+.feat:nth-child(1) .feat-icon{background:rgba(124,92,191,.1)}
+.feat:nth-child(2) .feat-icon{background:rgba(0,210,160,.1)}
+.feat:nth-child(3) .feat-icon{background:rgba(255,184,77,.1)}
+.feat:nth-child(4) .feat-icon{background:rgba(255,107,107,.1)}
+.feat:nth-child(5) .feat-icon{background:rgba(124,92,191,.1)}
+.feat:nth-child(6) .feat-icon{background:rgba(0,210,160,.1)}
+.feat-title{font-size:17px;font-weight:800;margin-bottom:8px;color:var(--dark)}
+.feat-desc{font-size:14px;color:var(--text2);line-height:1.7}
+
+/* PRICING */
+#pricing{background:var(--bg)}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:50px;align-items:start}
+.price-card{background:#fff;border:2px solid var(--border);border-radius:24px;padding:32px;transition:all .3s;position:relative}
+.price-card:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,.06)}
+.price-card.featured{border-color:var(--p);background:linear-gradient(180deg,rgba(124,92,191,.03),#fff);box-shadow:0 20px 50px rgba(124,92,191,.12)}
+.price-badge{position:absolute;top:-14px;right:50%;transform:translateX(50%);background:linear-gradient(135deg,var(--p),var(--accent));color:#fff;font-size:11px;font-weight:800;padding:5px 18px;border-radius:20px;white-space:nowrap;letter-spacing:.3px}
+.plan-label{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.plan-name{font-size:28px;font-weight:900;margin-bottom:4px;letter-spacing:-1px;color:var(--dark)}
+.plan-price{display:flex;align-items:baseline;gap:4px;margin-bottom:6px}
+.plan-price-n{font-size:44px;font-weight:900;letter-spacing:-2px;color:var(--dark)}
+.plan-price-cur{font-size:18px;font-weight:700;color:var(--text2)}
+.plan-price-per{font-size:12px;color:var(--text2)}
+.plan-desc{font-size:14px;color:var(--text2);margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.plan-features{display:flex;flex-direction:column;gap:12px;margin-bottom:26px}
+.pf{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--text)}
+.pf-check{width:20px;height:20px;border-radius:50%;background:rgba(0,210,160,.12);color:#00b48a;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-weight:700}
+.plan-btn{display:block;text-align:center;padding:13px;border-radius:30px;font-size:15px;font-weight:700;text-decoration:none;transition:all .25s;cursor:pointer;border:none;width:100%;font-family:'Heebo',sans-serif}
+.plan-btn.outline{border:2px solid var(--border);color:var(--text);background:#fff}
+.plan-btn.outline:hover{border-color:var(--p);color:var(--p);box-shadow:0 4px 14px rgba(124,92,191,.1)}
+.plan-btn.solid{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;box-shadow:0 6px 20px rgba(124,92,191,.3)}
+.plan-btn.solid:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,92,191,.4)}
+.plan-btn.dark{background:var(--bg);color:var(--text);border:2px solid var(--border)}
+.plan-btn.dark:hover{border-color:var(--p);color:var(--p)}
+
+/* TESTIMONIALS */
+#testimonials{background:#fff}
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:50px}
+.testi{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:28px;transition:all .3s}
+.testi:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,.06)}
+.testi-stars{color:#fbbf24;font-size:15px;letter-spacing:2px;margin-bottom:14px}
+.testi-text{font-size:14px;color:var(--text2);line-height:1.75;margin-bottom:18px;font-style:italic}
+.testi-author{display:flex;align-items:center;gap:12px}
+.testi-av{width:40px;height:40px;border-radius:50%;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.testi:nth-child(1) .testi-av{background:linear-gradient(135deg,var(--p),var(--p2))}
+.testi:nth-child(2) .testi-av{background:linear-gradient(135deg,var(--accent),#00e6b0)}
+.testi:nth-child(3) .testi-av{background:linear-gradient(135deg,var(--accent3),#ffcf7d)}
+.testi-name{font-size:14px;font-weight:700;color:var(--dark)}
+.testi-role{font-size:12px;color:var(--text2)}
+
+/* CTA */
+.cta-sec{padding:90px 48px;text-align:center;position:relative;overflow:hidden;background:linear-gradient(135deg,var(--p) 0%,var(--p3) 50%,#4338ca 100%);color:#fff}
+.cta-sec::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+.cta-sec h2{font-size:46px;font-weight:900;letter-spacing:-1.5px;margin-bottom:16px;position:relative}
+.cta-sec p{font-size:18px;color:rgba(255,255,255,.8);margin-bottom:36px;max-width:500px;margin-left:auto;margin-right:auto;line-height:1.7;position:relative}
+.cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;position:relative}
+.cta-btns .btn-main{background:#fff;color:var(--p);box-shadow:0 6px 24px rgba(0,0,0,.15)}
+.cta-btns .btn-main:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(0,0,0,.2)}
+.cta-btns .btn-ghost{border-color:rgba(255,255,255,.3);color:#fff;background:transparent}
+.cta-btns .btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.1)}
+
+/* CONTACT */
+#contact{background:var(--bg)}
+
+/* FOOTER */
+footer{padding:36px 48px;text-align:center;border-top:1px solid var(--border);background:#fff}
+.footer-logo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px}
+.footer-logo-name{font-size:18px;font-weight:900;letter-spacing:-1px;color:var(--dark)}
+.footer-logo-name span{color:var(--p)}
+.footer-sub{font-size:12px;color:var(--text2);margin-bottom:12px}
+.footer-links{display:flex;justify-content:center;gap:20px}
+.footer-links a{font-size:12px;color:var(--text2);text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--p)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+.au{opacity:0;animation:fadeUp .6s ease forwards}
+.d1{animation-delay:.1s}.d2{animation-delay:.2s}.d3{animation-delay:.3s}.d4{animation-delay:.4s}.d5{animation-delay:.5s}
+
+/* LOGOS STRIP */
+.logos-strip{display:flex;align-items:center;justify-content:center;gap:40px;padding:40px 48px;background:#fff;border-bottom:1px solid var(--border)}
+.logos-strip span{font-size:13px;color:var(--text2);font-weight:500}
+.logo-pill{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:30px;padding:8px 18px;font-size:13px;font-weight:600;color:var(--text2)}
+
+@media(max-width:768px){
+  nav{padding:12px 20px}.nav-links{display:none}
+  .hero{padding:90px 20px 60px}.hero-inner{grid-template-columns:1fr}.hero-mockup{order:-1}
+  h1{font-size:36px}.section-title{font-size:28px}
+  .features-grid,.pricing-grid,.testi-grid{grid-template-columns:1fr}
+  section{padding:60px 20px}
+  .logos-strip{flex-wrap:wrap;gap:16px;padding:24px 20px}
+  .cta-sec{padding:60px 20px}
+  .cta-sec h2{font-size:32px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <svg width="38" height="30" viewBox="0 0 110 85" fill="none">
+      <path d="M8 8 L34 72 L52 30 L70 72 L102 8" stroke="#6c63ff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="nav-logo-name">Dab<span>elu</span></div>
+  </div>
+  <div class="nav-links">
+    <a href="#features">יתרונות</a>
+    <a href="#pricing">מחירים</a>
+    <a href="#testimonials">לקוחות</a>
+    <a href="#" onclick="openContact();return false;">צור קשר</a>
+  </div>
+  <a href="tax_manager_app.html" class="nav-cta">התחל חינם ←</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-deco hero-deco-1"></div>
+  <div class="hero-deco hero-deco-2"></div>
+  <div class="hero-deco hero-deco-3"></div>
+  <div class="hero-inner">
+    <div>
+      <div class="hero-tag au">
+        <span class="hero-tag-dot"></span>
+        פלטפורמת ניהול למשרדי מס
+      </div>
+      <h1 class="au d1">ניהול משרדי מס<br/><em>חכם יותר.</em><br/>פשוט יותר.</h1>
+      <p class="hero-sub au d2">Dabelu מחברת את הצוות שלך, מנהלת משימות ותזכורות, ו-AI מבין הודעות וואטסאפ ומייל בעברית חופשית.</p>
+      <div class="hero-btns au d3">
+        <a href="tax_manager_app.html" class="btn-main">התחל 7 ימים חינם ←</a>
+        <a href="#features" class="btn-ghost">איך זה עובד?</a>
+      </div>
+      <div class="hero-trust au d4">
+        <span class="hero-stars">★★★★★</span>
+        <span>200+ משרדים בישראל כבר עובדים עם Dabelu</span>
+      </div>
+    </div>
+    <div class="hero-mockup au d2">
+      <div class="mockup-wrap">
+        <div class="mockup-top">
+          <div class="mockup-dots"><span></span><span></span><span></span></div>
+          <div class="mockup-title">Dablu · לוח בקרה</div>
+        </div>
+        <div class="mockup-body">
+          <div class="m-stats">
+            <div class="m-stat red"><div class="m-stat-n">4</div><div class="m-stat-l">טרם טופלו</div></div>
+            <div class="m-stat amber"><div class="m-stat-n">7</div><div class="m-stat-l">בביצוע</div></div>
+            <div class="m-stat green"><div class="m-stat-n">23</div><div class="m-stat-l">טופלו</div></div>
+          </div>
+          <div class="m-task"><div class="m-dot" style="background:var(--accent2)"></div><div class="m-task-title">הגשת דוח מע"מ – כהן בע"מ</div><div class="m-badge r">דחוף</div></div>
+          <div class="m-task"><div class="m-dot" style="background:var(--accent3)"></div><div class="m-task-title">מקדמה חודשית – לוי ושות׳</div><div class="m-badge a">בביצוע</div></div>
+          <div class="m-task"><div class="m-dot" style="background:var(--accent)"></div><div class="m-task-title">דוח שנתי 2025 – גולדברג</div><div class="m-badge g">טופל</div></div>
+          <div class="m-wa">
+            <span style="font-size:14px">💬</span>
+            <div class="m-wa-text">"שרה – מקדמה כהן עד 25/3 דחוף"</div>
+            <div class="m-wa-ai">AI ✓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COLOR BAR -->
+<div class="color-bar"></div>
+
+<!-- TRUST LOGOS -->
+<div class="logos-strip au">
+  <span>מהימנים על ידי:</span>
+  <div class="logo-pill">🏢 משרדי מס מובילים</div>
+  <div class="logo-pill">📊 רואי חשבון</div>
+  <div class="logo-pill">💼 יועצי מס עצמאיים</div>
+  <div class="logo-pill">🔒 מאובטח ומוצפן</div>
+</div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-inner">
+    <div style="text-align:center">
+      <div class="section-tag au">יתרונות</div>
+      <h2 class="section-title au d1">כל מה שמשרד מס צריך</h2>
+      <p class="section-sub au d2" style="margin:0 auto">בנינו את Dabelu ספציפית למשרדי ייעוץ מס – עם כל הכלים שחסרו לכם.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feat au d1"><div class="feat-icon">🤖</div><div class="feat-title">AI מבין עברית חופשית</div><div class="feat-desc">שלחו הודעה בוואטסאפ או מייל – Dabelu מזהה מי האחראי, מה הדחיפות ומתי הדדליין. אוטומטית.</div></div>
+      <div class="feat au d2"><div class="feat-icon">⏰</div><div class="feat-title">תזכורות 48 שעות</div><div class="feat-desc">משימה שלא טופלה תוך 48 שעות? העובד מקבל תזכורת בוואטסאפ אוטומטית.</div></div>
+      <div class="feat au d3"><div class="feat-icon">🔁</div><div class="feat-title">משימות חוזרות</div><div class="feat-desc">מקדמות, דוחות חודשיים, ביטוח לאומי – הגדירו פעם אחת ו-Dabelu יצור מחדש כל חודש.</div></div>
+      <div class="feat au d1"><div class="feat-icon">👥</div><div class="feat-title">ניהול צוות מלא</div><div class="feat-desc">כל עובד עם מסך אישי, הרשאות מותאמות, ומדד ביצועים אוטומטי.</div></div>
+      <div class="feat au d2"><div class="feat-icon">📅</div><div class="feat-title">יומן + דדליינים</div><div class="feat-desc">לוח שנה מובנה עם כל דדליינים של מס הכנסה, מע"מ וביטוח לאומי.</div></div>
+      <div class="feat au d3"><div class="feat-icon">📊</div><div class="feat-title">לוח בקרת עובדים</div><div class="feat-desc">מבט מיידי על כל הצוות – מה טופל, מה בביצוע, מה ממתין. מדד ביצועים אוטומטי לכל עובד.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="section-inner">
+    <div style="text-align:center">
+      <div class="section-tag au">מחירים</div>
+      <h2 class="section-title au d1">בחרו את המסלול שלכם</h2>
+      <p class="section-sub au d2" style="margin:0 auto">7 ימי ניסיון חינם בכל מסלול · ללא כרטיס אשראי · ביטול בכל עת</p>
+    </div>
+    <div class="pricing-grid" style="margin-top:50px">
+
+      <!-- Basic -->
+      <div class="price-card au d1">
+        <div style="font-size:26px;font-weight:900;letter-spacing:-1px;margin-bottom:8px;color:var(--dark)">Basic</div>
+        <div class="plan-price">
+          <span class="plan-price-cur">₪</span>
+          <span class="plan-price-n">20</span>
+          <span class="plan-price-per">/חודש</span>
+        </div>
+        <div class="plan-desc">עצמאי · משתמש יחיד · ₪20/חודש</div>
+        <div class="plan-features">
+          <div class="pf"><div class="pf-check">✓</div>משתמש אחד בלבד</div>
+          <div class="pf"><div class="pf-check">✓</div>ניהול משימות מלא</div>
+          <div class="pf"><div class="pf-check">✓</div>יומן ודדליינים</div>
+          <div class="pf"><div class="pf-check">✓</div>תזכורות אוטומטיות</div>
+          <div class="pf"><div class="pf-check">✓</div>AI בסיסי</div>
+        </div>
+        <button class="plan-btn outline" onclick="location.href='tax_manager_app.html'">התחל 7 ימים חינם</button>
+      </div>
+
+      <!-- Business -->
+      <div class="price-card featured au d2">
+        <div class="price-badge">⭐ הפופולרי ביותר</div>
+        <div style="font-size:26px;font-weight:900;letter-spacing:-1px;margin-bottom:8px;color:var(--dark)">Business</div>
+        <div class="plan-price">
+          <span class="plan-price-cur">₪</span>
+          <span class="plan-price-n">50</span>
+          <span class="plan-price-per">/חודש</span>
+        </div>
+        <div class="plan-desc">2–50 עובדים · ₪50/חודש</div>
+        <div class="plan-features">
+          <div class="pf"><div class="pf-check">✓</div>עד 50 עובדים</div>
+          <div class="pf"><div class="pf-check">✓</div>כל מה שבבסיסי</div>
+          <div class="pf"><div class="pf-check">✓</div>AI מלל חופשי מלא</div>
+          <div class="pf"><div class="pf-check">✓</div>מדד ביצועי עובדים</div>
+          <div class="pf"><div class="pf-check">✓</div>משימות חוזרות</div>
+          <div class="pf"><div class="pf-check">✓</div>אפליקציה לנייד (PWA)</div>
+        </div>
+        <button class="plan-btn solid" onclick="location.href='tax_manager_app.html'">התחל 7 ימים חינם</button>
+      </div>
+
+      <!-- Premium -->
+      <div class="price-card au d3">
+        <div style="font-size:26px;font-weight:900;letter-spacing:-1px;margin-bottom:8px;color:var(--dark)">Premium</div>
+        <div class="plan-price">
+          <span class="plan-price-cur">₪</span>
+          <span class="plan-price-n">100</span>
+          <span class="plan-price-per">/חודש</span>
+        </div>
+        <div class="plan-desc">ללא הגבלה + התאמה אישית · ₪100/חודש</div>
+        <div class="plan-features">
+          <div class="pf"><div class="pf-check">✓</div>עובדים ללא הגבלה</div>
+          <div class="pf"><div class="pf-check">✓</div>כל מה שבעסקי</div>
+          <div class="pf"><div class="pf-check">✓</div>התאמה ספציפית לעסק</div>
+          <div class="pf"><div class="pf-check">✓</div>חיבור Google / Outlook</div>
+          <div class="pf"><div class="pf-check">✓</div>דוחות מתקדמים</div>
+          <div class="pf"><div class="pf-check">✓</div>תמיכה עדיפותית</div>
+        </div>
+        <button class="plan-btn dark" onclick="openContact()">צור קשר לפרטים</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials">
+  <div class="section-inner">
+    <div style="text-align:center">
+      <div class="section-tag au">לקוחות מספרים</div>
+      <h2 class="section-title au d1">משרדים שכבר עובדים עם Dabelu</h2>
+    </div>
+    <div class="testi-grid">
+      <div class="testi au d1">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-text">"מאז שהתחלנו להשתמש ב-Dabelu לא שכחנו אפילו דדליין אחד. הצוות שלי יודע בדיוק מה לעשות בכל רגע."</div>
+        <div class="testi-author"><div class="testi-av">מכ</div><div><div class="testi-name">מרים כהן</div><div class="testi-role">יועצת מס, תל אביב</div></div></div>
+      </div>
+      <div class="testi au d2">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-text">"שלחתי הודעה בוואטסאפ 'שרה – מקדמה לקוח לוי עד 25' והמשימה נוצרה אוטומטית. זה קסם."</div>
+        <div class="testi-author"><div class="testi-av">אל</div><div><div class="testi-name">אורי לוי</div><div class="testi-role">רואה חשבון, חיפה</div></div></div>
+      </div>
+      <div class="testi au d3">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-text">"חסכנו לפחות שעתיים ביום על תיאומים. עכשיו הכל במקום אחד ואנחנו 5 עובדים."</div>
+        <div class="testi-author"><div class="testi-av">רב</div><div><div class="testi-name">רחל בן-דוד</div><div class="testi-role">משרד ייעוץ מס, ירושלים</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-sec">
+  <h2>מוכנים להפסיק לאבד משימות?</h2>
+  <p>הצטרפו ל-200+ משרדים שכבר עובדים חכם יותר עם Dabelu.<br/>7 ימים חינם · ללא כרטיס אשראי.</p>
+  <div class="cta-btns">
+    <a href="tax_manager_app.html" class="btn-main">התחל חינם עכשיו ←</a>
+    <a href="#pricing" class="btn-ghost">ראה מחירים</a>
+  </div>
+</div>
+
+<!-- CONTACT -->
+<section id="contact" style="padding:90px 48px">
+  <div class="section-inner" style="max-width:900px">
+    <div style="text-align:center;margin-bottom:50px">
+      <div class="section-tag">צור קשר</div>
+      <h2 class="section-title">נשמח לשמוע ממך</h2>
+      <p class="section-sub" style="margin:0 auto">משרד שני רובינשטיין יועצי מס</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+
+      <!-- Contact details -->
+      <div style="background:#fff;border:1px solid var(--border);border-radius:20px;padding:28px">
+        <h3 style="font-size:18px;font-weight:800;margin-bottom:20px;color:var(--dark)">פרטי התקשרות</h3>
+
+        <!-- Phone + WhatsApp -->
+        <a href="https://wa.me/972502127441?text=שלום%2C%20אני%20מעוניין%20לשמוע%20על%20Dabelu" target="_blank" style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--bg);border-radius:14px;margin-bottom:12px;text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(37,211,102,.06)'" onmouseout="this.style.background='var(--bg)'">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(37,211,102,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.091.541 4.063 1.487 5.778L.057 23.428l5.8-1.524A11.934 11.934 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.371l-.356-.214-3.715.976.99-3.625-.234-.373A9.818 9.818 0 0112 2.182c5.42 0 9.818 4.398 9.818 9.818 0 5.42-4.398 9.818-9.818 9.818z"/></svg>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:2px">WhatsApp</div>
+            <div style="font-size:14px;font-weight:700;color:var(--dark)">לחץ לפתיחת שיחה</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+
+        <!-- Email -->
+        <a href="https://mail.google.com/mail/?view=cm&to=shanitaxes11@gmail.com&subject=%D7%A4%D7%A0%D7%99%D7%99%D7%94%20%D7%9E%D7%90%D7%AA%D7%A8%20Dabelu" target="_blank" style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--bg);border-radius:14px;text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(108,99,255,.06)'" onmouseout="this.style.background='var(--bg)'">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(108,99,255,.1);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📧</div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:2px">אימייל</div>
+            <div style="font-size:14px;font-weight:700;color:var(--dark)">לחץ לשליחת מייל</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+      </div>
+
+      <!-- Leave details form -->
+      <div style="background:#fff;border:2px solid rgba(124,92,191,.15);border-radius:20px;padding:28px">
+        <h3 style="font-size:18px;font-weight:800;margin-bottom:6px;color:var(--dark)">השאירו פרטים</h3>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:20px">ונחזור אליכם תוך יום עסקים</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input id="c-name" placeholder="שם מלא" style="padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:14px;width:100%;box-sizing:border-box;transition:border-color .2s"/>
+          <input id="c-phone" placeholder="טלפון" dir="ltr" style="padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:14px;width:100%;box-sizing:border-box;transition:border-color .2s"/>
+          <input id="c-email" type="email" placeholder="אימייל" dir="ltr" style="padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:14px;width:100%;box-sizing:border-box;transition:border-color .2s"/>
+          <textarea id="c-msg" placeholder="הודעה (אופציונלי)" rows="3" style="padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:14px;width:100%;box-sizing:border-box;resize:none;transition:border-color .2s"></textarea>
+          <div id="c-err" style="font-size:12px;color:var(--accent2);min-height:16px;text-align:center"></div>
+          <button onclick="submitContact()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:30px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;transition:all .25s;box-shadow:0 4px 14px rgba(124,92,191,.3)" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">שלח ← נחזור אליך בהקדם</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+function loginWithGoogle(){
+  alert('התחברות עם Google תופעל בקרוב עם Supabase Auth');
+}
+function submitContact(){
+  var name = (document.getElementById('c-name').value||'').trim();
+  var phone = (document.getElementById('c-phone').value||'').trim();
+  var email = (document.getElementById('c-email').value||'').trim();
+  var msg = (document.getElementById('c-msg').value||'').trim();
+  var err = document.getElementById('c-err');
+  if(!name||!phone){err.textContent='יש למלא שם וטלפון';return;}
+  err.textContent='';
+  var waMsg = 'פנייה חדשה מ-Dabelu:%0Aשם: '+encodeURIComponent(name)+'%0Aטלפון: '+encodeURIComponent(phone)+(email?'%0Aמייל: '+encodeURIComponent(email):'')+(msg?'%0Aהודעה: '+encodeURIComponent(msg):'');
+  window.open('https://wa.me/972502127441?text='+waMsg,'_blank');
+  document.getElementById('c-name').value='';
+  document.getElementById('c-phone').value='';
+  document.getElementById('c-email').value='';
+  document.getElementById('c-msg').value='';
+  err.style.color='var(--accent)';
+  err.textContent='✓ פנייתך נשלחה! נחזור אליך בהקדם';
+}
+</script>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">
+    <svg width="32" height="25" viewBox="0 0 110 85" fill="none">
+      <path d="M8 8 L34 72 L52 30 L70 72 L102 8" stroke="#6c63ff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="footer-logo-name">Dab<span>elu</span></div>
+  </div>
+  <div class="footer-sub">פתרונות ניהול חכמים למשרדי מס · © 2026 Dabelu</div>
+  <div class="footer-links">
+    <a href="#">תנאי שימוש</a>
+    <a href="#">פרטיות</a>
+    <a href="#" onclick="openContact();return false;">צור קשר</a>
+  </div>
+</footer>
+
+<!-- SIGNUP MODAL REMOVED -->
+<div id="signup-overlay" style="display:none">
+  <div>
+    <button onclick="closeSignup()" style="position:absolute;top:16px;left:16px;background:var(--bg);border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--bg)'">×</button>
+
+    <!-- Step 1: Plan -->
+    <div id="step-plan">
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,rgba(124,92,191,.1),rgba(0,210,160,.1));display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px">🚀</div>
+        <h3 style="font-size:22px;font-weight:800;margin-bottom:4px;color:var(--dark)">התחל עם Dabelu</h3>
+        <p style="font-size:13px;color:var(--text2)">7 ימים חינם · ללא כרטיס אשראי</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+        <div id="plan-basic" onclick="selectPlan('basic')" style="border:2px solid var(--border);border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:space-between;background:#fff">
+          <div><div style="font-size:14px;font-weight:700;color:var(--dark)">Basic <span style="font-size:11px;color:var(--text2);font-weight:400">· עצמאי</span></div><div style="font-size:12px;color:var(--text2);margin-top:3px">משתמש אחד · ₪20/חודש</div></div>
+          <div id="check-basic" style="display:none;color:var(--p);font-size:18px;font-weight:700">✓</div>
+        </div>
+        <div id="plan-business" onclick="selectPlan('business')" style="border:2px solid var(--p);border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:space-between;background:rgba(124,92,191,.04)">
+          <div><div style="font-size:14px;font-weight:700;color:var(--dark)">Business <span style="font-size:10px;background:linear-gradient(135deg,var(--p),var(--accent));color:#fff;padding:2px 8px;border-radius:10px;margin-right:6px">פופולרי</span></div><div style="font-size:12px;color:var(--text2);margin-top:3px">עד 50 עובדים · ₪50/חודש</div></div>
+          <div id="check-business" style="color:var(--p);font-size:18px;font-weight:700">✓</div>
+        </div>
+        <div id="plan-premium" onclick="selectPlan('premium')" style="border:2px solid var(--border);border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:space-between;background:#fff">
+          <div><div style="font-size:14px;font-weight:700;color:var(--dark)">Premium <span style="font-size:11px;color:var(--text2);font-weight:400">· ללא הגבלה</span></div><div style="font-size:12px;color:var(--text2);margin-top:3px">התאמה אישית · ₪100/חודש</div></div>
+          <div id="check-premium" style="display:none;color:var(--p);font-size:18px;font-weight:700">✓</div>
+        </div>
+      </div>
+      <button onclick="goToStep2()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:30px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;box-shadow:0 4px 14px rgba(124,92,191,.3)">המשך ←</button>
+    </div>
+
+    <!-- Step 2: Account -->
+    <div id="step-account" style="display:none">
+      <div style="text-align:center;margin-bottom:24px">
+        <div id="plan-summary" style="display:inline-block;background:rgba(124,92,191,.08);border:1px solid rgba(124,92,191,.15);border-radius:20px;padding:5px 16px;font-size:12px;font-weight:700;color:var(--p);margin-bottom:12px"></div>
+        <h3 style="font-size:22px;font-weight:800;margin-bottom:4px;color:var(--dark)">צרי חשבון</h3>
+        <p style="font-size:13px;color:var(--text2)">הכניסי את פרטיך כדי להמשיך</p>
+      </div>
+      <button onclick="loginWithGoogle()" style="width:100%;padding:12px;background:#fff;color:#3c4043;border:2px solid var(--border);border-radius:30px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s" onmouseover="this.style.borderColor='var(--p)';this.style.boxShadow='0 2px 8px rgba(124,92,191,.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        המשך עם Google
+      </button>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:12px;color:var(--text2)">או עם אימייל</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input id="s-first" placeholder="שם פרטי" style="padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:13px"/>
+          <input id="s-last" placeholder="שם משפחה" style="padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:13px"/>
+        </div>
+        <input id="s-office" placeholder="שם המשרד" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:13px;box-sizing:border-box"/>
+        <input id="s-email" type="email" placeholder="אימייל" dir="ltr" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:13px;box-sizing:border-box"/>
+        <input id="s-pass" type="password" placeholder="סיסמה (לפחות 6 תווים)" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:13px;box-sizing:border-box"/>
+      </div>
+      <div id="s-err" style="color:var(--accent2);font-size:12px;text-align:center;margin-bottom:10px;min-height:16px"></div>
+      <button onclick="goToStep3()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:30px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;margin-bottom:12px;box-shadow:0 4px 14px rgba(124,92,191,.3)">המשך לתשלום ←</button>
+      <div style="text-align:center;font-size:12px;color:var(--text2)">כבר יש חשבון? <a href="tax_manager_app.html" style="color:var(--p);font-weight:600">כניסה</a></div>
+    </div>
+
+    <!-- Step 3: Payment -->
+    <div id="step-payment" style="display:none">
+      <div style="text-align:center;margin-bottom:24px">
+        <div id="pay-plan-summary" style="display:inline-block;background:rgba(124,92,191,.08);border:1px solid rgba(124,92,191,.15);border-radius:20px;padding:5px 16px;font-size:12px;font-weight:700;color:var(--p);margin-bottom:12px"></div>
+        <h3 style="font-size:22px;font-weight:800;margin-bottom:4px;color:var(--dark)">פרטי תשלום</h3>
+        <p style="font-size:13px;color:var(--text2)">לא יחויב כלום ב-14 הימים</p>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:600">פרטי כרטיס אשראי</div>
+        <input placeholder="מספר כרטיס" dir="ltr" maxlength="19" id="cc-num" oninput="formatCC(this)" style="width:100%;padding:11px;background:#fff;border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:monospace;font-size:14px;margin-bottom:8px;box-sizing:border-box;letter-spacing:2px"/>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input placeholder="MM/YY" dir="ltr" maxlength="5" id="cc-exp" oninput="formatExp(this)" style="padding:11px;background:#fff;border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:monospace;font-size:14px;box-sizing:border-box"/>
+          <input placeholder="CVV" dir="ltr" maxlength="3" type="password" style="padding:11px;background:#fff;border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:monospace;font-size:14px;box-sizing:border-box"/>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;background:rgba(0,210,160,.06);border:1px solid rgba(0,210,160,.15);border-radius:12px;margin-bottom:14px">
+        <span style="font-size:16px">🔒</span>
+        <span style="font-size:12px;color:var(--text2)">פרטי הכרטיס מוצפנים ומוגנים · מופעל על ידי Stripe</span>
+      </div>
+      <div id="pay-err" style="color:var(--accent2);font-size:12px;text-align:center;margin-bottom:10px;min-height:16px"></div>
+      <button onclick="submitPayment()" id="pay-btn" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:30px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;box-shadow:0 4px 14px rgba(124,92,191,.3)">אשר והתחל 7 ימים חינם ←</button>
+    </div>
+
+    <!-- Step 4: Waiting -->
+    <div id="step-waiting" style="display:none;text-align:center;padding:20px 0">
+      <div style="width:64px;height:64px;border:3px solid var(--border);border-top-color:var(--p);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px"></div>
+      <h3 style="font-size:22px;font-weight:800;margin-bottom:8px;color:var(--dark)">מעבד תשלום...</h3>
+      <p style="font-size:13px;color:var(--text2)">אנא המתיני, זה ייקח שניות</p>
+    </div>
+
+    <!-- Step 5: Success -->
+    <div id="step-success" style="display:none;text-align:center;padding:20px 0">
+      <div style="width:64px;height:64px;border-radius:50%;background:rgba(0,210,160,.1);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px">🎉</div>
+      <h3 style="font-size:24px;font-weight:900;margin-bottom:8px;color:var(--dark)">ברוכה הבאה ל-Dabelu!</h3>
+      <p style="font-size:14px;color:var(--text2);margin-bottom:24px">חשבונך נוצר בהצלחה. 7 ימי ניסיון חינם החלו.</p>
+      <a href="tax_manager_app.html" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border-radius:30px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 4px 14px rgba(124,92,191,.3)">כניסה לתוכנה ←</a>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+input::placeholder,textarea::placeholder{color:var(--text2);opacity:.6}
+input:focus,textarea:focus{outline:none;border-color:var(--p)!important;box-shadow:0 0 0 3px rgba(124,92,191,.1)}
+</style>
+
+<script>
+// Scroll animations
+var obs = new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting) e.target.style.animationPlayState='running';
+  });
+},{threshold:0.15});
+document.querySelectorAll('.au').forEach(function(el){
+  el.style.animationPlayState='paused';
+  obs.observe(el);
+});
+
+// Nav scroll effect
+window.addEventListener('scroll',function(){
+  document.querySelector('nav').classList.toggle('scrolled', window.scrollY > 20);
+});
+</script>
+
+<!-- CONTACT MODAL -->
+<div id="contact-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;align-items:center;justify-content:center;backdrop-filter:blur(8px)">
+  <div style="background:#fff;border:1px solid var(--border);border-radius:24px;padding:36px;width:480px;max-width:95vw;position:relative;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.15)">
+    <button onclick="document.getElementById('contact-overlay').style.display='none'" style="position:absolute;top:14px;left:14px;background:var(--bg);border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px">×</button>
+
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="width:56px;height:56px;border-radius:16px;background:rgba(124,92,191,.08);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px">📞</div>
+      <h3 style="font-size:22px;font-weight:800;margin-bottom:4px;color:var(--dark)">צרו קשר</h3>
+      <p style="font-size:13px;color:var(--text2)">משרד שני רובינשטיין – יועצי מס</p>
+    </div>
+
+    <!-- Contact info -->
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+      <a href="https://wa.me/972502127441?text=שלום%2C%20אני%20מעוניין/ת%20לשמוע%20על%20Dabelu" target="_blank" style="display:flex;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px;text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(37,211,102,.06)'" onmouseout="this.style.background='var(--bg)'">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(37,211,102,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.091.541 4.063 1.487 5.778L.057 23.428l5.8-1.524A11.934 11.934 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.371l-.356-.214-3.715.976.99-3.625-.234-.373A9.818 9.818 0 0112 2.182c5.42 0 9.818 4.398 9.818 9.818 0 5.42-4.398 9.818-9.818 9.818z"/></svg>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:2px">WhatsApp</div>
+          <div style="font-size:14px;font-weight:700;color:var(--dark)">לחץ לפתיחת שיחה</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+
+      <a href="https://mail.google.com/mail/?view=cm&to=shanitaxes11@gmail.com&subject=%D7%A4%D7%A0%D7%99%D7%99%D7%94%20%D7%9E%D7%90%D7%AA%D7%A8%20Dabelu" target="_blank" style="display:flex;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px;text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(108,99,255,.06)'" onmouseout="this.style.background='var(--bg)'">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(108,99,255,.1);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📧</div>
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:2px">אימייל</div>
+          <div style="font-size:14px;font-weight:700;color:var(--dark)">לחץ לשליחת מייל</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+    </div>
+
+    <!-- Leave details form -->
+    <div style="border-top:1px solid var(--border);padding-top:20px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text)">או השאירו פרטים ונחזור אליכם 👇</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input id="cm-name" placeholder="שם מלא" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:13px;box-sizing:border-box"/>
+        <input id="cm-phone" placeholder="טלפון" dir="ltr" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:13px;box-sizing:border-box"/>
+        <input id="cm-email" type="email" placeholder="אימייל (אופציונלי)" dir="ltr" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:13px;box-sizing:border-box"/>
+        <textarea id="cm-msg" placeholder="הודעה (אופציונלי)" rows="2" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Heebo',sans-serif;font-size:13px;box-sizing:border-box;resize:none"></textarea>
+        <div id="cm-err" style="color:var(--accent2);font-size:12px;min-height:14px;text-align:center"></div>
+        <button onclick="submitContactModal()" style="width:100%;padding:13px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:30px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;box-shadow:0 4px 14px rgba(124,92,191,.3)">שלח פרטים ←</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openContact(){
+  document.getElementById('contact-overlay').style.display='flex';
+}
+function submitContactModal(){
+  var name=(document.getElementById('cm-name').value||'').trim();
+  var phone=(document.getElementById('cm-phone').value||'').trim();
+  var err=document.getElementById('cm-err');
+  if(!name||!phone){err.textContent='יש למלא שם וטלפון';return;}
+  err.textContent='';
+  var msg = encodeURIComponent('פנייה חדשה מ-Dabelu:\nשם: '+name+'\nטלפון: '+phone);
+  window.open('https://wa.me/972502127441?text='+msg,'_blank');
+  document.getElementById('contact-overlay').style.display='none';
+  alert('תודה! נציג יחזור אליך בהקדם');
+}
+document.getElementById('contact-overlay').addEventListener('click',function(e){
+  if(e.target===this) this.style.display='none';
+});
+</script>
+</body>
+</html>

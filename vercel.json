@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "functions": {
+    "api/whatsapp-webhook.js": {
+      "maxDuration": 60
+    },
+    "api/check-emails.js": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/check-overdue",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

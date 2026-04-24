@@ -1,0 +1,3 @@
+/__/auth/handler  https://dabelu.firebaseapp.com/__/auth/handler  302
+/__/auth/*        https://dabelu.firebaseapp.com/__/auth/:splat   302
+/*                /index.html                                      200
