@@ -902,6 +902,8 @@ function showPaywall() {
 }
 
 function enterApp(){
+  // טעינת הגדרות מ-localStorage (גיבוי מהיר)
+  if(typeof _loadFromLocalStorage==='function') _loadFromLocalStorage();
   // בדיקת מנוי / ניסיון
   checkSubscription();
 
@@ -1999,28 +2001,30 @@ function shareCode(code, role){
 
 
 function renderNotifSettings(){
+  if(!S.notif) S.notif={auto48:true,morning:true,deadline:true,doneConfirm:false,weekly:false,quietFrom:'22:00',quietTo:'08:00'};
   return `
   <div class="s-card">
     <div class="s-card-title">הגדרות התראות</div>
     ${[
-      ['תזכורת אוטומטית 48 שעות','שולחת וואטסאפ אם משימה לא בוצעה',true],
-      ['סיכום בוקר יומי','משימות היום ב-08:00',true],
-      ['התראת דדליין מס','7 ימים לפני כל דדליין',true],
-      ['אישור ביצוע בוואטסאפ','עובד סימן בוצע – שולחת אישור',false],
-      ['סיכום שבועי','כל יום ראשון',false],
-    ].map(([l,s,on])=>`
+      ['notif-auto48','תזכורת אוטומטית 48 שעות','שולחת וואטסאפ אם משימה לא בוצעה','auto48'],
+      ['notif-morning','סיכום בוקר יומי','משימות היום ב-08:00','morning'],
+      ['notif-deadline','התראת דדליין מס','7 ימים לפני כל דדליין','deadline'],
+      ['notif-done','אישור ביצוע בוואטסאפ','עובד סימן בוצע – שולחת אישור','doneConfirm'],
+      ['notif-weekly','סיכום שבועי','כל יום ראשון','weekly'],
+    ].map(([id,l,s,key])=>`
     <div class="toggle-row">
       <div class="toggle-info"><div class="tl">${l}</div><div class="ts">${s}</div></div>
-      <div class="t-track ${on?'on':''}" onclick="this.classList.toggle('on');toast('✓ עודכן')"><div class="t-thumb"></div></div>
+      <div class="t-track ${S.notif[key]?'on':''}" id="${id}" onclick="S.notif['${key}']=!S.notif['${key}'];this.classList.toggle('on')"><div class="t-thumb"></div></div>
     </div>`).join('')}
+    <div class="save-row"><span class="saved-ok" id="sv-notifications">✓ נשמר</span><button class="btn primary" onclick="saveSection('notifications')">שמור התראות</button></div>
   </div>
   <div class="s-card">
     <div class="s-card-title">שעות שקט</div>
     <div class="form-grid">
-      <div class="form-row"><label class="form-label">משעה</label><input class="form-input" type="time" value="22:00"/></div>
-      <div class="form-row"><label class="form-label">עד שעה</label><input class="form-input" type="time" value="08:00"/></div>
+      <div class="form-row"><label class="form-label">משעה</label><input class="form-input" id="notif-quiet-from" type="time" value="${S.notif.quietFrom||'22:00'}"/></div>
+      <div class="form-row"><label class="form-label">עד שעה</label><input class="form-input" id="notif-quiet-to" type="time" value="${S.notif.quietTo||'08:00'}"/></div>
     </div>
-    <div class="save-row"><button class="btn primary" onclick="toast('✓ שעות שקט נשמרו')">שמור</button></div>
+    <div class="save-row"><button class="btn primary" onclick="saveSection('notifications')">שמור שעות שקט</button></div>
   </div>`;
 }
 
@@ -2701,39 +2705,85 @@ function prevLogo(input){
     if(img){img.src=e.target.result;img.style.display='block';const em=document.getElementById('logo-emoji-s');if(em)em.style.display='none';}
   };r.readAsDataURL(f);
 }
-function saveSection(id){
-  if(id==='personal'){
-    const first=(document.getElementById('ps-firstname')?.value||'').trim();
-    const last=(document.getElementById('ps-lastname')?.value||'').trim();
-    const phone=(document.getElementById('ps-phone')?.value||'').trim();
-    const email=(document.getElementById('ps-email')?.value||'').trim();
-    const role=document.getElementById('ps-role')?.value||'';
-    const waPhone=(document.getElementById('ps-wa')?.value||'').trim();
-    if(!first){toast('⚠️ יש למלא שם פרטי');return;}
-    const name=first+(last?' '+last:'');
-    S.user.name=name;
-    S.user.phone=phone;
-    S.user.waPhone=waPhone;
-    S.user.role=role;
-    S.user.initials=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    // שמירה ל-Firestore
-    if(S.user.uid && window.saveUserProfileToDB){
-      window.saveUserProfileToDB(S.user.uid,{name,phone,email,waPhone,role});
+function _saveToLocalStorage(){
+  try{
+    const key='dabelu_settings_'+(S.user?.uid||S.user?.email||'guest');
+    localStorage.setItem(key, JSON.stringify({
+      user: S.user,
+      office: S.office,
+      notif: S.notif||{}
+    }));
+  }catch(e){}
+}
+function _loadFromLocalStorage(){
+  try{
+    const key='dabelu_settings_'+(S.user?.uid||S.user?.email||'guest');
+    const raw=localStorage.getItem(key);
+    if(!raw) return;
+    const d=JSON.parse(raw);
+    if(d.user){
+      if(d.user.phone) S.user.phone=d.user.phone;
+      if(d.user.waPhone) S.user.waPhone=d.user.waPhone;
+      if(d.user.role) S.user.role=d.user.role;
     }
-    // שמירה ל-localStorage
-    try{localStorage.setItem('dabelu_user_'+(S.user.uid||S.user.email),JSON.stringify(S.user));}catch(e){}
-  }
-  if(id==='office'){
-    // S.office כבר עודכן ב-onchange — שמירה ל-Firestore
-    if(S.user?.uid && window.saveUserProfileToDB){
-      window.saveUserProfileToDB(S.user.uid,{officeName:S.office.name,officePhone:S.office.phone,officeEmail:S.office.email,officeAddr:S.office.addr});
+    if(d.office){
+      if(d.office.name) S.office.name=d.office.name;
+      if(d.office.phone) S.office.phone=d.office.phone;
+      if(d.office.email) S.office.email=d.office.email;
+      if(d.office.addr) S.office.addr=d.office.addr;
     }
-    S.user.officeName=S.office.name;
-    try{localStorage.setItem('dabelu_user_'+(S.user.uid||S.user.email),JSON.stringify(S.user));}catch(e){}
+    if(d.notif) S.notif=d.notif;
+  }catch(e){}
+}
+
+async function saveSection(id){
+  try{
+    if(id==='personal'){
+      const first=(document.getElementById('ps-firstname')?.value||'').trim();
+      const last=(document.getElementById('ps-lastname')?.value||'').trim();
+      const phone=(document.getElementById('ps-phone')?.value||'').trim();
+      const role=document.getElementById('ps-role')?.value||'';
+      const waPhone=(document.getElementById('ps-wa')?.value||'').trim();
+      if(!first){toast('⚠️ יש למלא שם פרטי');return;}
+      const name=first+(last?' '+last:'');
+      S.user.name=name;
+      S.user.phone=phone;
+      S.user.waPhone=waPhone;
+      S.user.role=role;
+      S.user.initials=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      _saveToLocalStorage();
+      if(S.user?.uid && window.saveUserProfileToDB){
+        await window.saveUserProfileToDB(S.user.uid,{name,phone,waPhone,role,officeName:S.user.officeName});
+      }
+    }
+    if(id==='office'){
+      // S.office כבר עודכן ב-onchange
+      S.user.officeName=S.office.name;
+      _saveToLocalStorage();
+      if(S.user?.uid && window.saveUserProfileToDB){
+        await window.saveUserProfileToDB(S.user.uid,{
+          officeName:S.office.name,
+          officePhone:S.office.phone,
+          officeEmail:S.office.email,
+          officeAddr:S.office.addr
+        });
+      }
+    }
+    if(id==='notifications'){
+      S.notif.quietFrom=document.getElementById('notif-quiet-from')?.value||'22:00';
+      S.notif.quietTo=document.getElementById('notif-quiet-to')?.value||'08:00';
+      _saveToLocalStorage();
+      if(S.user?.uid && window.saveUserProfileToDB){
+        await window.saveUserProfileToDB(S.user.uid,{notif:S.notif});
+      }
+    }
+    const el=document.getElementById('sv-'+id);
+    if(el){el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000);}
+    toast('✓ הגדרות נשמרו!');
+  }catch(err){
+    console.error('saveSection error:',err);
+    toast('❌ שגיאה בשמירה: '+err.message);
   }
-  const el=document.getElementById('sv-'+id);
-  if(el){el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000);}
-  toast('✓ הגדרות נשמרו בהצלחה!');
 }
 
 async function changePassword(){
@@ -3259,6 +3309,8 @@ function toast(msg){
         if(existing.officeEmail) S.office.email = existing.officeEmail;
         if(existing.officeAddr) S.office.addr = existing.officeAddr;
         if(existing.officeName) S.office.name = existing.officeName;
+        // טעינת הגדרות התראות
+        if(existing.notif) S.notif = existing.notif;
         const tasks = await window.loadTasksFromDB(user.uid);
         const clients = await window.loadClientsFromDB(user.uid);
         if(tasks.length) S.tasks = tasks;
