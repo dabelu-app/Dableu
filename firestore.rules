@@ -3,11 +3,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if true;
     }
     match /tasks/{taskId} {
-      allow read: if request.auth != null;
-      allow write: if true;
+      allow read, write: if true;
     }
     match /{document=**} {
       allow read, write: if request.auth != null;
