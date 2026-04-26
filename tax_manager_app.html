@@ -2193,7 +2193,7 @@ function addMember(){
       officeName:S.office?.name||S.user?.officeName||'המשרד'
     });
   }
-  fetch('/api/invite',{
+  fetch('https://dabelu.vercel.app/api/invite',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
