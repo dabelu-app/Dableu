@@ -1,4 +1,4 @@
-index.html<!DOCTYPE html>
+<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
 <meta charset="UTF-8"/>
@@ -279,6 +279,7 @@ textarea.form-input{resize:vertical}
   .settings-layout{grid-template-columns:1fr}
   .sidebar{width:56px}
   .sidebar-logo-text,.nav-label,.user-info{display:none}
+  .db-two-col{grid-template-columns:1fr!important}
 }
 
 /* ═══════════════ WORKER ═══════════════ */
@@ -349,6 +350,19 @@ textarea.form-input{resize:vertical}
   </div>
   <div id="abtn" style="width:100%;padding:12px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">כניסה ←</div>
 </div>
+
+<!-- מסך כניסה ראשונה / הגדרת סיסמה -->
+<div id="first-login-box" style="display:none;background:white;border-radius:16px;padding:32px;width:340px;font-family:Arial,sans-serif;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:44px;margin-bottom:8px">🔐</div>
+    <div style="font-size:20px;font-weight:bold;color:#1a1a2e" id="fl-welcome">ברוכה הבאה!</div>
+    <div style="font-size:13px;color:#888;margin-top:6px">הגדירי סיסמה אישית לכניסה למערכת</div>
+  </div>
+  <div id="fl-err" style="color:#dc2626;font-size:12px;text-align:center;margin-bottom:8px;display:none"></div>
+  <input id="fl-pass1" type="password" placeholder="סיסמה חדשה (לפחות 6 תווים)" style="width:100%;padding:11px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:10px;box-sizing:border-box;direction:ltr"/>
+  <input id="fl-pass2" type="password" placeholder="אימות סיסמה" style="width:100%;padding:11px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:16px;box-sizing:border-box;direction:ltr"/>
+  <div id="fl-btn" style="width:100%;padding:13px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">כנסי למערכת ←</div>
+</div>
 </div>
 
 <!-- ══════════ APP ══════════ -->
@@ -368,6 +382,8 @@ textarea.form-input{resize:vertical}
       <div class="nav-item active" onclick="nav('dashboard',this)"><span class="nav-icon">🏠</span><span class="nav-label">לוח בקרה</span></div>
       <div class="nav-item" onclick="nav('tasks',this)"><span class="nav-icon">✅</span><span class="nav-label">משימות</span><span class="nav-badge" id="nb-tasks">0</span></div>
       <div class="nav-item" onclick="nav('calendar',this)"><span class="nav-icon">📆</span><span class="nav-label">יומן</span></div>
+      <div class="nav-item" onclick="nav('appointments',this)"><span class="nav-icon">🤝</span><span class="nav-label">פגישות</span><span class="nav-badge" id="nb-appts" style="display:none">0</span></div>
+      <div class="nav-item" onclick="nav('clients',this)"><span class="nav-icon">👥</span><span class="nav-label">לקוחות</span></div>
       <div class="nav-item" onclick="nav('deadlines',this)"><span class="nav-icon">📅</span><span class="nav-label">דדליינים</span></div>
       <div class="nav-item" onclick="nav('reminders',this)"><span class="nav-icon">🔔</span><span class="nav-label">תזכורות</span></div>
       <div class="nav-item" onclick="nav('messages',this)"><span class="nav-icon">💬</span><span class="nav-label">הודעות</span></div>
@@ -559,6 +575,49 @@ textarea.form-input{resize:vertical}
   </div>
 </div>
 
+<!-- ══════════ MODAL: ASSIGN CLIENT ══════════ -->
+<div class="modal-overlay" id="m-assign-client" onclick="if(event.target===this)closeModal('assign-client')">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-title">👥 שיוך לקוח למשימה</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">משימה: <strong id="acm-task-name"></strong></div>
+    <div style="position:relative;margin-bottom:12px">
+      <input id="acm-search" class="form-input" placeholder="🔍 חיפוש לקוח..." oninput="filterAssignClientList(this.value)" autocomplete="off" style="padding-right:36px"/>
+    </div>
+    <div id="acm-list" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:12px"></div>
+    <div id="acm-new-row" style="display:none;border-top:1px solid var(--border);padding-top:12px">
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-label">שם לקוח חדש</label>
+        <input id="acm-new-name" class="form-input" placeholder="הקלד שם לקוח חדש..."/>
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:12px">
+      <button class="btn" onclick="closeModal('assign-client')">ביטול</button>
+      <button class="btn" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0" onclick="toggleAcmNewRow()">➕ לקוח חדש</button>
+      <button class="btn primary" id="acm-save-btn" onclick="confirmAssignClient()" style="display:none">שמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: ADD APPOINTMENT ══════════ -->
+<div class="modal-overlay" id="m-add-appt" onclick="if(event.target===this)closeModal('add-appt')">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-title">🤝 הוספת פגישה</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="form-row"><label class="form-label">שם לקוח / נושא *</label><input class="form-input" id="appt-client" placeholder="אור נשר"/></div>
+      <div class="form-row"><label class="form-label">כותרת הפגישה</label><input class="form-input" id="appt-title" placeholder="פגישה עם לקוח"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-row"><label class="form-label">תאריך *</label><input class="form-input" id="appt-date" type="date"/></div>
+        <div class="form-row"><label class="form-label">שעה</label><input class="form-input" id="appt-time" type="time"/></div>
+      </div>
+      <div class="form-row"><label class="form-label">הערות</label><input class="form-input" id="appt-notes" placeholder="הערות נוספות..."/></div>
+    </div>
+    <div class="modal-footer" style="margin-top:12px">
+      <button class="btn" onclick="closeModal('add-appt')">ביטול</button>
+      <button class="btn primary" onclick="saveAddAppointment()">שמור פגישה</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ MODAL: ADD MEMBER ══════════ -->
 <div class="modal-overlay" id="m-member" onclick="if(event.target===this)closeModal('member')">
   <div class="modal-box" style="max-width:420px">
@@ -720,6 +779,11 @@ textarea.form-input{resize:vertical}
       <button class="chat-send" onclick="sendChatMsg()">שלח</button>
     </div>
   </div>
+</div>
+
+<!-- ══════════ MODAL: TASK DETAIL ══════════ -->
+<div class="modal-overlay" id="m-taskdetail" onclick="if(event.target===this)closeModal('taskdetail')">
+  <div class="modal-box" style="max-width:500px" id="taskdetail-body"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -904,6 +968,10 @@ function showPaywall() {
 function enterApp(){
   // טעינת הגדרות מ-localStorage (גיבוי מהיר)
   if(typeof _loadFromLocalStorage==='function') _loadFromLocalStorage();
+  // טעינת צוות מ-localStorage אם Firestore לא נתן נתונים
+  if(typeof _loadTeamFromLocalStorage==='function' && S.team.length===0) _loadTeamFromLocalStorage();
+  // טעינת משימות מ-localStorage אם Firestore לא נתן נתונים
+  if(typeof _loadTasksFromLocalStorage==='function' && (!S.tasks||S.tasks.length===0)) _loadTasksFromLocalStorage();
   // בדיקת מנוי / ניסיון
   checkSubscription();
 
@@ -948,7 +1016,16 @@ function enterApp(){
     }, 400);
   } else {
     // ── מצב מעביד ──
-    initTasks();
+    // שמור משימות שכבר נטענו מ-Firestore/localStorage לפני ש-initTasks ימחק אותן
+    const _keepTasks = (S.tasks && S.tasks.length > 0) ? S.tasks.slice() : null;
+    initTasks(); // מאפס S.tasks=[] ו-S.waMessages=[]
+    if(_keepTasks && _keepTasks.length > 0){
+      S.tasks = _keepTasks; // שחזר משימות שנטענו
+    } else if(typeof _loadTasksFromLocalStorage === 'function'){
+      _loadTasksFromLocalStorage(); // fallback: localStorage
+    }
+    // נרמל משימות ללא שיוך → בעל העסק ושמור תמיד
+    if(typeof _saveTasks === 'function') _saveTasks(); // _saveTasks מנרמל בפנים לפני שמירה
     populateAssigneeSelect();
     const navAdmin = document.getElementById('nav-admin');
     if(navAdmin) navAdmin.style.display = (S.user.email && S.user.email.toLowerCase() === 'shanitaxes11@gmail.com') ? 'flex' : 'none';
@@ -956,6 +1033,8 @@ function enterApp(){
     startEngine();
     setTimeout(function(){
       if(typeof window.listenWhatsAppTasks === 'function') window.listenWhatsAppTasks();
+      if(typeof window.listenAppointments   === 'function') window.listenAppointments();
+      if(typeof window.listenWAClients      === 'function') window.listenWAClients();
       if(typeof window.enablePushNotifications === 'function') window.enablePushNotifications();
       if(typeof window.listenAllSharedTasks === 'function') window.listenAllSharedTasks(function(tasks){
         S.sharedTasks = tasks;
@@ -974,7 +1053,7 @@ function logout(){
 // ══════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════
-const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',messages:'הודעות',whatsapp:'הודעות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-chat':'💬 שיחות'};
+const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',messages:'הודעות',whatsapp:'הודעות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות'};
 function nav(page,el){
   S.page=page;
   if(el){
@@ -1027,10 +1106,13 @@ function renderPage(){
   else if(S.page==='whatsapp'||S.page==='messages')el.innerHTML=renderWAPage();
   else if(S.page==='reminders')el.innerHTML=renderRemindersPage();
   else if(S.page==='deadlines')el.innerHTML=renderDeadlinesPage();
-  else if(S.page==='calendar')el.innerHTML=renderCalendarPage();
+  else if(S.page==='calendar'){el.innerHTML=renderCalendarPage();loadAppointmentsIfNeeded();}
+  else if(S.page==='appointments'){el.innerHTML=renderAppointmentsPage();loadAppointmentsIfNeeded();}
+  else if(S.page==='clients'){el.innerHTML=renderClientsPage();loadWAClientsIfNeeded();}
   else if(S.page==='settings')el.innerHTML=renderSettingsPage();
   else if(S.page==='admin'){el.innerHTML=renderAdminPage();if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();}
   else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
+  else if(S.page==='worker-all')el.innerHTML=renderWorkerAllTasksPage();
   else if(S.page==='worker-chat')el.innerHTML=renderWorkerChatListPage();
 }
 
@@ -1070,46 +1152,118 @@ function renderDashboard(){
   const ch=`onmouseenter="this.style.boxShadow='0 4px 12px rgba(0,0,0,.12)';this.style.transform='translateY(-2px)'" onmouseleave="this.style.boxShadow='';this.style.transform=''"`;
   return `
   <div class="stats-row">
-    <div class="stat-card" style="${cs}" ${ch} onclick="navToTasks('pending')" title="לחץ לצפייה במשימות שטרם טופלו">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:18px">📋</span><span style="font-size:10px;color:var(--text3);background:var(--surface3);padding:2px 6px;border-radius:20px">לחץ לפתיחה →</span></div>
-      <div class="stat-num">${pending}</div><div class="stat-label">טרם טופלו</div>
-      <div class="stat-trend">${over48>0?`<span style="color:var(--danger)">⚠️ ${over48} מעל 48 שעות</span>`:`ממתינות לטיפול`}</div>
+    <!-- טרם טופלו — אדום -->
+    <div ${ch} onclick="navToTasks('pending')" title="לחץ לצפייה במשימות שטרם טופלו"
+      style="${cs}background:#fff0f0;border:1.5px solid #fca5a5;border-right:5px solid #dc2626;border-radius:var(--radius-lg);padding:16px;box-shadow:0 2px 8px rgba(220,38,38,.1)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="background:#dc2626;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <span style="font-size:10px;color:#dc2626;background:#fee2e2;padding:2px 8px;border-radius:20px;font-weight:600">לחץ לפתיחה →</span>
+      </div>
+      <div style="font-size:36px;font-weight:800;color:#dc2626;line-height:1">${pending}</div>
+      <div style="font-size:13px;font-weight:700;color:#991b1b;margin-top:4px">טרם טופלו</div>
+      <div style="font-size:10px;margin-top:6px;color:#b91c1c">${over48>0?`⚠️ ${over48} מעל 48 שעות`:`ממתינות לטיפול`}</div>
     </div>
-    <div class="stat-card" style="${cs}border-right:3px solid #d97706;" ${ch} onclick="navToTasks('inprogress')" title="לחץ לצפייה במשימות בביצוע">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:18px">▶️</span><span style="font-size:10px;color:var(--text3);background:var(--surface3);padding:2px 6px;border-radius:20px">לחץ לפתיחה →</span></div>
-      <div class="stat-num" style="color:#d97706">${inprogress}</div><div class="stat-label">בביצוע</div>
-      <div class="stat-trend">${urgent>0?`<span style="color:var(--danger)">🔴 ${urgent} דחופות</span>`:`בטיפול פעיל`}</div>
+    <!-- בביצוע — כתום -->
+    <div ${ch} onclick="navToTasks('inprogress')" title="לחץ לצפייה במשימות בביצוע"
+      style="${cs}background:#fffbeb;border:1.5px solid #fcd34d;border-right:5px solid #d97706;border-radius:var(--radius-lg);padding:16px;box-shadow:0 2px 8px rgba(217,119,6,.1)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="background:#d97706;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <span style="font-size:10px;color:#d97706;background:#fef3c7;padding:2px 8px;border-radius:20px;font-weight:600">לחץ לפתיחה →</span>
+      </div>
+      <div style="font-size:36px;font-weight:800;color:#d97706;line-height:1">${inprogress}</div>
+      <div style="font-size:13px;font-weight:700;color:#92400e;margin-top:4px">בביצוע</div>
+      <div style="font-size:10px;margin-top:6px;color:#b45309">${urgent>0?`🔴 ${urgent} דחופות`:`בטיפול פעיל`}</div>
     </div>
-    <div class="stat-card s-done" style="${cs}" ${ch} onclick="navToTasks('done')" title="לחץ לצפייה במשימות שטופלו">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:18px">✅</span><span style="font-size:10px;color:var(--text3);background:var(--surface3);padding:2px 6px;border-radius:20px">לחץ לפתיחה →</span></div>
-      <div class="stat-num">${done}</div><div class="stat-label">טופלו</div>
-      <div class="stat-trend">הושלמו בהצלחה</div>
+    <!-- טופלו — ירוק -->
+    <div ${ch} onclick="navToTasks('done')" title="לחץ לצפייה במשימות שטופלו"
+      style="${cs}background:#f0fdf4;border:1.5px solid #86efac;border-right:5px solid #16a34a;border-radius:var(--radius-lg);padding:16px;box-shadow:0 2px 8px rgba(22,163,74,.1)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="background:#16a34a;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span style="font-size:10px;color:#16a34a;background:#dcfce7;padding:2px 8px;border-radius:20px;font-weight:600">לחץ לפתיחה →</span>
+      </div>
+      <div style="font-size:36px;font-weight:800;color:#16a34a;line-height:1">${done}</div>
+      <div style="font-size:13px;font-weight:700;color:#166534;margin-top:4px">טופלו</div>
+      <div style="font-size:10px;margin-top:6px;color:#15803d">הושלמו בהצלחה ✓</div>
     </div>
+    <!-- דדליינים -->
     <div class="stat-card" style="${cs}" ${ch} onclick="nav('deadlines',document.querySelectorAll('.nav-item')[4])" title="לחץ לצפייה בדדליינים">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:18px">📅</span><span style="font-size:10px;color:var(--text3);background:var(--surface3);padding:2px 6px;border-radius:20px">לחץ לפתיחה →</span></div>
       <div class="stat-num" style="${hotDeadlines.length>0?'color:var(--danger)':''}">${hotDeadlines.length}</div><div class="stat-label">דדליינים קרובים</div>
       <div class="stat-trend">${hotDeadlines.length>0?`<span style="color:var(--danger)">⚠️ תוך 7 ימים</span>`:`הכל בשליטה`}</div>
     </div>
   </div>
-  ${over48>0?`<div class="banner danger show" style="cursor:pointer" onclick="navToTasks('pending')">⚠️ ${over48} משימות פתוחות מעל 48 שעות – לחץ לצפייה</div>`:''}
-  ${hotDeadlines.length>0?`
-  <div class="section-header" style="margin-top:4px"><span class="section-title">🔴 דדליינים קרובים</span><button class="btn sm" onclick="nav('deadlines',document.querySelectorAll('.nav-item')[4])">הכל</button></div>
-  ${hotDeadlines.map(d=>`<div class="deadline-card hot" style="cursor:pointer" onclick="nav('deadlines',document.querySelectorAll('.nav-item')[4])"><div class="deadline-days hot">${d.days}</div><div class="deadline-info"><div class="deadline-title">${d.title}</div><div class="deadline-date">עד ${fmtD(d.date)} · עוד ${d.days} ימים</div></div></div>`).join('')}`:''}
-  <div class="section-header" style="margin-top:16px"><span class="section-title">⚡ משימות דורשות תשומת לב</span><button class="btn sm" onclick="navToTasks('pending')">כל הטרם טופלו</button></div>
-  ${urgentTasks.length?urgentTasks.map(t=>taskCardHTML(t)).join(''):`<div class="empty-state">אין משימות דחופות 🎉</div>`}
+  <!-- TWO COLUMN: urgent tasks + deadlines -->
+  <div class="db-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+
+    <!-- עמודה שמאל: משימות דורשות תשומת לב -->
+    <div style="background:var(--surface);border:1.5px solid ${(over48>0||urgent>0)?'#fcd34d':'var(--border)'};border-radius:var(--radius-lg);overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border2);background:${(over48>0||urgent>0)?'#fff7ed':'var(--surface2)'}">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700;color:var(--text)">⚡ דורשות תשומת לב</span>
+          ${over48>0?`<span style="font-size:10px;font-weight:700;background:#fee2e2;color:#b91c1c;padding:2px 8px;border-radius:20px">⚠️ ${over48} מעל 48 שעות</span>`:''}
+          ${urgent>0?`<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:20px">🔴 ${urgent} דחופות</span>`:''}
+        </div>
+        <button class="btn sm" onclick="navToTasks('pending')" style="font-size:10px">כל המשימות</button>
+      </div>
+      <div style="padding:8px">
+        ${urgentTasks.length ? urgentTasks.map(t=>{
+          const sc={pending:'#dc2626',inprogress:'#d97706',done:'#16a34a'}[t.status];
+          const sl={pending:'טרם טופל',inprogress:'בביצוע',done:'טופל'}[t.status];
+          return `<div onclick="navToTasks('pending')" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius);cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border2)" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+            <div style="width:8px;height:8px;border-radius:50%;background:${sc};flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:1px">${t.assignee||''}${t.date?' · '+fmtD(t.date):''}</div>
+            </div>
+            <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:${sc}18;color:${sc};flex-shrink:0">${sl}</span>
+          </div>`;
+        }).join('') : `<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">🎉 אין משימות דחופות</div>`}
+      </div>
+    </div>
+
+    <!-- עמודה ימין: דדליינים קרובים -->
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border2);background:var(--surface2)">
+        <span style="font-size:13px;font-weight:700;color:var(--text)">📅 דדליינים קרובים</span>
+        <button class="btn sm" onclick="nav('deadlines',document.querySelectorAll('.nav-item')[4])" style="font-size:10px">הכל</button>
+      </div>
+      <div style="padding:8px">
+        ${hotDeadlines.length ? hotDeadlines.slice(0,5).map(d=>{
+          const urgent=d.days<=2;
+          return `<div onclick="nav('deadlines',document.querySelectorAll('.nav-item')[4])" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border2)" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+            <div style="min-width:36px;height:36px;border-radius:8px;background:${urgent?'#dc2626':'#f97316'};color:white;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${d.days}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.title}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:1px">עד ${fmtD(d.date)}</div>
+            </div>
+          </div>`;
+        }).join('') : `<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">✅ אין דדליינים קרובים</div>`}
+      </div>
+    </div>
+
+  </div>
 
   <!-- TEAM OVERVIEW -->
-  <div class="section-header" style="margin-top:20px">
+  <div class="section-header" style="margin-top:4px">
     <span class="section-title">👥 סקירת צוות</span>
     <button class="btn sm" onclick="navToTasks('pending','')">תצוגת כל העובדים</button>
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
-    ${S.team.map(w=>{
+    ${getTeamWithOwner().map(w=>{
       const [bg,clr]=w.colors||['#dbeafe','#1d4ed8'];
-      const wp=S.tasks.filter(t=>t.assignee===w.name&&t.status==='pending').length;
-      const wi=S.tasks.filter(t=>t.assignee===w.name&&t.status==='inprogress').length;
-      const wd=S.tasks.filter(t=>t.assignee===w.name&&t.status==='done').length;
-      const hasUrgent=S.tasks.some(t=>t.assignee===w.name&&t.priority==='urgent'&&t.status!=='done');
+      const isOwner=w.isOwner||isOwnerName(w.name);
+      const wFilter=t=>isOwner?(t.assignee===w.name||!t.assignee):t.assignee===w.name;
+      const wp=S.tasks.filter(t=>wFilter(t)&&t.status==='pending').length;
+      const wi=S.tasks.filter(t=>wFilter(t)&&t.status==='inprogress').length;
+      const wd=S.tasks.filter(t=>wFilter(t)&&t.status==='done').length;
+      const hasUrgent=S.tasks.some(t=>wFilter(t)&&t.priority==='urgent'&&t.status!=='done');
+      const wClients=(S.waClients||[]).filter(c=>isOwner?(c.assignedTo===w.name||!c.assignedTo):c.assignedTo===w.name).length;
       return `
       <div onclick="navToTasks('pending','${w.name}')"
         style="background:var(--surface);border:1.5px solid ${hasUrgent?'#fca5a5':'var(--border)'};border-radius:var(--radius-lg);padding:12px;cursor:pointer;transition:all .2s"
@@ -1118,7 +1272,7 @@ function renderDashboard(){
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
           <div style="width:32px;height:32px;border-radius:50%;background:${bg};color:${clr};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">${avInitials(w.name)}</div>
           <div>
-            <div style="font-size:12px;font-weight:700">${w.name.split(' ')[0]}</div>
+            <div style="font-size:12px;font-weight:700">${w.name.split(' ')[0]}${isOwner?' 👑':''}</div>
             <div style="font-size:10px;color:var(--text2)">${{owner:'בעל משרד',manager:'מנהל',employee:'עובד'}[w.role]||'עובד'}</div>
           </div>
           ${hasUrgent?`<span style="margin-right:auto;font-size:10px;background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:10px;font-weight:700">דחוף!</span>`:''}
@@ -1137,6 +1291,7 @@ function renderDashboard(){
             <div style="font-size:9px;color:var(--text2)">טופלו</div>
           </div>
         </div>
+        ${wClients>0?`<div style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:4px;font-size:10px;color:var(--text2);background:#f0fdf4;border-radius:6px;padding:3px 6px"><span style="color:#16a34a;font-weight:700">${wClients}</span> לקוחות</div>`:''}
         <div style="margin-top:8px;font-size:10px;color:var(--text3);text-align:center">לחץ לצפייה במשימות ←</div>
       </div>`;
     }).join('')}
@@ -1151,9 +1306,24 @@ function renderTasksPage(){
   const fa  = S.taskFilter?.assignee || '';
   const ft  = S.taskFilter?.type    || '';
   const fs  = S.taskFilter?.sort    || 'priority';
-  const fv  = S.taskFilter?.view    || 'tabs'; // 'tabs' | 'worker'
+  const fv  = S.taskFilter?.view    || 'tabs'; // 'tabs' | 'worker' | 'client'
+  const fc  = S.taskFilter?.client  || '';
 
-  const assigneeOpts = S.team.map(m=>`<option value="${m.name}" ${fa===m.name?'selected':''}>${m.name}</option>`).join('');
+  const assigneeOpts = getTeamWithOwner().map(m=>`<option value="${m.name}" ${fa===m.name?'selected':''}>${m.name}${m.isOwner||isOwnerName(m.name)?' 👑':''}</option>`).join('');
+
+  // Pre-compute client detection on ALL tasks (before any filter)
+  const allGroups = detectClientGroups([...S.tasks]);
+  // Build taskId → clientName map
+  const taskClientMap = {};
+  Object.entries(allGroups).forEach(([key,{tasks:grpTasks}])=>{
+    grpTasks.forEach(t=>{ taskClientMap[t.id]=key; });
+  });
+  // Sorted client names (for chips) — exclude empty key
+  const detectedClients = Object.keys(allGroups)
+    .filter(k=>k!=='')
+    .sort((a,b)=>a.localeCompare(b,'he'));
+  // Store map globally so renderTasksShell can use it for chip counts
+  S._tcMap = taskClientMap;
 
   const cntPending   = S.tasks.filter(t=>t.status==='pending').length;
   const cntInprogress= S.tasks.filter(t=>t.status==='inprogress').length;
@@ -1161,8 +1331,13 @@ function renderTasksPage(){
 
   // ── helpers ──
   const applyFilters = list => {
-    if(fa) list=list.filter(t=>t.assignee===fa);
+    if(fa){
+      // When the owner (logged-in user) is the filter, also include tasks with no assignee
+      const ownerSelected = fa===(S.user?.name||'');
+      list=list.filter(t=>t.assignee===fa||(ownerSelected&&!t.assignee));
+    }
     if(ft) list=list.filter(t=>t.type===ft);
+    if(fc) list=list.filter(t=>taskClientMap[t.id]===fc);
     return list;
   };
   const applySort = list => {
@@ -1191,11 +1366,54 @@ function renderTasksPage(){
       ${label}<span style="background:${color};color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;min-width:20px;text-align:center">${count}</span>
     </button>`;
 
+  // ── CLIENT VIEW ──
+  if(fv==='client'){
+    const allTasks=applyFilters(applySort([...S.tasks]));
+    const groups=detectClientGroups(allTasks);
+    const clientKeys=Object.keys(groups).sort((a,b)=>{
+      if(!a)return 1;if(!b)return -1;
+      return a.localeCompare(b,'he');
+    });
+    if(!clientKeys.length)
+      return renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cntPending,cntInprogress,cntDone,tabBtn)+
+        '<div class="empty-state">לא זוהו לקוחות במשימות הקיימות</div>';
+    const clientSections=clientKeys.map(key=>{
+      const {label,tasks:cTasks}=groups[key];
+      const cp2=cTasks.filter(t=>t.status==='pending').length;
+      const ci2=cTasks.filter(t=>t.status==='inprogress').length;
+      const cd2=cTasks.filter(t=>t.status==='done').length;
+      const initials=label.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2)||'?';
+      return `
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg) var(--radius-lg) 0 0;border-bottom:none">
+          <div style="width:34px;height:34px;border-radius:50%;background:#ede9fe;color:#7c3aed;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">${label}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px;display:flex;gap:8px">
+              <span style="color:#dc2626">● ${cp2} טרם טופלו</span>
+              <span style="color:#d97706">● ${ci2} בביצוע</span>
+              <span style="color:#16a34a">● ${cd2} טופלו</span>
+            </div>
+          </div>
+          <span style="font-size:12px;color:var(--text3)">${cTasks.length} משימות</span>
+        </div>
+        <div style="border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);padding:8px">
+          ${cTasks.map(t=>taskAccordionHTML(t)).join('')}
+        </div>
+      </div>`;
+    }).join('');
+    return renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cntPending,cntInprogress,cntDone,tabBtn)+clientSections;
+  }
+
   // ── WORKER VIEW ──
   if(fv==='worker'){
-    const workers = fa ? S.team.filter(m=>m.name===fa) : S.team;
+    const allWorkers = getTeamWithOwner();
+    const workers = fa ? allWorkers.filter(m=>m.name===fa) : allWorkers;
     const workerSections = workers.map(w=>{
-      let wTasks = applyFilters(applySort([...S.tasks].filter(t=>t.assignee===w.name)));
+      const wIsOwner = w.isOwner || isOwnerName(w.name);
+      let wTasks = applyFilters(applySort([...S.tasks].filter(t=>
+        t.assignee===w.name||(wIsOwner&&!t.assignee)
+      )));
       if(ft) wTasks=wTasks.filter(t=>t.type===ft);
       const wp=wTasks.filter(t=>t.status==='pending').length;
       const wi=wTasks.filter(t=>t.status==='inprogress').length;
@@ -1206,7 +1424,7 @@ function renderTasksPage(){
         <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg) var(--radius-lg) 0 0;border-bottom:none">
           <div style="width:34px;height:34px;border-radius:50%;background:${bg};color:${clr};font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${avInitials(w.name)}</div>
           <div style="flex:1">
-            <div style="font-size:13px;font-weight:700">${w.name}</div>
+            <div style="font-size:13px;font-weight:700">${w.name}${wIsOwner?' 👑':''}</div>
             <div style="font-size:11px;color:var(--text2);margin-top:2px;display:flex;gap:8px">
               <span style="color:#dc2626">● ${wp} טרם טופלו</span>
               <span style="color:#d97706">● ${wi} בביצוע</span>
@@ -1217,27 +1435,32 @@ function renderTasksPage(){
         </div>
         <div style="border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);padding:8px">
           ${wTasks.length
-            ? wTasks.map(t=>taskCardHTML(t)).join('')
+            ? wTasks.map(t=>taskAccordionHTML(t)).join('')
             :'<div class="empty-state" style="padding:16px">אין משימות</div>'}
         </div>
       </div>`;
     }).join('');
-    return renderTasksShell(assigneeOpts,fa,ft,fs,fv,cntPending,cntInprogress,cntDone,tabBtn) + workerSections;
+    return renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cntPending,cntInprogress,cntDone,tabBtn) + workerSections;
   }
 
   // ── TABS VIEW ──
   let list = applySort(applyFilters([...S.tasks].filter(t=>t.status===taskTab)));
   const tabLabels={pending:'אין משימות שטרם טופלו 🎉',inprogress:'אין משימות בביצוע',done:'אין משימות שטופלו עדיין'};
-  return renderTasksShell(assigneeOpts,fa,ft,fs,fv,cntPending,cntInprogress,cntDone,tabBtn) +
-    `<div class="tasks-list">${list.length?list.map(t=>taskCardHTML(t)).join(''):`<div class="empty-state">${tabLabels[taskTab]}</div>`}</div>`;
+  return renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cntPending,cntInprogress,cntDone,tabBtn) +
+    `<div class="tasks-list">${list.length?list.map(t=>taskAccordionHTML(t)).join(''):`<div class="empty-state">${tabLabels[taskTab]}</div>`}</div>`;
 }
 
-function renderTasksShell(assigneeOpts,fa,ft,fs,fv,cp,ci,cd,tabBtn){
+function renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cp,ci,cd,tabBtn){
   const sortOpts=[
     ['priority','עדיפות'],['date','תאריך ↑'],['date_desc','תאריך ↓'],
     ['assignee','עובד א-ת'],['type','סוג'],['created','נוצר לאחרונה'],
   ];
   const typeOpts=[['','כל הסוגים'],['tax','רשויות מס'],['internal','פנימי'],['meeting','פגישה']];
+
+  // Chip panel state: auto-open based on active filter, otherwise from toggle
+  const chipMode = fa ? 'worker' : fc ? 'client' : (S.taskFilter?.chipMode || '');
+  const workerActive = chipMode === 'worker';
+  const clientActive = chipMode === 'client';
 
   return `
   <!-- VIEW TOGGLE -->
@@ -1252,47 +1475,330 @@ function renderTasksShell(assigneeOpts,fa,ft,fs,fv,cp,ci,cd,tabBtn){
         style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:${fv==='tabs'?'var(--accent)':'var(--surface)'};color:${fv==='tabs'?'#fff':'var(--text2)'};font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif" title="תצוגת לשוניות">≡ לשוניות</button>
       <button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.view='worker';renderPage()"
         style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:${fv==='worker'?'var(--accent)':'var(--surface)'};color:${fv==='worker'?'#fff':'var(--text2)'};font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif" title="תצוגה לפי עובד">👤 לפי עובד</button>
+      <button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.view='client';renderPage()"
+        style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:${fv==='client'?'var(--accent)':'var(--surface)'};color:${fv==='client'?'#fff':'var(--text2)'};font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif" title="תצוגה לפי לקוח">👥 לפי לקוח</button>
     </div>
   </div>
 
-  <!-- FILTERS BAR -->
-  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg)">
-    <span style="font-size:11px;font-weight:600;color:var(--text2);flex-shrink:0">סינון ומיון:</span>
+  <!-- FILTER BAR: chips inline with type+sort -->
+  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg)">
+    <span style="font-size:11px;font-weight:600;color:var(--text3);flex-shrink:0;margin-left:4px">סינון ומיון:</span>
 
-    <!-- worker filter chips -->
-    <div style="display:flex;gap:5px;flex-wrap:wrap;flex:1">
-      <button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.assignee='';renderPage()"
-        style="padding:4px 10px;border-radius:20px;border:1.5px solid ${fa===''?'var(--accent)':'var(--border)'};background:${fa===''?'var(--accent-light)':'var(--surface)'};color:${fa===''?'var(--accent)':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif">
-        כולם
-      </button>
-      ${S.team.map(m=>{
-        const [bg,clr]=m.colors||['#dbeafe','#1d4ed8'];
-        const cnt=S.tasks.filter(t=>t.assignee===m.name&&t.status===taskTab).length;
-        const sel=fa===m.name;
-        return `<button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.assignee='${m.name}';renderPage()"
-          style="padding:4px 10px;border-radius:20px;border:1.5px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent-light)':bg+'33'};color:${sel?'var(--accent)':clr};font-size:11px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif;display:flex;align-items:center;gap:4px">
-          <span style="width:16px;height:16px;border-radius:50%;background:${bg};color:${clr};font-size:8px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">${avInitials(m.name)}</span>
-          ${m.name.split(' ')[0]}
-          <span style="background:${sel?'var(--accent)':clr};color:#fff;border-radius:10px;padding:0 5px;font-size:9px">${cnt}</span>
-        </button>`;
-      }).join('')}
-    </div>
+    ${fv==='worker'?`
+    <!-- Worker chips -->
+    <button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.assignee='';renderPage()"
+      style="padding:3px 10px;border-radius:20px;border:1.5px solid ${fa===''?'var(--accent)':'var(--border)'};background:${fa===''?'var(--accent-light)':'transparent'};color:${fa===''?'var(--accent)':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif">כולם</button>
+    ${getTeamWithOwner().map(m=>{
+      const [bg,clr]=m.colors||['#dbeafe','#1d4ed8'];
+      const mIsOwner=m.isOwner||isOwnerName(m.name);
+      const cnt=S.tasks.filter(t=>t.assignee===m.name||(mIsOwner&&!t.assignee)).length;
+      const sel=fa===m.name;
+      return `<button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.assignee='${m.name}';renderPage()"
+        style="padding:3px 10px;border-radius:20px;border:1.5px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent-light)':bg+'33'};color:${sel?'var(--accent)':clr};font-size:11px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif;display:flex;align-items:center;gap:4px">
+        <span style="width:15px;height:15px;border-radius:50%;background:${bg};color:${clr};font-size:8px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">${avInitials(m.name)}</span>
+        ${m.name.split(' ')[0]}${mIsOwner?' 👑':''}
+        <span style="background:${sel?'var(--accent)':clr};color:#fff;border-radius:10px;padding:0 5px;font-size:9px">${cnt}</span>
+      </button>`;
+    }).join('')}`:''}
+
+    ${fv==='client'&&detectedClients.length>0?`
+    <!-- Client chips -->
+    <button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.client='';renderPage()"
+      style="padding:3px 10px;border-radius:20px;border:1.5px solid ${fc===''?'#7c3aed':'var(--border)'};background:${fc===''?'#ede9fe':'transparent'};color:${fc===''?'#7c3aed':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif">כולם</button>
+    ${detectedClients.map(name=>{
+      const cnt=(S._tcMap?S.tasks.filter(t=>S._tcMap[t.id]===name).length:0);
+      const sel=fc===name;
+      const initials=name.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2)||'?';
+      const safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.client='${safeName}';renderPage()"
+        style="padding:3px 10px;border-radius:20px;border:1.5px solid ${sel?'#7c3aed':'var(--border)'};background:${sel?'#ede9fe':'transparent'};color:${sel?'#7c3aed':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif;display:flex;align-items:center;gap:4px">
+        <span style="width:15px;height:15px;border-radius:50%;background:#ede9fe;color:#7c3aed;font-size:8px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">${initials}</span>
+        ${name}
+        <span style="background:${sel?'#7c3aed':'#a78bfa'};color:#fff;border-radius:10px;padding:0 5px;font-size:9px">${cnt}</span>
+      </button>`;
+    }).join('')}`:''}
+
+    <div style="flex:1"></div>
 
     <!-- type + sort -->
-    <div style="display:flex;gap:6px;flex-shrink:0">
-      <select class="filter-select" style="font-size:11px;padding:4px 8px"
-        onchange="S.taskFilter=S.taskFilter||{};S.taskFilter.type=this.value;renderPage()">
-        ${typeOpts.map(([v,l])=>`<option value="${v}" ${ft===v?'selected':''}>${l}</option>`).join('')}
-      </select>
-      <select class="filter-select" style="font-size:11px;padding:4px 8px"
-        onchange="S.taskFilter=S.taskFilter||{};S.taskFilter.sort=this.value;renderPage()">
-        ${sortOpts.map(([v,l])=>`<option value="${v}" ${fs===v?'selected':''}>${l}</option>`).join('')}
-      </select>
-    </div>
+    <select class="filter-select" style="font-size:11px;padding:4px 8px"
+      onchange="S.taskFilter=S.taskFilter||{};S.taskFilter.type=this.value;renderPage()">
+      ${typeOpts.map(([v,l])=>`<option value="${v}" ${ft===v?'selected':''}>${l}</option>`).join('')}
+    </select>
+    <select class="filter-select" style="font-size:11px;padding:4px 8px"
+      onchange="S.taskFilter=S.taskFilter||{};S.taskFilter.sort=this.value;renderPage()">
+      ${sortOpts.map(([v,l])=>`<option value="${v}" ${fs===v?'selected':''}>${l}</option>`).join('')}
+    </select>
   </div>
   `;
 }
 
+
+// ══════════════════════════════════════
+//  CLIENT DETECTION — v3
+//  Key principle: the CLIENT is in the task TITLE and is NOT the assignee/creator.
+//  1. Strip assignee words from each task's token list before phrase extraction.
+//  2. Exclude any candidate whose base-name matches a team member (S.team).
+//  3. Merge name variants (e.g. "שני רובינשטיין" = "שני רובינשטיין יועצי מס").
+//  4. Allow small spelling differences (Levenshtein ≤ 1 per word).
+// ══════════════════════════════════════
+function detectClientGroups(tasks){
+
+  // ── Helpers ──────────────────────────────────────────────────────
+  // Levenshtein distance (capped at 9 for performance)
+  const lev=(a,b)=>{
+    if(a===b)return 0;
+    if(Math.abs(a.length-b.length)>2)return 9;
+    const R=a.length+1,C=b.length+1;
+    const d=Array.from({length:R},(_,i)=>Array.from({length:C},(_,j)=>i||j));
+    for(let i=1;i<R;i++)for(let j=1;j<C;j++)
+      d[i][j]=a[i-1]===b[j-1]?d[i-1][j-1]:1+Math.min(d[i-1][j],d[i][j-1],d[i-1][j-1]);
+    return d[a.length][b.length];
+  };
+  // Two base-names = same person if each word of the shorter matches
+  // the corresponding word of the longer (fuzzy ≤1 edit, min 2 words)
+  const sameBase=(bA,bB)=>{
+    if(!bA||!bB)return false;
+    if(bA===bB)return true;
+    const wA=bA.split(' '),wB=bB.split(' ');
+    const[sh,lo]=wA.length<=wB.length?[wA,wB]:[wB,wA];
+    if(sh.length<2)return false;
+    return sh.every((w,i)=>lev(w,lo[i])<=1);
+  };
+
+  // ── 1. Stopwords ──────────────────────────────────────────────────
+  const SW=new Set([
+    'בדיקת','בדיקה','הגשת','הגשה','טיפול','עדכון','עדכן','הכנת','הכנה',
+    'שליחת','שליחה','קבלה','קבלת','תיאום','תיאומי','השלמת','השלמה',
+    'בקשה','אישור','הנפקת','הנפקה','רישום','ביצוע','פתיחת','פתיחה',
+    'סגירת','סגירה','הגדרת','הגדרה','הפקת','הפקה','הוצאת','הוצאה',
+    'ייעוץ','בניית','בניה','ניתוח','תכנון','סיכום','דיון','מעקב','בקרה',
+    'פיקוח','הצגת','הצגה','הכנסת','אסיפת','הפחתת','חישוב','חישובי',
+    'דוח','מקדמות','מקדמה','מס','ביטוח','לאומי','מעמד','מספר',
+    'שנתי','חודשי','חודשית','רבעוני','שנתית','ניכויים','ניכוי',
+    'הכנסה','הכנסות','הוצאות','מעמ','ערך','מוסף','חשבונית','חשבוניות',
+    'תשלום','תשלומי','חשבון','יתרה','מאזן','דיבידנד','שכר','משכורת',
+    'פנסיה','קרן','השתלמות','ביצועים','רווח','הפסד','מחזור',
+    'ערבות','הלוואה','אשראי','כרטיס','עסקה','עסקאות','תיק','תיקי',
+    'של','על','עם','אל','לא','כן','רק','גם','כל','יש','אין','את','ואת',
+    'ב','ל','מ','כ','ה','ש','כי','אם','או','כך','זה','זו','אלו','אלה',
+    'לגבי','בנוגע','בעניין','עבור','בגין','מטעם','כנגד','אצל','ליד',
+    'היה','הייתה','יהיה','תהיה','הם','הן','אנו','אנחנו','הוא','היא',
+    'לקוח','לקוחות','עובד','עובדים','מנהל','משרד','חברה','עסק','בעל',
+    'שותף','שותפים','חשב','רואה','מייצג','ממשיך','סוכן',
+    'פנימי','חיצוני','דחוף','רגיל','חדש','ישן','גדול','קטן','מלא','חלקי',
+    'ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט',
+    'ספטמבר','אוקטובר','נובמבר','דצמבר',
+    '2022','2023','2024','2025','2026','2027',
+    'בע','בעמ','עצמאי','עצמאית','שכיר','שכירה','פרטי','פרטית',
+  ]);
+
+  // ── 2. Professional suffixes — stripped from end to get pure name ──
+  const SUFFIX=new Set([
+    'יועצי','יועץ','ויועצי','רואה','חשבון','עורך','דין','עוד','רוח',
+    'ושות','ושותפים','ואחים','ובניו','ובנותיו','גרופ','גרוב','אינק',
+    'בינלאומי','ישראל','מיסוי','פיננסי','פיננסים','השקעות','נכסים',
+    'אחזקות','תעשיות','מסחר','שיווק','ייצור','טכנולוגיות','תוכנה',
+    'נדלן','מזון','קבלן','קבלני','הנדסה','אדריכלות',
+  ]);
+  const stripSuffix=phrase=>{
+    const w=phrase.split(' ');
+    while(w.length>1&&(SUFFIX.has(w[w.length-1])||SW.has(w[w.length-1])))w.pop();
+    return w.join(' ');
+  };
+
+  // ── 3. Build a full exclusion list of worker/assignee names ──────────
+  // Sources: S.team + every t.assignee + every t.createdByName in this task list
+  // This ensures we exclude workers even if S.team hasn't loaded yet
+  const workerFullNames=[
+    ...(S.team||[]).map(m=>(m.name||'').trim()),
+    ...tasks.map(t=>(t.assignee||'').trim()),
+    ...tasks.map(t=>(t.createdByName||'').trim()),
+  ].filter(n=>n.length>=2);
+
+  // Set of individual words that belong to ANY worker name
+  // Used to prevent worker-name words from appearing in client phrases
+  const workerWordSet=new Set();
+  workerFullNames.forEach(n=>
+    n.replace(/[״"'"'״\-–—]/g,' ').split(/\s+/)
+      .map(w=>w.trim()).filter(w=>w.length>=2)
+      .forEach(w=>workerWordSet.add(w))
+  );
+
+  // Is this base-name a worker? (exact or fuzzy 2-word match)
+  const isWorker=base=>{
+    if(!base||base.split(' ').length<2)return false;
+    return workerFullNames.some(mn=>sameBase(base,mn));
+  };
+
+  // ── 4. Tokenize a title — strip all worker words globally ────────────
+  // A word is excluded if it belongs to ANY known worker name,
+  // not just the task's own assignee
+  const tokenizeTitle=(title)=>{
+    return (title||'')
+      .replace(/[״"'"'״\-–—]/g,' ')
+      .split(/[\s,./;:()\[\]]+/)
+      .map(w=>w.trim())
+      .filter(w=>
+        w.length>=2 &&
+        !SW.has(w) &&
+        !workerWordSet.has(w) &&   // ← skip ANY known worker word
+        !/^\d+$/.test(w) &&
+        !/^[a-zA-Z]{1,3}$/.test(w)
+      );
+  };
+
+  // ── 5. Build phrase map (1–3 words) → Set<taskId> ─────────────────
+  const phraseMap={};
+  tasks.forEach(t=>{
+    const words=tokenizeTitle(t.title);
+    const seen=new Set();
+    for(let len=1;len<=3;len++){
+      for(let i=0;i<=words.length-len;i++){
+        const p=words.slice(i,i+len).join(' ');
+        if(!seen.has(p)){
+          phraseMap[p]=(phraseMap[p]||new Set()).add(t.id);
+          seen.add(p);
+        }
+      }
+    }
+  });
+
+  // ── 6. Candidates: 2+ tasks, not a team member ─────────────────────
+  const candidates=Object.entries(phraseMap)
+    .filter(([,ids])=>ids.size>=2)
+    .map(([name,ids])=>({name,base:stripSuffix(name),ids}))
+    .filter(({base})=>!isWorker(base))         // ← exclude workers/assignees
+    .sort((a,b)=>{
+      const wa=a.name.split(' ').length,wb=b.name.split(' ').length;
+      if(wa!==wb)return wb-wa;
+      return b.ids.size-a.ids.size;
+    });
+
+  // ── 7. Cluster by base-name similarity ────────────────────────────
+  const clusters=[];
+  candidates.forEach(({base,ids})=>{
+    const matched=clusters.find(c=>c.bases.some(b=>sameBase(b,base)));
+    if(matched){
+      ids.forEach(id=>matched.ids.add(id));
+      if(!matched.bases.includes(base))matched.bases.push(base);
+      // prefer the 2-word (shortest) form as the label
+      if(base.split(' ').length===2&&base.length<matched.label.length)
+        matched.label=base;
+    } else {
+      clusters.push({label:base,ids:new Set(ids),bases:[base]});
+    }
+  });
+
+  // ── 8. Assign tasks ───────────────────────────────────────────────
+  const taskToClient={};
+  tasks.forEach(t=>{
+    // t.client = explicit client field (always trusted)
+    // t.clientName = MAY equal t.assignee or a worker name (addTask bug)
+    //   → only trust clientName when it is different from assignee AND not a worker
+    const assigneeName=(t.assignee||'').trim();
+    const rawClientName=(t.clientName||'').trim();
+    const explicitClient=(t.client||'').trim()||
+      (rawClientName && rawClientName!==assigneeName && !isWorker(rawClientName)
+        ? rawClientName : '');
+    if(explicitClient){
+      taskToClient[t.id]=explicitClient;
+      return;
+    }
+    const c=clusters.find(cl=>cl.ids.has(t.id));
+    taskToClient[t.id]=c?c.label:'';
+  });
+
+  // ── 9. Build output groups ────────────────────────────────────────
+  const groups={};
+  tasks.forEach(t=>{
+    const key=taskToClient[t.id]||'';
+    if(!groups[key])groups[key]={label:key||'ללא לקוח',tasks:[]};
+    groups[key].tasks.push(t);
+  });
+  return groups;
+}
+
+function taskAccordionHTML(t){
+  const over48=(t.status!=='done')&&hrs(t.createdAt)>=48;
+  const overdue=(t.status!=='done')&&t.date<today();
+  const snoozeStr=t.snoozedUntil?new Date(t.snoozedUntil).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):null;
+  const typeLbl={tax:'רשויות מס',internal:'פנימי',meeting:'פגישה'}[t.type]||t.type;
+  const statusColor={pending:'#dc2626',inprogress:'#d97706',done:'#16a34a'}[t.status];
+  const statusLabel={pending:'טרם טופל',inprogress:'בביצוע',done:'טופל'}[t.status];
+  const av=avInitials(t.assignee);
+  const isDone=t.status==='done';
+  const isInprog=t.status==='inprogress';
+  return `
+  <div id="tdi-${t.id}" style="margin-bottom:8px;border:1.5px solid ${t.pinned?'#f59e0b':'var(--border)'};border-radius:var(--radius-lg);overflow:hidden;background:var(--surface);transition:border-color .2s,box-shadow .2s">
+    <div onclick="toggleTaskDetail(${t.id})" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+        ${t.pinned?'<span style="font-size:13px;flex-shrink:0">📌</span>':''}
+        ${t.priority==='urgent'?'<span style="font-size:11px;flex-shrink:0">🔴</span>':''}
+        <span id="ttl-${t.id}" style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${t.title}</span>
+        <button onclick="event.stopPropagation();startEditTaskTitle(${t.id})" title="ערוך שם משימה"
+          style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:3px 5px;border-radius:6px;line-height:1;transition:background .15s;display:flex;align-items:center"
+          onmouseenter="this.style.background='var(--surface2)'"
+          onmouseleave="this.style.background='none'">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-right:10px">
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${statusColor}20;color:${statusColor};border:1px solid ${statusColor}40">${statusLabel}</span>
+        <span id="tda-${t.id}" style="font-size:11px;color:var(--text3);transition:transform .25s;display:inline-block">▼</span>
+      </div>
+    </div>
+    <div id="tdp-${t.id}" style="display:none;padding:12px 14px 14px;border-top:1px solid var(--border2);background:var(--surface2)">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        ${t.priority==='urgent'?'<span class="badge" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5">🔴 דחוף</span>':''}
+        <span class="badge badge-${t.type}">${typeLbl}</span>
+        ${overdue?'<span class="badge badge-overdue">באיחור</span>':''}
+        ${over48?'<span class="badge badge-48h">⏰ +48 שעות</span>':''}
+        ${t.source==='whatsapp'?'<span class="badge" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0">💬 וואטסאפ</span>':''}
+        ${t.recurring?`<span class="badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0">🔁 ${recLabel(t.recurring.type)}</span>`:''}
+        ${t.pinned?'<span class="badge" style="background:#fef3c7;color:#b45309;border:1px solid #fcd34d">📌 מוצמד</span>':''}
+        ${t.remindedAt?'<span class="badge badge-reminded">תזכורת נשלחה</span>':''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--surface);border-radius:var(--radius);padding:8px 10px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px">📅 תאריך יעד</div>
+          <div style="font-size:13px;font-weight:600;${overdue?'color:#dc2626':''}">${fmtD(t.date)}</div>
+        </div>
+        ${t.assignee?`<div style="background:var(--surface);border-radius:var(--radius);padding:8px 10px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px">👤 אחראי</div>
+          <div style="display:flex;align-items:center;gap:5px"><span class="av-xs">${av}</span><span style="font-size:13px;font-weight:600">${t.assignee}</span></div>
+        </div>`:''}
+        ${(()=>{
+          const _cn=(t.clientName||'').trim();
+          const _c=(t.client||'').trim()||(_cn&&_cn!==(t.assignee||'').trim()?_cn:'');
+          return `<div onclick="event.stopPropagation();openAssignClientModal(${t.id})"
+            style="background:var(--surface);border-radius:var(--radius);padding:8px 10px;border:1.5px solid ${_c?'#c4b5fd':'var(--border)'};cursor:pointer;transition:border-color .15s,background .15s"
+            onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='var(--surface)'">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">👥 לקוח <span style="font-size:9px;color:#7c3aed;opacity:.7">✏️</span></div>
+            <div style="font-size:13px;font-weight:600;color:${_c?'#7c3aed':'#aaa'}">${_c||'לחץ לשיוך לקוח'}</div>
+          </div>`;
+        })()}
+      </div>
+      ${t.description?`<div style="font-size:12px;color:var(--text2);padding:8px 10px;background:var(--surface);border-radius:var(--radius);border-right:3px solid var(--accent);border:1px solid var(--border);margin-bottom:12px;line-height:1.5">${t.description}</div>`:''}
+      ${snoozeStr&&!isDone?`<div class="snooze-label" style="margin-bottom:10px">⏰ תזכורת הבאה: ${snoozeStr}</div>`:''}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+        ${!isDone?`
+          <button class="tc-btn" style="background:${isInprog?'#fff7ed':'transparent'};color:${isInprog?'#d97706':'var(--text2)'};border-color:${isInprog?'#fcd34d':'var(--border)'}" onclick="event.stopPropagation();setStatus(${t.id},'${isInprog?'pending':'inprogress'}')">${isInprog?'⏸ עצור':'▶ התחל טיפול'}</button>
+          <button class="tc-btn b-done" onclick="event.stopPropagation();setStatus(${t.id},'done')">✓ סמן כטופל</button>
+          <button class="tc-btn" style="color:#b45309;border-color:#fcd34d" onclick="event.stopPropagation();pinTask(${t.id})">${t.pinned?'📌 הסר הצמדה':'📌 הצמד'}</button>
+          <button class="tc-btn b-remind" onclick="event.stopPropagation();manualRemind(${t.id})">📲 תזכורת</button>
+          <button class="tc-btn b-snooze" onclick="event.stopPropagation();openSnoozeModal(${t.id})">⏰ דחה</button>
+          ${t.priority==='urgent'?`<button class="tc-btn" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;font-weight:700" onclick="event.stopPropagation();urgentWA(${t.id})">🚨 וואטסאפ דחוף</button>`:''}
+          ${(()=>{const opts=getTeamWithOwner().filter(m=>m.name!==(t.assignee||'')||(!(t.assignee)&&!isOwnerName(m.name)));return opts.length?`<select onchange="event.stopPropagation();reassignTask(${t.id},this.value);this.value=''" onclick="event.stopPropagation()" style="font-size:11px;padding:4px 8px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'Heebo',sans-serif"><option value="">📤 העבר לעובד</option>${opts.map(m=>`<option value="${m.name}">${m.name}${m.isOwner||isOwnerName(m.name)?' 👑':''}</option>`).join('')}</select>`:'';})()}
+        `:`<button class="tc-btn" style="color:var(--text2)" onclick="event.stopPropagation();setStatus(${t.id},'pending')">↩ פתח מחדש</button>`}
+        <button title="מחק משימה" onclick="event.stopPropagation();deleteTask(${t.id})" style="margin-left:auto;background:none;border:1.5px solid #fca5a5;border-radius:var(--radius);padding:4px 8px;cursor:pointer;color:#dc2626;font-size:15px;line-height:1;transition:background .15s" onmouseenter="this.style.background='#fee2e2'" onmouseleave="this.style.background='none'">🗑️</button>
+      </div>
+    </div>
+  </div>`;
+}
 
 function taskCardHTML(t){
   const over48=(t.status!=='done')&&hrs(t.createdAt)>=48;
@@ -1361,6 +1867,7 @@ function setStatus(id,status){
   const t=S.tasks.find(t=>t.id===id);if(!t)return;
   t.status=status;t.done=status==='done';
   taskTab=status;
+  _saveTasks();
   renderPage();
   const labels={pending:'טרם טופל',inprogress:'בביצוע ▶',done:'טופל ✓'};
   toast(`✓ ${t.title} → ${labels[status]}`);
@@ -1369,7 +1876,16 @@ function setStatus(id,status){
 function pinTask(id){
   const t=S.tasks.find(t=>t.id===id);if(!t)return;
   t.pinned=!t.pinned;
+  _saveTasks();
   renderPage();toast(t.pinned?'📌 המשימה הוצמדה לראש!':'📌 ההצמדה הוסרה');
+}
+
+function deleteTask(id){
+  const t=S.tasks.find(t=>t.id===id);if(!t)return;
+  if(!confirm(`למחוק את המשימה "${t.title}"?`))return;
+  S.tasks=S.tasks.filter(t=>t.id!==id);
+  _saveTasks();
+  renderPage();toast('🗑️ המשימה נמחקה');
 }
 
 function urgentWA(id){
@@ -1378,6 +1894,7 @@ function urgentWA(id){
   const msg=`🚨 *הודעה דחופה*\nשלום ${t.assignee},\nהמשימה *"${t.title}"* דחופה ודורשת טיפול מיידי!\nתאריך יעד: ${fmtD(t.date)}\nאנא עדכן סטטוס בהקדם.`;
   S.waMessages.push({text:msg,time:timeStr(),converted:false,auto:false,urgent:true});
   S.reminders.push({task:t.title,assignee:t.assignee,time:timeStr(),type:'🚨 דחוף',auto:false});
+  _saveTasks();
   renderPage();toast(`🚨 וואטסאפ דחוף נשלח ל${t.assignee}!`);
 }
 
@@ -1535,7 +2052,7 @@ async function aiParseWithClaude(text, channel){
 // פרסור מקומי כגיבוי
 function aiParseFallback(text){
   const lower=text.toLowerCase();
-  let assignee=S.user?.name||'אני';
+  let assignee=S.user?.name||'';
   S.team.forEach(m=>{
     const fn=m.name.split(' ')[0];
     if(text.includes(m.name)||text.includes(fn)) assignee=m.name;
@@ -1600,7 +2117,7 @@ async function sendMsg(channel){
     createdAt:Date.now(),remindedAt:null,snoozedUntil:null,pinned:false,
     source:isEmail?'📧 מייל':'💬 וואטסאפ',
   });
-
+  _saveTasks();
   renderPage();
   toast(`🤖 AI זיהה: ${parsed.assignee} · ${parsed.priority==='urgent'?'🔴 דחוף':'רגיל'} · ✓ משימה נוצרה!`);
 }
@@ -1617,6 +2134,7 @@ async function smartConvert(i){
     createdAt:Date.now(),remindedAt:null,snoozedUntil:null,pinned:false,
     source:m.channel==='email'?'📧 מייל':'💬 וואטסאפ',
   });
+  _saveTasks();
   renderPage();
   toast(`🤖 AI יצר משימה: ${parsed.title} → ${parsed.assignee}`);
 }
@@ -1751,6 +2269,235 @@ function renderDeadlinesPage(){
 // ══════════════════════════════════════
 //  SETTINGS
 // ══════════════════════════════════════
+// helpers — lazy load
+// ══════════════════════════════════════
+function loadAppointmentsIfNeeded(){
+  if(!S.appointments && typeof window.listenAppointments==='function') window.listenAppointments();
+}
+function loadWAClientsIfNeeded(){
+  if(!S.waClients && typeof window.listenWAClients==='function') window.listenWAClients();
+}
+
+// ══════════════════════════════════════
+// דף פגישות
+// ══════════════════════════════════════
+function renderAppointmentsPage(){
+  if(!S.appointments) S.appointments=[];
+  const now=today();
+  const upcoming=S.appointments.filter(a=>(a.date||'')>=now).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||''));
+  const past    =S.appointments.filter(a=>(a.date||'')<now ).sort((a,b)=>b.date.localeCompare(a.date));
+
+  function apptCard(a){
+    const d=new Date((a.date||'2000-01-01')+'T12:00:00');
+    const dateHe=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
+    const isPast=(a.date||'')<now;
+    return `<div style="background:var(--surface);border:1.5px solid ${isPast?'var(--border)':'var(--accent)'};border-radius:var(--radius-lg);padding:14px 16px;display:flex;align-items:flex-start;gap:12px;opacity:${isPast?.7:1}">
+      <div style="width:44px;height:44px;border-radius:10px;background:${isPast?'var(--surface3)':'var(--accent-light)'};display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
+        <div style="font-size:15px;font-weight:700;color:${isPast?'var(--text2)':'var(--accent)'};line-height:1">${(a.date||'').slice(8,10)}</div>
+        <div style="font-size:10px;color:var(--text3)">${['ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ'][d.getMonth()]}</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;margin-bottom:3px">${a.title||'פגישה'}</div>
+        <div style="font-size:12px;color:var(--text2);display:flex;flex-wrap:wrap;gap:8px">
+          <span>👤 ${a.clientName||'—'}</span>
+          ${a.time?`<span>🕐 ${a.time}</span>`:''}
+          ${a.reminderSent?`<span style="color:var(--success)">🔔 תזכורת נשלחה</span>`:''}
+        </div>
+      </div>
+      <div style="font-size:11px;padding:3px 8px;border-radius:20px;background:${isPast?'var(--surface3)':'var(--success-bg)'};color:${isPast?'var(--text3)':'var(--success)'}">
+        ${isPast?'עבר':'מאושר'}
+      </div>
+    </div>`;
+  }
+
+  return `
+  <div style="max-width:700px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <h2 style="font-size:20px;font-weight:700">🤝 פגישות</h2>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${upcoming.length} פגישות קרובות · ${past.length} עברו</div>
+      </div>
+      <button class="btn primary" onclick="openAddAppointmentModal()" style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:16px">+</span> הוסף פגישה
+      </button>
+    </div>
+
+    ${upcoming.length===0&&past.length===0?`
+      <div style="text-align:center;padding:60px 20px;color:var(--text2)">
+        <div style="font-size:48px;margin-bottom:12px">📭</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px">אין פגישות עדיין</div>
+        <div style="font-size:13px">פגישות נקבעות דרך הבוט בוואטסאפ</div>
+      </div>
+    `:''}
+
+    ${upcoming.length>0?`
+      <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">קרובות</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+        ${upcoming.map(apptCard).join('')}
+      </div>
+    `:''}
+
+    ${past.length>0?`
+      <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">היסטוריה</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${past.slice(0,20).map(apptCard).join('')}
+      </div>
+    `:''}
+  </div>`;
+}
+
+// ══════════════════════════════════════
+// דף לקוחות
+// ══════════════════════════════════════
+function renderClientsPage(){
+  if(!S.waClients) S.waClients=[];
+  const q=(S.clientSearch||'').toLowerCase();
+  const ownerName=S.user?.name||'';
+  const workerFilter=S.clientWorkerFilter||'';
+  // helper: effective assignee — unassigned → owner
+  const effectiveAssignee=c=>c.assignedTo||ownerName;
+
+  // build filter list
+  let filtered=S.waClients;
+  if(q) filtered=filtered.filter(c=>c.name.toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)||(c.whatsapp||'').includes(q));
+  if(workerFilter){
+    const isOwnerFilter=workerFilter===ownerName;
+    filtered=filtered.filter(c=>effectiveAssignee(c)===workerFilter||(isOwnerFilter&&!c.assignedTo));
+  }
+
+  // worker chips
+  const teamForChips=getTeamWithOwner();
+  const workerChips=teamForChips.map(m=>{
+    const mIsOwner=m.isOwner||isOwnerName(m.name);
+    const cnt=S.waClients.filter(c=>effectiveAssignee(c)===m.name||(mIsOwner&&!c.assignedTo)).length;
+    const sel=workerFilter===m.name;
+    const [bg,clr]=m.colors||['#dbeafe','#1d4ed8'];
+    return `<button onclick="S.clientWorkerFilter='${m.name}';renderPage()"
+      style="padding:3px 10px;border-radius:20px;border:1.5px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent-light)':bg+'33'};color:${sel?'var(--accent)':clr};font-size:11px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif;display:flex;align-items:center;gap:4px">
+      <span style="width:15px;height:15px;border-radius:50%;background:${bg};color:${clr};font-size:8px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">${avInitials(m.name)}</span>
+      ${m.name.split(' ')[0]}${mIsOwner?' 👑':''}
+      <span style="background:${sel?'var(--accent)':clr};color:#fff;border-radius:10px;padding:0 5px;font-size:9px">${cnt}</span>
+    </button>`;
+  }).join('');
+
+  // assignee options for modal
+  const assigneeOptions=teamForChips.map(m=>`<option value="${m.name}">${m.name}${m.isOwner||isOwnerName(m.name)?' 👑 (אני)':''}</option>`).join('');
+
+  return `
+  <div style="max-width:800px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <h2 style="font-size:20px;font-weight:700">👥 לקוחות</h2>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${S.waClients.length} לקוחות רשומים</div>
+      </div>
+      <button class="btn primary" onclick="openAddClientModal()">+ הוסף לקוח</button>
+    </div>
+
+    <!-- filter bar -->
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg)">
+      <span style="font-size:11px;font-weight:600;color:var(--text3);flex-shrink:0;margin-left:4px">סינון:</span>
+      <button onclick="S.clientWorkerFilter='';renderPage()"
+        style="padding:3px 10px;border-radius:20px;border:1.5px solid ${workerFilter===''?'var(--accent)':'var(--border)'};background:${workerFilter===''?'var(--accent-light)':'transparent'};color:${workerFilter===''?'var(--accent)':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif">כולם</button>
+      ${workerChips}
+      <div style="flex:1"></div>
+      <input style="padding:4px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:11px;font-family:'Heebo',sans-serif;background:var(--surface2);color:var(--text);width:160px"
+        placeholder="🔍 חיפוש..." value="${S.clientSearch||''}" oninput="S.clientSearch=this.value;renderPage()">
+    </div>
+
+    ${filtered.length===0?`
+      <div style="text-align:center;padding:60px 20px;color:var(--text2)">
+        <div style="font-size:48px;margin-bottom:12px">👤</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px">${q||workerFilter?'לא נמצאו לקוחות':'אין לקוחות עדיין'}</div>
+        <div style="font-size:13px">${q||workerFilter?'נסה סינון אחר':'לקוחות מתווספים אוטומטית מהבוט בוואטסאפ'}</div>
+      </div>
+    `:`
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+      <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;padding:10px 16px;background:var(--surface3);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2)">
+        <div>שם</div><div>אחראי</div><div>מייל</div><div>ווצאפ</div><div></div>
+      </div>
+      ${filtered.map(c=>{
+        const assignee=effectiveAssignee(c);
+        const isOwnerAssignee=!c.assignedTo||c.assignedTo===ownerName;
+        const [cbg,cclr]=teamForChips.find(m=>m.name===assignee)?.colors||['#dcfce7','#16a34a'];
+        return `
+      <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;padding:11px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:13px" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+        <div style="font-weight:600">${c.name}</div>
+        <div>
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;background:${cbg}33;color:${cclr};font-size:11px;font-weight:600">
+            <span style="width:14px;height:14px;border-radius:50%;background:${cbg};color:${cclr};font-size:7px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">${avInitials(assignee)}</span>
+            ${assignee.split(' ')[0]}${isOwnerAssignee?' 👑':''}
+          </span>
+        </div>
+        <div style="color:var(--text2)">${c.email||'—'}</div>
+        <div style="color:var(--text2)">${c.whatsapp?formatPhone(c.whatsapp):'—'}</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn sm" onclick="openEditClientModal('${c.id}')">✏️</button>
+          <button class="btn sm danger" onclick="confirmDeleteClient('${c.id}','${c.name.replace(/'/g,'')}')">🗑</button>
+        </div>
+      </div>`}).join('')}
+    </div>
+    `}
+
+    <!-- modal הוספה/עריכה -->
+    <div id="client-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:360px;box-shadow:var(--shadow-md)">
+        <h3 style="margin-bottom:16px;font-size:16px;font-weight:700" id="client-modal-title">הוסף לקוח</h3>
+        <input class="auth-input" id="cm-name"     placeholder="שם מלא *">
+        <input class="auth-input" id="cm-email"    placeholder="מייל (לזימון)">
+        <input class="auth-input" id="cm-whatsapp" placeholder="ווצאפ (לזימון)">
+        <div style="margin-bottom:10px">
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">אחראי</label>
+          <select class="form-input" id="cm-assignee" style="width:100%">${assigneeOptions}</select>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn primary" style="flex:1" onclick="saveClientModal()">שמור</button>
+          <button class="btn" style="flex:1" onclick="document.getElementById('client-modal').style.display='none'">ביטול</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function formatPhone(p){ return p.replace(/^972/,'0'); }
+
+let _editClientId=null;
+function openAddClientModal(){
+  _editClientId=null;
+  document.getElementById('client-modal-title').textContent='הוסף לקוח';
+  document.getElementById('cm-name').value='';
+  document.getElementById('cm-email').value='';
+  document.getElementById('cm-whatsapp').value='';
+  // ברירת מחדל: בעל העסק
+  const sel=document.getElementById('cm-assignee');
+  if(sel) sel.value=S.user?.name||'';
+  document.getElementById('client-modal').style.display='flex';
+}
+function openEditClientModal(id){
+  const c=S.waClients.find(x=>x.id===id);
+  if(!c)return;
+  _editClientId=id;
+  document.getElementById('client-modal-title').textContent='עריכת לקוח';
+  document.getElementById('cm-name').value=c.name||'';
+  document.getElementById('cm-email').value=c.email||'';
+  document.getElementById('cm-whatsapp').value=c.whatsapp||'';
+  const sel=document.getElementById('cm-assignee');
+  if(sel) sel.value=c.assignedTo||(S.user?.name||'');
+  document.getElementById('client-modal').style.display='flex';
+}
+function saveClientModal(){
+  const name=document.getElementById('cm-name').value.trim();
+  if(!name){ alert('שם חובה'); return; }
+  const assignedTo=document.getElementById('cm-assignee')?.value||(S.user?.name||'');
+  const data={ name, email: document.getElementById('cm-email').value.trim(), whatsapp: document.getElementById('cm-whatsapp').value.trim(), assignedTo };
+  window.saveWAClient(_editClientId, data);
+  document.getElementById('client-modal').style.display='none';
+}
+function confirmDeleteClient(id,name){
+  if(!confirm('למחוק את הלקוח "'+name+'"?'))return;
+  window.deleteWAClient(id);
+}
+
+// ══════════════════════════════════════
 let sSection='office';
 let taskTab='pending';
 function renderSettingsPage(){
@@ -1761,6 +2508,7 @@ function renderSettingsPage(){
     notifications: renderNotifSettings(),
     permissions: renderPermSettings(),
     whatsapp: renderWASettings(),
+    calendar: renderCalendarSettings(),
     history: renderHistorySettings(),
     performance: renderPerformanceSettings(),
   };
@@ -1771,6 +2519,7 @@ function renderSettingsPage(){
     {id:'notifications',icon:'🔔',label:'התראות'},
     {id:'permissions',icon:'🔒',label:'הרשאות'},
     {id:'whatsapp',icon:'💬',label:'חיבורים'},
+    {id:'calendar',icon:'📅',label:'יומן Google'},
     {id:'history',icon:'📋',label:'היסטוריה'},
     {id:'performance',icon:'📊',label:'מדד ביצועים'},
   ];
@@ -1843,11 +2592,11 @@ function renderOfficeSettings(){
       <div style="font-size:11px;color:var(--text2)">לחץ להעלאת לוגו המשרד<br/>PNG / JPG · 200×200px מומלץ</div>
     </div>
     <div class="form-grid">
-      <div class="form-row"><label class="form-label">שם המשרד</label><input class="form-input" value="${S.office.name}" onchange="S.office.name=this.value"/></div>
+      <div class="form-row"><label class="form-label">שם המשרד</label><input class="form-input" id="of-name" value="${S.office.name||''}"/></div>
       <div class="form-row"><label class="form-label">מספר רישיון</label><input class="form-input" placeholder="000000000"/></div>
-      <div class="form-row"><label class="form-label">טלפון ראשי</label><input class="form-input" type="tel" value="${S.office.phone}" dir="ltr" onchange="S.office.phone=this.value"/></div>
-      <div class="form-row"><label class="form-label">אימייל</label><input class="form-input" type="email" value="${S.office.email}" dir="ltr" onchange="S.office.email=this.value"/></div>
-      <div class="form-row full"><label class="form-label">כתובת</label><input class="form-input" value="${S.office.addr}" onchange="S.office.addr=this.value"/></div>
+      <div class="form-row"><label class="form-label">טלפון ראשי</label><input class="form-input" id="of-phone" type="tel" value="${S.office.phone||''}" dir="ltr"/></div>
+      <div class="form-row"><label class="form-label">אימייל</label><input class="form-input" id="of-email" type="email" value="${S.office.email||''}" dir="ltr"/></div>
+      <div class="form-row full"><label class="form-label">כתובת</label><input class="form-input" id="of-addr" value="${S.office.addr||''}"/></div>
     </div>
     <div class="save-row"><span class="saved-ok" id="sv-office">✓ נשמר</span><button class="btn primary" onclick="saveSection('office')">שמור שינויים</button></div>
   </div>`;
@@ -2086,6 +2835,85 @@ function renderWASettings(){
 }
 
 
+function renderCalendarSettings(){
+  const calId = S.user?.googleCalendarId || '';
+  const isConnected = !!calId;
+  return `
+  <div class="s-card">
+    <div class="s-card-title">📅 יומן Google</div>
+
+    <!-- יומן דבליו מרכזי -->
+    <div style="border:1.5px solid #2563eb33;border-radius:12px;padding:16px;margin-bottom:16px;background:#eff6ff">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="font-size:24px">📆</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#1e40af">יומן דבליו מרכזי</div>
+          <div style="font-size:11px;color:#3b82f6">כל הפגישות נרשמות כאן אוטומטית</div>
+        </div>
+        <div style="margin-right:auto;background:#16a34a;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">✓ פעיל</div>
+      </div>
+      <div style="font-size:11px;color:#64748b">פגישות שנקבעות דרך WhatsApp מופיעות אוטומטית ביומן המשותף של דבליו.</div>
+    </div>
+
+    <!-- סנכרון יומן אישי -->
+    <div style="border:1.5px solid var(--border);border-radius:12px;padding:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="font-size:24px">🗓️</div>
+        <div>
+          <div style="font-size:13px;font-weight:700">יומן Google אישי</div>
+          <div style="font-size:11px;color:var(--text2)">סנכרון פגישות גם ליומן האישי שלך</div>
+        </div>
+        <div style="margin-right:auto;background:${isConnected?'#16a34a':'#94a3b8'};color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">${isConnected?'✓ מחובר':'לא מחובר'}</div>
+      </div>
+
+      ${isConnected ? `
+      <div style="background:#f0fdf4;border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;color:#166534">
+        ✅ יומן מחובר:<br/><span style="font-family:monospace;font-size:10px;word-break:break-all">${calId}</span>
+      </div>` : ''}
+
+      <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#475569">
+        <b>איך מחברים?</b><br/>
+        1. פתחו <b>calendar.google.com</b><br/>
+        2. לחצו ⋮ על היומן → <b>הגדרות ושיתוף</b><br/>
+        3. הוסיפו: <code style="background:#e2e8f0;padding:1px 4px;border-radius:3px">dabelu-calendar@dabelu.iam.gserviceaccount.com</code> עם הרשאת <b>עריכה</b><br/>
+        4. העתיקו את <b>מזהה היומן</b> מאותה דף (נראה כמו: xxx@group.calendar.google.com או your@gmail.com)
+      </div>
+
+      <div class="form-row" style="margin-bottom:10px">
+        <label class="form-label">מזהה היומן (Calendar ID)</label>
+        <input class="form-input" id="cal-id-input" dir="ltr" placeholder="your@gmail.com" value="${calId}" style="font-size:12px"/>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button class="btn primary sm" onclick="saveCalendarId()">💾 שמור וחבר</button>
+        ${isConnected ? `<button class="btn sm" style="color:#dc2626;border-color:#dc2626" onclick="disconnectCalendar()">נתק</button>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveCalendarId(){
+  const calId = (document.getElementById('cal-id-input')?.value || '').trim();
+  if (!calId) { toast('⚠️ הזן מזהה יומן'); return; }
+  S.user.googleCalendarId = calId;
+  _saveToLocalStorage();
+  if (S.user?.uid && window.saveUserProfileToDB) {
+    await window.saveUserProfileToDB(S.user.uid, { googleCalendarId: calId });
+  }
+  toast('✅ יומן Google חובר בהצלחה!');
+  renderPage();
+}
+
+async function disconnectCalendar(){
+  delete S.user.googleCalendarId;
+  _saveToLocalStorage();
+  if (S.user?.uid && window.saveUserProfileToDB) {
+    await window.saveUserProfileToDB(S.user.uid, { googleCalendarId: '' });
+  }
+  toast('✓ יומן Google נותק');
+  renderPage();
+}
+
 function connectGoogleCalendar(){
   if(!S.integrations)S.integrations={};
   S.integrations.googleCalendar={email:S.user?.email||'user@gmail.com',connected:true};
@@ -2114,6 +2942,7 @@ function manualRemind(id){
   t.remindedAt=Date.now();
   S.waMessages.push({text:`📲 תזכורת ידנית: ${t.title} - ${t.assignee} - יעד: ${fmtD(t.date)}`,time:timeStr(),converted:false,auto:false});
   S.reminders.push({task:t.title,assignee:t.assignee,time:timeStr(),type:'ידנית',auto:false});
+  _saveTasks();
   renderPage();toast(`📲 תזכורת נשלחה ל${t.assignee}!`);
 }
 let recurringOn=false;
@@ -2170,7 +2999,7 @@ function addTask(){
   S.tasks.push({
     id:S.nextId++,title,
     type:document.getElementById('nt-type').value,
-    assignee:document.getElementById('nt-assignee').value,
+    assignee:document.getElementById('nt-assignee').value||(S.user?.name||''),
     date:document.getElementById('nt-date').value,
     priority:document.getElementById('nt-priority').value,
     notes:document.getElementById('nt-notes')?.value||'',
@@ -2187,19 +3016,52 @@ function addTask(){
       dueDate:document.getElementById('nt-date').value,
       notes:document.getElementById('nt-notes')?.value||'',
       assigneeEmail:workerEmail,
-      clientName:document.getElementById('nt-assignee')?.value||'',
+      clientName:'',
       createdBy:S.user?.email||'',
       createdByName:S.user?.name||''
     });
   }
   if(document.getElementById('nt-worker-email')) document.getElementById('nt-worker-email').value='';
+  _saveTasks();
   closeModal('task');renderPage();
   toast(rec?`🔁 משימה חוזרת נוספה! (${recLabel(rec.type)})`:workerEmail?'✓ משימה נוספה ונשלחה לעובד!':'✓ משימה נוספה!');
 }
+// ── Returns S.team always including the logged-in owner/manager as first entry ──
+function getTeamWithOwner(){
+  const ownerName=(S.user?.name||'').trim();
+  if(!ownerName) return S.team||[];
+  const team=S.team||[];
+  if(team.some(m=>m.name===ownerName)) return team;
+  return [{id:'owner-self',name:ownerName,role:S.user?.role||'owner',colors:['#dcfce7','#16a34a'],isOwner:true},...team];
+}
+// Returns true if this assignee name is the current logged-in user
+function isOwnerName(n){ return !!n && n===(S.user?.name||''); }
+// For the owner (logged-in user), tasks include also those with no assignee
+function ownerTasksFilter(tasks,ownerName){
+  return tasks.filter(t=>t.assignee===ownerName||(!t.assignee));
+}
+
 function populateAssigneeSelect(){
   const sel=document.getElementById('nt-assignee');
   if(!sel)return;
-  sel.innerHTML=S.team.map(m=>`<option value="${m.name}">${m.name}</option>`).join('');
+  const ownerName=(S.user?.name||'').trim();
+  const opts=[];
+  if(ownerName) opts.push(`<option value="${ownerName}">${ownerName} 👑 (אני)</option>`);
+  (S.team||[]).filter(m=>m.name!==ownerName).forEach(m=>{
+    opts.push(`<option value="${m.name}">${m.name}</option>`);
+  });
+  sel.innerHTML=opts.join('');
+}
+
+// ── Reassign a task to a different worker (owner/manager only) ──
+function reassignTask(id,newAssignee){
+  const t=S.tasks.find(t=>t.id===id);
+  if(!t||!newAssignee)return;
+  const prev=t.assignee||'(ללא)';
+  t.assignee=newAssignee;
+  _saveTasks();
+  renderPage();
+  toast(`📤 המשימה הועברה מ${prev} ל${newAssignee}`);
 }
 
 // ══════════════════════════════════════
@@ -2232,8 +3094,192 @@ function confirmSnooze(){
     until=new Date(v).getTime();
   }
   t.snoozedUntil=until;t.remindedAt=null;
+  _saveTasks();
   closeModal('snooze');renderPage();
   toast(`⏰ תזכורת נדחתה ל-${new Date(until).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`);
+}
+
+// ══════════════════════════════════════
+//  ASSIGN CLIENT TO TASK
+// ══════════════════════════════════════
+function _allClientNames(){
+  const names=new Set();
+  (S.waClients||[]).forEach(c=>{ if(c.name) names.add(c.name.trim()); });
+  (S.clients||[]).forEach(c=>{ if(c.name) names.add(c.name.trim()); });
+  // also collect from tasks explicit client field
+  (S.tasks||[]).forEach(t=>{
+    if(t.client && t.client.trim()) names.add(t.client.trim());
+  });
+  return [...names].sort((a,b)=>a.localeCompare(b,'he'));
+}
+
+function openAssignClientModal(taskId){
+  const t=S.tasks.find(t=>t.id===taskId);if(!t)return;
+  S._acmTaskId=taskId;
+  S._acmSelected=null;
+  document.getElementById('acm-task-name').textContent=t.title;
+  document.getElementById('acm-search').value='';
+  document.getElementById('acm-new-row').style.display='none';
+  document.getElementById('acm-new-name').value='';
+  document.getElementById('acm-save-btn').style.display='none';
+  const currentClient=(t.client||'').trim();
+  _renderAcmList('', currentClient);
+  openModal('assign-client');
+  setTimeout(()=>document.getElementById('acm-search').focus(),100);
+}
+
+function _renderAcmList(q, currentClient){
+  const list=document.getElementById('acm-list');if(!list)return;
+  const all=_allClientNames();
+  const filtered=q ? all.filter(n=>n.includes(q)||n.toLowerCase().includes(q.toLowerCase())) : all;
+  if(!filtered.length){
+    list.innerHTML=`<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px">לא נמצאו לקוחות תואמים</div>`;
+    return;
+  }
+  const cur=currentClient||(S.tasks.find(t=>t.id===S._acmTaskId)?.client||'').trim();
+  list.innerHTML=filtered.map(n=>{
+    const isSel=S._acmSelected?S._acmSelected===n:n===cur;
+    return `<div onclick="selectAcmClient('${n.replace(/'/g,"\\'")}',this)"
+      style="padding:9px 12px;border-radius:var(--radius);border:1.5px solid ${isSel?'var(--accent)':'var(--border)'};
+      background:${isSel?'var(--accent-light,#ede9fe)':'var(--surface)'};cursor:pointer;
+      font-size:13px;font-weight:${isSel?'700':'400'};color:${isSel?'var(--accent)':'var(--text)'};
+      display:flex;align-items:center;justify-content:space-between;transition:background .15s"
+      onmouseenter="if(!this.dataset.sel)this.style.background='var(--surface2)'"
+      onmouseleave="if(!this.dataset.sel)this.style.background='var(--surface)'"
+      ${isSel?'data-sel="1"':''}>
+      <span>👥 ${n}</span>${isSel?'<span style="font-size:16px">✓</span>':''}
+    </div>`;
+  }).join('');
+}
+
+function filterAssignClientList(q){
+  _renderAcmList(q);
+}
+
+function selectAcmClient(name, el){
+  S._acmSelected=name;
+  document.getElementById('acm-new-row').style.display='none';
+  document.getElementById('acm-new-name').value='';
+  document.getElementById('acm-save-btn').style.display='inline-flex';
+  document.getElementById('acm-save-btn').textContent='שמור — '+name;
+  // re-render list to update highlights
+  const q=document.getElementById('acm-search').value||'';
+  _renderAcmList(q);
+}
+
+function toggleAcmNewRow(){
+  const row=document.getElementById('acm-new-row');
+  const showing=row.style.display!=='none';
+  row.style.display=showing?'none':'block';
+  if(!showing){
+    S._acmSelected=null;
+    document.getElementById('acm-save-btn').style.display='inline-flex';
+    document.getElementById('acm-save-btn').textContent='צור ושמור';
+    setTimeout(()=>document.getElementById('acm-new-name').focus(),80);
+    const q=document.getElementById('acm-search').value||'';
+    _renderAcmList(q);
+  } else {
+    document.getElementById('acm-save-btn').style.display='none';
+  }
+}
+
+function confirmAssignClient(){
+  const taskId=S._acmTaskId;
+  const t=S.tasks.find(t=>t.id===taskId);if(!t)return;
+  let clientName=S._acmSelected||'';
+  // check if new-name row is visible
+  const newRow=document.getElementById('acm-new-row');
+  if(newRow.style.display!=='none'){
+    clientName=(document.getElementById('acm-new-name').value||'').trim();
+    if(!clientName){toast('⚠️ הזן שם לקוח');return;}
+  }
+  if(!clientName){toast('⚠️ בחר לקוח');return;}
+  t.client=clientName;
+  t.clientName=clientName; // sync both fields
+  _saveTasks();
+  closeModal('assign-client');
+  renderPage();
+  toast(`👥 המשימה שויכה ללקוח ${clientName}`);
+}
+
+// ══════════════════════════════════════
+//  ADD APPOINTMENT MANUALLY
+// ══════════════════════════════════════
+function openAddAppointmentModal(){
+  const d=new Date();d.setDate(d.getDate()+1);
+  document.getElementById('appt-date').value=d.toISOString().slice(0,10);
+  document.getElementById('appt-time').value='09:00';
+  document.getElementById('appt-client').value='';
+  document.getElementById('appt-title').value='';
+  document.getElementById('appt-notes').value='';
+  openModal('add-appt');
+  setTimeout(()=>document.getElementById('appt-client').focus(),80);
+}
+function saveAddAppointment(){
+  const client=(document.getElementById('appt-client').value||'').trim();
+  const dateVal=document.getElementById('appt-date').value||'';
+  if(!client){toast('⚠️ יש להזין שם לקוח');return;}
+  if(!dateVal){toast('⚠️ יש לבחור תאריך');return;}
+  const appt={
+    id: Date.now(),
+    clientName: client,
+    title: (document.getElementById('appt-title').value||'').trim() || 'פגישה עם '+client,
+    date: dateVal,
+    time: document.getElementById('appt-time').value||'',
+    notes: document.getElementById('appt-notes').value||'',
+    createdAt: Date.now(),
+    manual: true,
+  };
+  if(!S.appointments) S.appointments=[];
+  S.appointments.push(appt);
+  S.appointments.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  // שמור ל-Firestore אם אפשר
+  if(window.saveAppointmentToDB) window.saveAppointmentToDB(appt);
+  // שמור ב-localStorage כגיבוי
+  try{
+    const key='dabelu_appts_'+(S.user?.uid||'guest');
+    localStorage.setItem(key,JSON.stringify(S.appointments));
+  }catch(e){}
+  closeModal('add-appt');
+  renderPage();
+  toast(`📅 הפגישה עם ${client} נשמרה ל-${fmtD(dateVal)}`);
+}
+
+// ══════════════════════════════════════
+//  EDIT TASK TITLE INLINE
+// ══════════════════════════════════════
+function startEditTaskTitle(id){
+  const t=S.tasks.find(t=>t.id===id);if(!t)return;
+  const span=document.getElementById('ttl-'+id);if(!span)return;
+  const oldTitle=t.title;
+  // replace span with input
+  const inp=document.createElement('input');
+  inp.value=oldTitle;
+  inp.setAttribute('dir','auto');
+  inp.style.cssText=[
+    'font-size:14px','font-weight:600','color:var(--text)',
+    'background:transparent','border:none','border-bottom:2px solid var(--accent)',
+    'outline:none','width:100%','font-family:inherit','padding:2px 0',
+    'min-width:0','flex:1'
+  ].join(';');
+  span.replaceWith(inp);
+  inp.focus();inp.select();
+  let saved=false;
+  const save=()=>{
+    if(saved)return;saved=true;
+    const nv=(inp.value||'').trim();
+    if(nv && nv!==oldTitle){
+      t.title=nv;
+      _saveTasks();
+      toast('✏️ שם המשימה עודכן');
+    }
+    renderPage();
+  };
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();save();}
+    if(e.key==='Escape'){saved=true;renderPage();}
+  });
+  inp.addEventListener('blur',save);
 }
 
 // ══════════════════════════════════════
@@ -2249,22 +3295,59 @@ function highlightPref(){
   });
 }
 
-function addMember(){
+async function addMember(){
   const name=document.getElementById('nm-name').value.trim();
   const email=document.getElementById('nm-email').value.trim();
-  const phone=document.getElementById('nm-phone').value.trim()||'לא הוזן';
+  const phone=document.getElementById('nm-phone').value.trim();
   const notify=document.querySelector('input[name="nm-notify"]:checked')?.value||'whatsapp';
   if(!name||!email){toast('⚠️ יש למלא שם ואימייל');return;}
+  // בדיקת כפילות מייל
+  if(S.team.some(t=>t.email&&t.email.toLowerCase()===email.toLowerCase())){
+    toast('⚠️ עובד עם אימייל זה כבר קיים בצוות');return;
+  }
+  // בדיקת כפילות טלפון (אם הוזן)
+  if(phone && S.team.some(t=>t.phone&&t.phone.replace(/\D/g,'')===phone.replace(/\D/g,''))){
+    toast('⚠️ עובד עם מספר טלפון זה כבר קיים בצוות');return;
+  }
   const c=memberColors[S.nextMemberId%memberColors.length];
   const notifyLabel={whatsapp:'💬 וואטסאפ',email:'📧 מייל',both:'🔔 שניהם'}[notify];
-  S.team.push({id:S.nextMemberId++,name,email,phone,role:document.getElementById('nm-role').value,perm:document.getElementById('nm-perm').value,colors:c,status:'הוזמן',notify,notifyLabel});
-  closeModal('member');renderPage();toast(`📧 הזמנה נשלחה ל${name}! תזכורות ישלחו ב${notifyLabel}`);
+  const role=document.getElementById('nm-role').value;
+  const perm=document.getElementById('nm-perm').value;
+
+  // יצירת קוד כניסה זמני
+  const tempCode=Math.random().toString(36).slice(2,8).toUpperCase();
+  const officeName=S.office?.name||S.user?.officeName||'המשרד';
+  const inviterName=S.user?.name||'';
+
+  // שמירת העובד ב-Firestore
+  if(window.createInvitedEmployee){
+    try{ await window.createInvitedEmployee(name,email,role,tempCode,officeName); }
+    catch(e){ console.error('createInvitedEmployee:',e); }
+  }
+
+  // שליחת מייל הזמנה
+  try{
+    const res = await fetch('https://dabelu.vercel.app/api/invite',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({employeeName:name,employeeEmail:email,officeName,inviterName,tempCode})
+    });
+    const data = await res.json();
+    if(!data.ok) console.warn('Invite API error:',data.error);
+  }catch(e){ console.error('Failed to send invite:',e); }
+
+  S.team.push({id:S.nextMemberId++,name,email,phone:phone||'לא הוזן',role,perm,colors:c,status:'הוזמן',notify,notifyLabel});
+  _saveTeam();
+  closeModal('member');renderPage();
+  toast(`📧 מייל הזמנה נשלח ל${name}!`);
   document.getElementById('nm-name').value='';document.getElementById('nm-email').value='';document.getElementById('nm-phone').value='';
 }
 function removeMember(id){
   const m=S.team.find(t=>t.id===id);if(!m)return;
   if(!confirm(`להסיר את ${m.name}?`))return;
-  S.team=S.team.filter(t=>t.id!==id);renderPage();toast(`✓ ${m.name} הוסר`);
+  S.team=S.team.filter(t=>t.id!==id);
+  _saveTeam();
+  renderPage();toast(`✓ ${m.name} הוסר`);
 }
 
 let editMemberId=null;
@@ -2287,6 +3370,14 @@ function saveEditMember(){
   const email=document.getElementById('em-email').value.trim();
   const phone=document.getElementById('em-phone').value.trim();
   if(!name||!email){toast('⚠️ יש למלא שם ואימייל');return;}
+  // בדיקת כפילות מייל (לא כולל את העובד עצמו)
+  if(S.team.some(t=>t.id!==editMemberId&&t.email&&t.email.toLowerCase()===email.toLowerCase())){
+    toast('⚠️ עובד אחר עם אימייל זה כבר קיים בצוות');return;
+  }
+  // בדיקת כפילות טלפון (אם הוזן, לא כולל את העובד עצמו)
+  if(phone && S.team.some(t=>t.id!==editMemberId&&t.phone&&t.phone.replace(/\D/g,'')===phone.replace(/\D/g,''))){
+    toast('⚠️ עובד אחר עם מספר טלפון זה כבר קיים בצוות');return;
+  }
   // Update tasks assigned to this member
   const oldName=m.name;
   S.tasks.forEach(t=>{ if(t.assignee===oldName) t.assignee=name; });
@@ -2298,6 +3389,7 @@ function saveEditMember(){
   m.notify=notifyVal;
   m.notifyLabel={whatsapp:'💬 וואטסאפ',email:'📧 מייל',both:'🔔 שניהם'}[notifyVal];
   m.initials=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  _saveTeam();
   closeModal('edit-member');
   renderPage();
   toast(`✓ פרטי ${name} עודכנו בהצלחה!`);
@@ -2316,18 +3408,28 @@ function renderCalendarPage(){
   const monthNames=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
   const dayNames=['א','ב','ג','ד','ה','ו','ש'];
 
-  // Collect events: only meetings + reminders (NO regular tasks) + deadlines
+  // Collect events: meetings + WhatsApp appointments + reminders + deadlines
+  const _meetingKW=['פגישה','ישיבה','פגישת','meeting','appointment'];
   const events=[];
   S.tasks.forEach(t=>{
-    // רק פגישות ותזכורות – לא משימות רגילות
-    if(t.type==='meeting' && t.date)
-      events.push({date:t.date,title:t.title,type:'meeting',priority:t.priority,assignee:t.assignee,status:t.status,source:'meeting',time:t.time||''});
+    const isMtg = t.type==='meeting' || _meetingKW.some(w=>(t.title||'').includes(w));
+    if(!isMtg) return;
+    events.push({
+      date: t.date || today(),   // אם אין תאריך — מציג ביום הנוכחי
+      title: t.title, type:'meeting',
+      priority:t.priority, assignee:t.assignee,
+      status:t.status, source:'meeting', time:t.time||''
+    });
   });
-  // תזכורות שנשלחו
+  // פגישות מהבוט
+  if(S.appointments) S.appointments.forEach(a=>{
+    if(a.date) events.push({date:a.date,title:'🤝 '+a.title+(a.clientName?' · '+a.clientName:''),type:'appointment',priority:'normal',source:'appointment',time:a.time||''});
+  });
+  // תזכורות
   S.reminders.forEach(r=>{
     if(r.date) events.push({date:r.date,title:'🔔 תזכורת: '+r.task,type:'reminder',priority:'normal',assignee:r.assignee,source:'reminder'});
   });
-  // דדליינים לרשויות מס
+  // דדליינים
   deadlines.forEach(d=>{
     events.push({date:d.date,title:d.title,type:'tax',priority:'urgent',source:'deadline'});
   });
@@ -2361,7 +3463,7 @@ function renderCalendarPage(){
     <div style="min-height:80px;background:var(--surface);border:1.5px solid ${isToday?'var(--accent)':'var(--border)'};border-radius:8px;padding:6px;transition:all .15s;cursor:pointer" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='${isToday?'var(--accent)':'var(--border)'}'">
       <div style="font-size:12px;font-weight:${isToday?'700':'500'};color:${isToday?'var(--accent)':'var(--text)'};background:${isToday?'var(--accent-light)':'transparent'};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px">${d}</div>
       ${dayEvents.slice(0,2).map(e=>`
-        <div style="font-size:10px;padding:2px 5px;border-radius:4px;margin-bottom:2px;background:${e.priority==='urgent'?'#fee2e2':e.source==='deadline'?'#fef3c7':'#dbeafe'};color:${e.priority==='urgent'?'#b91c1c':e.source==='deadline'?'#92400e':'#1e40af'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${e.title}">${e.title}</div>
+        <div style="font-size:10px;padding:2px 5px;border-radius:4px;margin-bottom:2px;background:${e.priority==='urgent'?'#fee2e2':e.source==='deadline'?'#fef3c7':e.source==='appointment'?'#f0fdf4':'#dbeafe'};color:${e.priority==='urgent'?'#b91c1c':e.source==='deadline'?'#92400e':e.source==='appointment'?'#15803d':'#1e40af'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${e.title}">${e.title}</div>
       `).join('')}
       ${dayEvents.length>2?`<div style="font-size:10px;color:var(--text3)">+${dayEvents.length-2} עוד</div>`:''}
     </div>`;
@@ -2402,6 +3504,7 @@ function renderCalendarPage(){
         <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><div style="width:10px;height:10px;border-radius:2px;background:#fee2e2"></div>דחוף</div>
         <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><div style="width:10px;height:10px;border-radius:2px;background:#fef3c7"></div>דדליין מס</div>
         <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><div style="width:10px;height:10px;border-radius:2px;background:#dbeafe"></div>משימה</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><div style="width:10px;height:10px;border-radius:2px;background:#f0fdf4"></div>פגישה</div>
       </div>
     </div>
 
@@ -2516,6 +3619,7 @@ function scheduleWithWA(){
     time:timeStr(),converted:false,channel:'whatsapp',auto:false});
   if(document.getElementById('cal-meeting-title'))document.getElementById('cal-meeting-title').value='';
   if(document.getElementById('cal-meeting-date'))document.getElementById('cal-meeting-date').value='';
+  _saveTasks();
   renderPage();toast(`✅ פגישה עם ${clientName} + וואטסאפ!`);
 }
 function scheduleWithEmail(){
@@ -2689,12 +3793,56 @@ function openModal(id){
 }
 function closeModal(id){document.getElementById('m-'+id).classList.remove('open');}
 
+function toggleTaskDetail(id){
+  const panel=document.getElementById('tdp-'+id);
+  const arrow=document.getElementById('tda-'+id);
+  const wrapper=document.getElementById('tdi-'+id);
+  if(!panel)return;
+  const isOpen=panel.style.display!=='none';
+  // close all open panels first
+  document.querySelectorAll('[id^="tdp-"]').forEach(p=>{
+    p.style.display='none';
+    const pid=p.id.replace('tdp-','');
+    const a=document.getElementById('tda-'+pid);
+    const w=document.getElementById('tdi-'+pid);
+    if(a)a.style.transform='';
+    if(w){w.style.borderColor='var(--border)';w.style.boxShadow='';}
+  });
+  // if it was closed → open it
+  if(!isOpen){
+    panel.style.display='block';
+    if(arrow)arrow.style.transform='rotate(180deg)';
+    if(wrapper){wrapper.style.borderColor='var(--accent)';wrapper.style.boxShadow='0 4px 14px rgba(0,0,0,.08)';}
+  }
+}
+
 // ══════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════
 function hrs(ts){return(Date.now()-ts)/3600000;}
 function today(){return new Date().toISOString().slice(0,10);}
-function fmtD(d){const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
+// המרת כל פורמט תאריך ל-YYYY-MM-DD (כולל Firestore Timestamp)
+function toDateStr(v){
+  if(!v) return '';
+  if(typeof v==='string'){
+    // "29 באפריל 2026" style → not ISO, try to parse
+    if(/^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0,10);
+    const p=new Date(v); if(!isNaN(p)) return p.toISOString().slice(0,10);
+    return '';
+  }
+  if(typeof v.toDate==='function') return v.toDate().toISOString().slice(0,10);
+  if(v && v.seconds) return new Date(v.seconds*1000).toISOString().slice(0,10);
+  if(v instanceof Date) return v.toISOString().slice(0,10);
+  if(typeof v==='number') return new Date(v).toISOString().slice(0,10);
+  return '';
+}
+window.toDateStr=toDateStr; // expose to module scripts
+function fmtD(d){
+  if(!d) return '';
+  const s=toDateStr(d)||d;
+  const[y,m,day]=(s||'').split('-');
+  return day&&m&&y?`${day}/${m}/${y}`:'';
+}
 function timeStr(){return new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});}
 function avInitials(name){return name.split(' ').map(w=>w[0]).join('').slice(0,2);}
 function prevLogo(input){
@@ -2704,6 +3852,87 @@ function prevLogo(input){
     const img=document.getElementById('logo-img-s');
     if(img){img.src=e.target.result;img.style.display='block';const em=document.getElementById('logo-emoji-s');if(em)em.style.display='none';}
   };r.readAsDataURL(f);
+}
+// ── שמירת overrides: שינויים ידניים למשימות WA (אחראי/סטטוס/הצמדה) ──
+function _taskOverridesKey(){
+  return 'dabelu_task_ov_'+(S.user?.uid||S.user?.email||'guest');
+}
+function _saveTaskOverrides(){
+  try{
+    const ov={};
+    (S.tasks||[]).forEach(t=>{
+      if(!t.id) return;
+      // שמור את כל השדות שהמשתמש יכול לשנות — כך כל עדכון ישרוד כניסה מחדש
+      ov[t.id]={
+        title:       t.title        || '',
+        type:        t.type         || 'tax',
+        assignee:    t.assignee     || '',
+        status:      t.status       || 'pending',
+        pinned:      !!t.pinned,
+        done:        !!t.done,
+        client:      t.client       || '',
+        clientName:  t.clientName   || '',
+        snoozedUntil:t.snoozedUntil ?? null,
+        remindedAt:  t.remindedAt   ?? null,
+        priority:    t.priority     || '',
+        date:        t.date         || '',
+        time:        t.time         || '',
+        description: t.description  || '',
+      };
+    });
+    localStorage.setItem(_taskOverridesKey(), JSON.stringify(ov));
+  }catch(e){}
+}
+function _loadTaskOverrides(){
+  try{
+    const raw=localStorage.getItem(_taskOverridesKey());
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+
+// ── שמירת משימות ל-localStorage + Firestore (fire-and-forget) ──
+function _saveTasks(){
+  // נרמול לפני שמירה: כל משימה ללא אחראי → בעל העסק
+  // + ניקוי clientName שמכיל שם עובד (באג ישן מ-addTask)
+  const _on = (S.user?.name||'').trim();
+  if(_on && S.tasks){
+    const teamNameSet = new Set((S.team||[]).map(m=>m.name).concat(_on ? [_on] : []));
+    S.tasks.forEach(t=>{
+      if(!t.assignee||t.assignee==='אני') t.assignee=_on;
+      if(t.clientName && teamNameSet.has(t.clientName.trim())) t.clientName='';
+    });
+  }
+  // שמור overrides בנפרד (גיבוי מהיר)
+  _saveTaskOverrides();
+  try{
+    const key='dabelu_tasks_'+(S.user?.uid||S.user?.email||'guest');
+    localStorage.setItem(key, JSON.stringify(S.tasks||[]));
+  }catch(e){}
+  if(S.user?.uid && window.saveTasksToDB){
+    window.saveTasksToDB(S.user.uid, S.tasks||[]).catch(e=>console.warn('saveTasksToDB:',e));
+  }
+}
+
+function _saveTeam(){
+  // שמירה ב-localStorage
+  try{
+    const key='dabelu_team_'+(S.user?.uid||S.user?.email||'guest');
+    localStorage.setItem(key, JSON.stringify({team:S.team, nextMemberId:S.nextMemberId}));
+  }catch(e){}
+  // שמירה ב-Firestore (async, fire-and-forget)
+  if(S.user?.uid && window.saveTeamToDB){
+    window.saveTeamToDB(S.user.uid, S.team, S.nextMemberId).catch(()=>{});
+  }
+}
+function _loadTeamFromLocalStorage(){
+  try{
+    const key='dabelu_team_'+(S.user?.uid||S.user?.email||'guest');
+    const raw=localStorage.getItem(key);
+    if(!raw) return;
+    const d=JSON.parse(raw);
+    if(d.team && d.team.length) S.team=d.team;
+    if(d.nextMemberId) S.nextMemberId=d.nextMemberId;
+  }catch(e){}
 }
 function _saveToLocalStorage(){
   try{
@@ -2722,9 +3951,11 @@ function _loadFromLocalStorage(){
     if(!raw) return;
     const d=JSON.parse(raw);
     if(d.user){
+      if(d.user.name) S.user.name=d.user.name;
       if(d.user.phone) S.user.phone=d.user.phone;
       if(d.user.waPhone) S.user.waPhone=d.user.waPhone;
       if(d.user.role) S.user.role=d.user.role;
+      if(d.user.officeName) S.user.officeName=d.user.officeName;
     }
     if(d.office){
       if(d.office.name) S.office.name=d.office.name;
@@ -2733,6 +3964,15 @@ function _loadFromLocalStorage(){
       if(d.office.addr) S.office.addr=d.office.addr;
     }
     if(d.notif) S.notif=d.notif;
+  }catch(e){}
+}
+function _loadTasksFromLocalStorage(){
+  try{
+    const key='dabelu_tasks_'+(S.user?.uid||S.user?.email||'guest');
+    const raw=localStorage.getItem(key);
+    if(!raw) return;
+    const tasks=JSON.parse(raw);
+    if(Array.isArray(tasks)&&tasks.length) S.tasks=tasks;
   }catch(e){}
 }
 
@@ -2757,19 +3997,25 @@ async function saveSection(id){
       }
     }
     if(id==='office'){
-      // S.office כבר עודכן ב-onchange
-      S.user.officeName=S.office.name;
+      // קריאה ישירה מהשדות
+      const officeName=(document.getElementById('of-name')?.value||'').trim();
+      const officePhone=(document.getElementById('of-phone')?.value||'').trim();
+      const officeEmail=(document.getElementById('of-email')?.value||'').trim();
+      const officeAddr=(document.getElementById('of-addr')?.value||'').trim();
+      S.office.name=officeName;
+      S.office.phone=officePhone;
+      S.office.email=officeEmail;
+      S.office.addr=officeAddr;
+      S.user.officeName=officeName;
       _saveToLocalStorage();
       if(S.user?.uid && window.saveUserProfileToDB){
         await window.saveUserProfileToDB(S.user.uid,{
-          officeName:S.office.name,
-          officePhone:S.office.phone,
-          officeEmail:S.office.email,
-          officeAddr:S.office.addr
+          officeName,officePhone,officeEmail,officeAddr
         });
       }
     }
     if(id==='notifications'){
+      if(!S.notif) S.notif={auto48:true,morning:true,deadline:true,doneConfirm:false,weekly:false,quietFrom:'22:00',quietTo:'08:00'};
       S.notif.quietFrom=document.getElementById('notif-quiet-from')?.value||'22:00';
       S.notif.quietTo=document.getElementById('notif-quiet-to')?.value||'08:00';
       _saveToLocalStorage();
@@ -3100,6 +4346,68 @@ function renderWorkerTasksPage(){
   ${cards}`;
 }
 
+function renderWorkerAllTasksPage(){
+  const all = S.allSharedTasks || [];
+  const myEmail = (S.user?.email||'').toLowerCase();
+  const statusClr={pending:'#64748b',inprogress:'#d97706',done:'#16a34a',problem:'#dc2626'};
+  const statusLbl={pending:'ממתין',inprogress:'בביצוע',done:'הושלם',problem:'יש בעיה'};
+
+  if(!all.length) return `<div class="empty-state">אין משימות כרגע 🎉</div>`;
+
+  // קיבוץ לפי שם עובד
+  const grouped = {};
+  all.forEach(t => {
+    const key = t.assigneeName || t.assigneeEmail || 'לא שויך';
+    if(!grouped[key]) grouped[key]=[];
+    grouped[key].push(t);
+  });
+
+  const myName = S.user?.name || myEmail;
+
+  return Object.entries(grouped).map(([worker, tasks]) => {
+    const isMe = tasks.some(t=>(t.assigneeEmail||'').toLowerCase()===myEmail);
+    const pending = tasks.filter(t=>t.status!=='done').length;
+    const done    = tasks.filter(t=>t.status==='done').length;
+    return `
+    <div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 14px;background:${isMe?'#eff6ff':'var(--surface)'};border-radius:var(--radius);border:1.5px solid ${isMe?'#2563eb':'var(--border)'}">
+        <div style="width:32px;height:32px;border-radius:50%;background:${isMe?'#2563eb':'#64748b'};color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          ${(worker[0]||'?').toUpperCase()}
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">${worker}${isMe?' (אני)':''}</div>
+          <div style="font-size:11px;color:var(--text2)">${pending} פעילות · ${done} הושלמו</div>
+        </div>
+      </div>
+      ${tasks.map(t => {
+        const isMine = (t.assigneeEmail||'').toLowerCase()===myEmail;
+        const unread = t.unreadCount||0;
+        return `
+        <div class="wt-card ${t.priority==='urgent'?'urgent':''} ${t.status==='done'?'done-card':''}" style="margin-right:16px;margin-bottom:8px">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;margin-bottom:5px">${t.title}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+                ${t.priority==='urgent'?'<span class="badge" style="background:#fee2e2;color:#b91c1c">דחוף</span>':''}
+                ${t.clientName?`<span class="badge badge-tax">${t.clientName}</span>`:''}
+                ${t.dueDate?`<span class="tc-date">📅 ${fmtD(t.dueDate)}</span>`:''}
+                <span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:${statusClr[t.status]||'#64748b'}22;color:${statusClr[t.status]||'#64748b'}">${statusLbl[t.status]||t.status}</span>
+              </div>
+              ${t.notes?`<div style="font-size:11px;color:var(--text3);margin-top:4px">${t.notes}</div>`:''}
+            </div>
+          </div>
+          <div class="wt-status-row">
+            ${isMine && t.status!=='inprogress'&&t.status!=='done'?`<button class="wt-btn start" onclick="workerSetStatus('${t.id}','inprogress')">▶ התחלתי</button>`:''}
+            ${isMine && t.status!=='done'?`<button class="wt-btn done" onclick="workerSetStatus('${t.id}','done')">✓ בוצע</button>`:''}
+            ${isMine && t.status!=='problem'&&t.status!=='done'?`<button class="wt-btn problem" onclick="workerSetStatus('${t.id}','problem')">⚠ בעיה</button>`:''}
+            <button class="wt-btn chat" onclick="openTaskChat('${t.id}','${(t.title||'').replace(/'/g,"\\'")}')">💬 שיחה${unread>0?`<span class="chat-unread">${unread}</span>`:''}</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
 function renderWorkerChatListPage(){
   const tasks=(S.workerTasks||[]).filter(t=>t.lastMessage);
   if(!tasks.length) return `<div class="empty-state">אין שיחות עדיין 💬<br/><span style="font-size:12px">שיחות יופיעו כאן לאחר שיישלחו הודעות</span></div>`;
@@ -3313,8 +4621,13 @@ function toast(msg){
         if(existing.notif) S.notif = existing.notif;
         const tasks = await window.loadTasksFromDB(user.uid);
         const clients = await window.loadClientsFromDB(user.uid);
+        const teamData = await window.loadTeamFromDB(user.uid);
         if(tasks.length) S.tasks = tasks;
         if(clients.length) S.clients = clients;
+        if(teamData && teamData.team && teamData.team.length) {
+          S.team = teamData.team;
+          if(teamData.nextMemberId) S.nextMemberId = teamData.nextMemberId;
+        }
       }
       await saveUserData(user.uid, { name: S.user.name, email: S.user.email, officeName: S.user.officeName, lastLogin: new Date().toISOString() });
       enterApp();
@@ -3336,25 +4649,66 @@ function toast(msg){
 
       // ── בדיקת אדמין ──
       if (em === ADMIN_EMAIL) {
-        const adminPassHash = await hashPass('322964123');
-        if (passHash !== adminPassHash) {
-          errEl.textContent = 'מייל או סיסמה שגויים';
-          return;
-        }
-        // עדכון Firestore - אם נכשל, הכניסה עדיין מצליחה
+        const defaultAdminHash = await hashPass('322964123');
+        // בדיקה מול Firestore קודם (אם שינה סיסמה), אחרת מול ברירת המחדל
+        let adminAllowed = false;
+        let adminUid = 'admin_main';
+        let adminData = null;
         try {
           const adminSnap = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
-          if (adminSnap.empty) {
+          if (!adminSnap.empty) {
+            adminData = adminSnap.docs[0].data();
+            adminUid = adminSnap.docs[0].id;
+            if (adminData.passwordHash) {
+              // יש סיסמה שמורה – בדוק מולה
+              adminAllowed = (passHash === adminData.passwordHash);
+            } else {
+              // אין סיסמה שמורה – בדוק מול ברירת המחדל
+              adminAllowed = (passHash === defaultAdminHash);
+            }
+          } else {
+            // אין מסמך – צור ובדוק מול ברירת המחדל
+            adminAllowed = (passHash === defaultAdminHash);
             await setDoc(doc(db, 'users', 'admin_main'), {
-              name: 'שנית', email: em, passwordHash: adminPassHash,
+              name: 'שנית', email: em, passwordHash: defaultAdminHash,
               subscription: 'active', officeName: 'ניהול', source: 'admin',
               createdAt: new Date().toISOString(), lastLogin: new Date().toISOString()
             });
-          } else {
-            await updateDoc(doc(db, 'users', adminSnap.docs[0].id), { lastLogin: new Date().toISOString() });
           }
-        } catch(fsErr) { console.warn('Firestore admin sync skipped:', fsErr); }
-        S.user = { uid: 'admin_main', name: 'שנית', email: em, initials: 'שנ', officeName: 'ניהול' };
+        } catch(fsErr) {
+          console.warn('Firestore admin check failed, using default:', fsErr);
+          adminAllowed = (passHash === defaultAdminHash);
+        }
+        if (!adminAllowed) {
+          errEl.textContent = 'מייל או סיסמה שגויים';
+          return;
+        }
+        try {
+          await updateDoc(doc(db, 'users', adminUid), { lastLogin: new Date().toISOString() });
+        } catch(e) {}
+        const adminName = adminData?.name || 'שנית';
+        const adminOfficeName = adminData?.officeName || 'ניהול';
+        S.user = { uid: adminUid, name: adminName, email: em, initials: adminName.slice(0,2).toUpperCase(), officeName: adminOfficeName,
+          phone: adminData?.phone||'', waPhone: adminData?.waPhone||'', role: adminData?.role||'' };
+        if(adminData?.officePhone) S.office.phone = adminData.officePhone;
+        if(adminData?.officeEmail) S.office.email = adminData.officeEmail;
+        if(adminData?.officeAddr) S.office.addr = adminData.officeAddr;
+        if(adminData?.officeName) S.office.name = adminData.officeName;
+        if(adminData?.notif) S.notif = adminData.notif;
+        // טעינת משימות, צוות ולקוחות מ-Firestore לפני כניסה לאפליקציה
+        try {
+          const [adminTasks, adminClients, adminTeamData] = await Promise.all([
+            window.loadTasksFromDB ? window.loadTasksFromDB(adminUid) : Promise.resolve([]),
+            window.loadClientsFromDB ? window.loadClientsFromDB(adminUid) : Promise.resolve([]),
+            window.loadTeamFromDB ? window.loadTeamFromDB(adminUid) : Promise.resolve(null),
+          ]);
+          if(adminTasks && adminTasks.length) S.tasks = adminTasks;
+          if(adminClients && adminClients.length) S.clients = adminClients;
+          if(adminTeamData && adminTeamData.team && adminTeamData.team.length){
+            S.team = adminTeamData.team;
+            if(adminTeamData.nextMemberId) S.nextMemberId = adminTeamData.nextMemberId;
+          }
+        } catch(e){ console.warn('admin data load:', e); }
         enterApp();
         return;
       }
@@ -3378,11 +4732,12 @@ function toast(msg){
       // עדכון כניסה אחרונה
       await updateDoc(doc(db, 'users', uDoc.id), { lastLogin: new Date().toISOString() });
       if(typeof S !== 'undefined') {
+        const nm = uData.name || em.split('@')[0];
         S.user = {
           uid: uDoc.id,
-          name: uData.name || em.split('@')[0],
+          name: nm,
           email: em,
-          initials: (uData.name || em).slice(0,2).toUpperCase(),
+          initials: nm.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),
           officeName: uData.officeName || 'משרד ייעוץ מס',
           role: uData.role || 'employer',
           phone: uData.phone || '',
@@ -3393,6 +4748,18 @@ function toast(msg){
         if(uData.officeEmail) S.office.email = uData.officeEmail;
         if(uData.officeAddr) S.office.addr = uData.officeAddr;
         if(uData.officeName) S.office.name = uData.officeName;
+        // טעינת הגדרות התראות
+        if(uData.notif) S.notif = uData.notif;
+        // טעינת צוות, משימות ולקוחות
+        const tasks   = await window.loadTasksFromDB(uDoc.id);
+        const clients = await window.loadClientsFromDB(uDoc.id);
+        const teamData= await window.loadTeamFromDB(uDoc.id);
+        if(tasks.length)   S.tasks   = tasks;
+        if(clients.length) S.clients = clients;
+        if(teamData && teamData.team && teamData.team.length) {
+          S.team = teamData.team;
+          if(teamData.nextMemberId) S.nextMemberId = teamData.nextMemberId;
+        }
         enterApp();
       }
     } catch(e) {
@@ -3400,6 +4767,143 @@ function toast(msg){
       errEl.textContent = 'מייל או סיסמה שגויים';
     }
   };
+
+  // ── יצירת עובד מוזמן ב-Firestore ──
+  window.createInvitedEmployee = async function(name, email, role, tempCode, officeName) {
+    const em = email.toLowerCase();
+    const codeHash = await hashPass(tempCode);
+    // אם המשתמש כבר קיים – רק עדכן את קוד ההזמנה
+    const existing = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
+    if (!existing.empty) {
+      await updateDoc(doc(db, 'users', existing.docs[0].id), {
+        inviteToken: tempCode,
+        passwordHash: codeHash,
+        source: 'invited'
+      });
+      return;
+    }
+    const uid = 'emp_' + Date.now();
+    await setDoc(doc(db, 'users', uid), {
+      name, email: em,
+      passwordHash: codeHash,
+      inviteToken: tempCode,
+      officeName: officeName || 'משרד ייעוץ מס',
+      role: role || 'employee',
+      subscription: 'employee',
+      createdAt: new Date().toISOString(),
+      source: 'invited'
+    });
+  };
+
+  // ── מסך כניסה ראשונה מקישור הזמנה (?email=...&code=...) ──
+  (function checkInviteUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const invEmail = params.get('email');
+    const invCode  = params.get('code');
+    if (!invEmail || !invCode) return;
+
+    // הצג מסך הגדרת סיסמה במקום מסך כניסה רגיל
+    const normalBox = document.querySelector('#screen-auth > div:first-child');
+    const firstBox  = document.getElementById('first-login-box');
+    if (normalBox) normalBox.style.display = 'none';
+    if (firstBox)  firstBox.style.display  = 'block';
+
+    // עדכן כותרת עם שם
+    getDocs(query(collection(db, 'users'), where('email', '==', invEmail.toLowerCase())))
+      .then(snap => {
+        if (!snap.empty) {
+          const n = snap.docs[0].data().name || '';
+          const el = document.getElementById('fl-welcome');
+          if (el && n) el.textContent = `ברוכה הבאה, ${n}!`;
+        }
+      }).catch(() => {});
+
+    const flBtn  = document.getElementById('fl-btn');
+    const flErr  = document.getElementById('fl-err');
+
+    async function doFirstLogin() {
+      const p1 = (document.getElementById('fl-pass1').value || '').trim();
+      const p2 = (document.getElementById('fl-pass2').value || '').trim();
+      flErr.style.display = 'none';
+      if (!p1 || p1.length < 6) { flErr.textContent = 'סיסמה חייבת להיות לפחות 6 תווים'; flErr.style.display = 'block'; return; }
+      if (p1 !== p2)             { flErr.textContent = 'הסיסמאות אינן תואמות';            flErr.style.display = 'block'; return; }
+
+      flBtn.textContent = '⏳ שומרת...';
+      flBtn.style.pointerEvents = 'none';
+
+      try {
+        const em = invEmail.toLowerCase();
+        // מצא משתמש לפי מייל
+        const snap = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
+        if (snap.empty) {
+          // משתמש לא קיים – צור אותו עכשיו עם הסיסמה החדשה
+          const newHash = await hashPass(p1);
+          const uid = 'emp_' + Date.now();
+          await setDoc(doc(db, 'users', uid), {
+            name: em.split('@')[0], email: em,
+            passwordHash: newHash, inviteToken: null,
+            subscription: 'employee', role: 'employee',
+            createdAt: new Date().toISOString(), lastLogin: new Date().toISOString(), source: 'invited'
+          });
+          if (typeof S !== 'undefined') {
+            S.user = { uid, name: em.split('@')[0], email: em,
+              initials: em.slice(0,2).toUpperCase(), officeName: 'משרד ייעוץ מס', role: 'employee', phone: '', waPhone: '' };
+            window.history.replaceState({}, '', window.location.pathname);
+            enterApp();
+            setTimeout(() => toast('✅ סיסמה הוגדרה בהצלחה! ברוכה הבאה 🎉'), 1000);
+          }
+          return;
+        }
+        const uDoc = snap.docs[0];
+        const uData = uDoc.data();
+        // בדיקת תוקף הקישור: השווה inviteToken (גולמי) או אפשר אם אין passwordHash
+        const tokenMatch = uData.inviteToken && uData.inviteToken === invCode;
+        const hashMatch  = uData.passwordHash === await hashPass(invCode);
+        const noPass     = !uData.passwordHash;
+        if (!tokenMatch && !hashMatch && !noPass) {
+          flErr.textContent = 'קישור ההזמנה אינו תקין או פג תוקף. בקשי קישור חדש מהמנהל/ת.';
+          flErr.style.display = 'block';
+          return;
+        }
+        // שמור סיסמה חדשה ב-Firestore
+        const newHash = await hashPass(p1);
+        await updateDoc(doc(db, 'users', uDoc.id), {
+          passwordHash: newHash,
+          inviteToken: null,
+          lastLogin: new Date().toISOString()
+        });
+        // כנס לאפליקציה
+        const nm = uData.name || em.split('@')[0];
+        if (typeof S !== 'undefined') {
+          S.user = {
+            uid: uDoc.id, name: nm, email: em,
+            initials: nm.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),
+            officeName: uData.officeName || 'משרד ייעוץ מס',
+            role: uData.role || 'employee',
+            phone: uData.phone || '', waPhone: uData.waPhone || ''
+          };
+          if (uData.officeName) S.office.name = uData.officeName;
+          if (uData.notif) S.notif = uData.notif;
+          // נקה URL
+          window.history.replaceState({}, '', window.location.pathname);
+          enterApp();
+          setTimeout(() => toast('✅ סיסמה הוגדרה בהצלחה! ברוכה הבאה 🎉'), 1000);
+        }
+      } catch(e) {
+        console.error('First login error:', e);
+        flErr.textContent = 'שגיאה: ' + e.message;
+        flErr.style.display = 'block';
+      } finally {
+        flBtn.textContent = 'כנסי למערכת ←';
+        flBtn.style.pointerEvents = '';
+      }
+    }
+
+    if (flBtn) flBtn.addEventListener('click', doFirstLogin);
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && firstBox && firstBox.style.display !== 'none') doFirstLogin();
+    });
+  })();
 
   // ── הרשמה עם אימייל + סיסמה (שמירה ל-Firestore) ──
   window.registerNewUser = async function(name, email, pass, officeName) {
@@ -3499,6 +5003,22 @@ function toast(msg){
     } catch(e) { console.error('loadClients:', e); return []; }
   };
 
+  // ── שמירת צוות ──
+  window.saveTeamToDB = async function(uid, team, nextMemberId) {
+    try {
+      await setDoc(doc(db, 'users', uid, 'data', 'team'), { team: team, nextMemberId: nextMemberId || 4 });
+    } catch(e) { console.error('saveTeam:', e); }
+  };
+
+  // ── טעינת צוות ──
+  window.loadTeamFromDB = async function(uid) {
+    try {
+      const snap = await getDoc(doc(db, 'users', uid, 'data', 'team'));
+      if (!snap.exists()) return null;
+      return snap.data();
+    } catch(e) { console.error('loadTeam:', e); return null; }
+  };
+
   // ── האזנה בזמן אמת למשימות וואטסאפ (root collection) ──
   function waTaskId(str) {
     let h = 0;
@@ -3508,32 +5028,135 @@ function toast(msg){
   window.listenWhatsAppTasks = function() {
     const pMap = {high:'urgent', urgent:'urgent', medium:'normal', low:'normal'};
     onSnapshot(collection(db, 'tasks'), (snap) => {
+      if(typeof S === 'undefined') return;
+      const ownerName = (S.user?.name || '').trim();
+      // טען overrides (שינויים ידניים שנשמרו) — עובד גם אם S.tasks ריק
+      const ov = (typeof _loadTaskOverrides === 'function') ? _loadTaskOverrides() : {};
       const waTasks = snap.docs.map(d => {
         const t = d.data();
+        const taskId = waTaskId(d.id);
+        // מקור 1: override שנשמר ב-localStorage (הכי סמכותי)
+        const o = ov[taskId];
+        // מקור 2: גרסה קיימת ב-S.tasks
+        const prev = S.tasks && S.tasks.find(et => et.id === taskId);
+        // כלל: override (localStorage) > גרסה קיימת בזיכרון > נתוני bot > ברירת מחדל
+        const taskTitle      = o?.title       || prev?.title       || t.title       || 'משימה מוואטסאפ';
+        const taskAssignee   = o?.assignee    || prev?.assignee    || t.assignedTo  || t.workerName || ownerName || '';
+        const taskStatus     = o?.status      || prev?.status      || t.status      || 'pending';
+        const taskPinned     = o?.pinned      ?? prev?.pinned      ?? false;
+        const taskClient     = o?.client      || prev?.client      || t.client      || '';
+        const taskClientName = o?.clientName  || prev?.clientName  || t.clientName  || '';
+        const taskSnoozed    = o?.snoozedUntil?? prev?.snoozedUntil?? null;
+        const taskReminded   = o?.remindedAt  ?? prev?.remindedAt  ?? null;
+        const taskPriority   = o?.priority    || prev?.priority    || pMap[t.priority] || 'normal';
+        // תאריך — fallback לכל שמות השדות + המרת Firestore Timestamp ל-string
+        const _ds = v=>(typeof toDateStr==='function'?toDateStr(v):'');
+        const taskDate       = o?.date || prev?.date || _ds(t.dueDate)||_ds(t.date)||_ds(t.meetingDate)||_ds(t.appointmentDate) || '';
+        const taskDesc       = o?.description || prev?.description || t.description || '';
+        // שעה — fallback לשמות שדה שונים
+        const taskTime       = o?.time        || prev?.time        || t.time || t.meetingTime || t.appointmentTime || '';
+        // זיהוי פגישה: שדה type מהבוט, או מילות מפתח בכותרת
+        // הזיהוי לפי מילות מפתח תמיד גובר — כדי לתקן overrides ישנים שנשמרו בטעות כ-'tax'
+        const _meetingKW = ['פגישה','ישיבה','פגישת','meeting','appointment'];
+        const _isMeeting = t.type==='meeting' || t.category==='meeting' || t.isAppointment===true
+          || _meetingKW.some(w=>taskTitle.includes(w));
+        const taskType = _isMeeting ? 'meeting' : (o?.type || prev?.type || t.type || 'tax');
         return {
-          id: waTaskId(d.id),
-          title: t.title || 'משימה מוואטסאפ',
-          type: 'tax',
-          assignee: t.clientName || '',
-          date: t.dueDate || '',
-          priority: pMap[t.priority] || 'normal',
-          done: false,
-          status: 'pending',
-          createdAt: t.createdAt ? new Date(t.createdAt).getTime() : Date.now(),
-          remindedAt: null,
-          snoozedUntil: null,
-          pinned: false,
+          id: taskId,
+          title: taskTitle,
+          type: taskType,
+          assignee: taskAssignee || ownerName,
+          date: taskDate,
+          time: taskTime,
+          priority: taskPriority,
+          done: taskStatus === 'done',
+          status: taskStatus,
+          createdAt: prev?.createdAt || (t.createdAt ? new Date(t.createdAt).getTime() : Date.now()),
+          remindedAt:   taskReminded,
+          snoozedUntil: taskSnoozed,
+          pinned: taskPinned,
           source: 'whatsapp',
-          description: t.description || '',
-          clientName: t.clientName || ''
+          description: taskDesc,
+          client: taskClient,
+          clientName: taskClientName
         };
       });
-      if(typeof S !== 'undefined') {
-        S.tasks = S.tasks.filter(t => t.source !== 'whatsapp');
-        S.tasks = [...waTasks, ...S.tasks];
-        if(typeof renderPage === 'function') renderPage();
-      }
+      S.tasks = S.tasks.filter(t => t.source !== 'whatsapp');
+      S.tasks = [...waTasks, ...S.tasks];
+      // נרמל: כל משימה ללא אחראי → בעל העסק
+      if(ownerName) S.tasks.forEach(t => { if(!t.assignee || t.assignee==='אני') t.assignee = ownerName; });
+      if(typeof _saveTasks === 'function') _saveTasks();
+      if(typeof renderPage === 'function') renderPage();
     });
+  };
+
+  // ── האזנה בזמן אמת לפגישות ──
+  window.listenAppointments = function() {
+    // טען קודם מ-localStorage (מהיר)
+    try{
+      const key='dabelu_appts_'+(S.user?.uid||'guest');
+      const saved=localStorage.getItem(key);
+      if(saved){ S.appointments=JSON.parse(saved); }
+    }catch(e){}
+
+    onSnapshot(collection(db, 'appointments'), (snap) => {
+      const ds = window.toDateStr || (v=>typeof v==='string'?v.slice(0,10):'');
+      const firestoreAppts = snap.docs.map(d => {
+        const raw = d.data();
+        const dateStr =
+          ds(raw.date) || ds(raw.appointmentDate) || ds(raw.meetingDate) ||
+          ds(raw.dueDate) || ds(raw.scheduledDate) || ds(raw.datetime) || '';
+        const timeVal = raw.time||raw.meetingTime||raw.appointmentTime||raw.hour||'';
+        const titleVal = raw.title||raw.name||raw.subject||raw.description||'פגישה';
+        const clientVal = raw.clientName||raw.client||raw.name||raw.with||'';
+        return { id: d.id, ...raw, date: dateStr, time: timeVal,
+          title: titleVal, clientName: clientVal };
+      });
+      // מיזוג: פגישות Firestore + פגישות שנוצרו ידנית (manual:true)
+      const manualAppts = (S.appointments||[]).filter(a=>a.manual);
+      const merged = [...firestoreAppts, ...manualAppts]
+        .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+      S.appointments = merged;
+      // עדכן badge
+      const upcoming = S.appointments.filter(a => (a.date||'') >= today()).length;
+      const nb = document.getElementById('nb-appts');
+      if(nb){ nb.textContent = upcoming; nb.style.display = upcoming > 0 ? '' : 'none'; }
+      if(S.page === 'appointments' || S.page === 'calendar' || S.page === 'dashboard') renderPage();
+    }, (err)=>{ console.warn('listenAppointments error:', err); });
+  };
+
+  // שמירת פגישה ידנית ל-Firestore
+  window.saveAppointmentToDB = async function(appt){
+    try{
+      const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      await setDoc(doc(db,'appointments',String(appt.id)), appt);
+    }catch(e){ console.warn('saveAppointmentToDB:', e); }
+  };
+
+  // ── האזנה בזמן אמת ללקוחות WhatsApp ──
+  window.listenWAClients = function() {
+    onSnapshot(collection(db, 'clients'), (snap) => {
+      S.waClients = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a,b) => (a.name||'').localeCompare(b.name||''));
+      if(S.page === 'clients') renderPage();
+    });
+  };
+
+  // ── שמירת לקוח WhatsApp ──
+  window.saveWAClient = async function(id, data) {
+    try {
+      if(id) await updateDoc(doc(db,'clients',id), data);
+      else    await addDoc(collection(db,'clients'), { ...data, createdAt: new Date().toISOString() });
+      if(typeof toast === 'function') toast('✅ לקוח נשמר');
+    } catch(e) { console.error('saveWAClient:', e); }
+  };
+
+  // ── מחיקת לקוח WhatsApp ──
+  window.deleteWAClient = async function(id) {
+    try {
+      await deleteDoc(doc(db,'clients',id));
+      if(typeof toast === 'function') toast('✅ לקוח נמחק');
+    } catch(e) { console.error('deleteWAClient:', e); }
   };
 
   // ── Admin: טעינת כל המשתמשים ──

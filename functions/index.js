@@ -47,6 +47,84 @@ async function isRegisteredUser(phone) {
   return Array.isArray(data) && data.length > 0 && data[0].document;
 }
 
+// ── Appointment detection with GPT ───────────────────────────────────────────
+
+async function detectAppointment(text) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.OPENAI_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: `אתה עוזר לזיהוי פגישות עבור יועצת מס ישראלית.
+זהה אם ההודעה מבקשת לקבוע פגישה / מינוי / ישיבה.
+אם כן — חלץ: שם לקוח, תאריך (YYYY-MM-DD), שעה (HH:MM).
+תאריכים יחסיים ("מחר", "ביום רביעי") — תרגם לתאריך מוחלט. היום: ${today}.
+החזר JSON בלבד:
+{"isAppointment": boolean, "clientName": string|null, "date": "YYYY-MM-DD"|null, "time": "HH:MM"|null}`
+          },
+          { role: 'user', content: text }
+        ],
+        temperature: 0
+      })
+    });
+    const data = await resp.json();
+    return JSON.parse(data.choices[0].message.content);
+  } catch (err) {
+    console.error('detectAppointment error:', err);
+    return { isAppointment: false };
+  }
+}
+
+// ── Hebrew date formatter ─────────────────────────────────────────────────────
+
+function formatHebrewDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr + 'T12:00:00');
+    const days   = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+    const months = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני',
+                    'יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+    return `יום ${days[d.getDay()]}, ${d.getDate()} ב${months[d.getMonth()]} ${d.getFullYear()}`;
+  } catch { return dateStr; }
+}
+
+// ── Save appointment to Firestore ─────────────────────────────────────────────
+
+async function saveAppointmentToFirestore({ clientName, title, date, time, notes, originalText }) {
+  const resp = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/appointments?key=${FIREBASE_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          clientName:   { stringValue: clientName || '' },
+          title:        { stringValue: title || `פגישה עם ${clientName}` },
+          date:         { stringValue: date  || '' },
+          time:         { stringValue: time  || '' },
+          notes:        { stringValue: notes || originalText || '' },
+          source:       { stringValue: 'whatsapp' },
+          createdAt:    { stringValue: new Date().toISOString() }
+        }
+      })
+    }
+  );
+  if (!resp.ok) {
+    const err = await resp.json();
+    console.error('saveAppointment Firestore error:', JSON.stringify(err));
+  }
+  return resp.ok;
+}
+
 // ── WhatsApp Webhook ──────────────────────────────────────────────────────────
 
 exports.whatsappWebhook = functions.https.onRequest(async (req, res) => {
@@ -124,7 +202,61 @@ exports.whatsappWebhook = functions.https.onRequest(async (req, res) => {
 
   if (!taskTitle.trim()) return res.status(200).send('empty task');
 
-  // שמירה ב-Firestore
+  // ── זיהוי פגישה ──────────────────────────────────────────────────────────────
+  let apptInfo = { isAppointment: false };
+  try { apptInfo = await detectAppointment(taskTitle.trim()); }
+  catch (err) { console.error('detectAppointment failed:', err); }
+
+  if (apptInfo.isAppointment) {
+    // שמירה ב-appointments
+    const apptOk = await saveAppointmentToFirestore({
+      clientName:   apptInfo.clientName || senderName,
+      title:        `פגישה עם ${apptInfo.clientName || senderName}`,
+      date:         apptInfo.date  || '',
+      time:         apptInfo.time  || '',
+      originalText: taskTitle.trim()
+    });
+
+    // גם שמירה ב-tasks (למקרה שצריך)
+    try {
+      const now = new Date().toISOString();
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/tasks?key=${FIREBASE_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fields: {
+              title:       { stringValue: `פגישה עם ${apptInfo.clientName || senderName}` },
+              clientName:  { stringValue: apptInfo.clientName || senderName },
+              type:        { stringValue: 'meeting' },
+              source:      { stringValue: 'whatsapp' },
+              status:      { stringValue: 'pending' },
+              priority:    { stringValue: 'normal' },
+              date:        { stringValue: apptInfo.date || '' },
+              time:        { stringValue: apptInfo.time || '' },
+              createdAt:   { stringValue: now },
+              description: { stringValue: taskTitle.trim() }
+            }
+          })
+        }
+      );
+    } catch (err) { console.error('task save error:', err); }
+
+    if (chatId) {
+      const dateHeb = apptInfo.date ? formatHebrewDate(apptInfo.date) : '';
+      const timeStr = apptInfo.time ? ` בשעה ${apptInfo.time}` : '';
+      const clientStr = apptInfo.clientName || senderName;
+      await sendWhatsAppReply(chatId,
+        apptOk
+          ? `✅ הפגישה נקבעה!\nעם: ${clientStr}\n${dateHeb}${timeStr}`
+          : `⚠️ ההודעה התקבלה אך הייתה בעיה בשמירת הפגישה.`
+      );
+    }
+    return res.status(200).json({ ok: true, type: 'appointment', client: apptInfo.clientName });
+  }
+
+  // ── משימה רגילה ──────────────────────────────────────────────────────────────
   let firestoreOk = false;
   try {
     const now = new Date().toISOString();
