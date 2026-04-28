@@ -263,26 +263,27 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId) {
 
   const apptWith  = pending.withName  || '';
   const apptEmail = pending.withEmail || '';
+  const cleanTitle = `פגישה עם ${apptWith}`;
 
   let eventId = null;
   try {
     if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.GOOGLE_CALENDAR_ID) {
       // יומן דבליו מרכזי — תמיד
       eventId = await createCalendarEvent(
-        pending.title, pending.date, pending.time||null,
+        cleanTitle, pending.date, pending.time||null,
         apptWith, process.env.GOOGLE_CALENDAR_ID, apptEmail
       );
       // יומן גוגל אישי של השולח — רק אם חיבר
       if (senderCalId) {
         await createCalendarEvent(
-          pending.title, pending.date, pending.time||null,
+          cleanTitle, pending.date, pending.time||null,
           apptWith, senderCalId, apptEmail
         );
       }
     }
   } catch(e) { console.error('Calendar finalize error:', e); }
 
-  await saveAppointment(pending.title, pending.date, pending.time||'', apptWith, chatId, eventId);
+  await saveAppointment(cleanTitle, pending.date, pending.time||'', apptWith, chatId, eventId);
 
   const dateStr   = formatDateHebrew(pending.date);
   const timeStr   = pending.time ? ` בשעה ${pending.time}` : '';
