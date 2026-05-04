@@ -423,6 +423,27 @@ async function sendReplyEmail(to, taskTitle, status, workerName) {
 // MAIN HANDLER
 // ───────────────────────────────────────────
 module.exports = async (req, res) => {
+  // ── DEBUG: GET /api/email-inbound?debug=1&email=xxx ──
+  if (req.method === 'GET' && req.query.debug === '1') {
+    const testEmail = (req.query.email || '').toLowerCase().trim();
+    if (!testEmail) return res.status(200).json({ error: 'add ?email=your@email.com' });
+    const dbg = { email: testEmail, steps: [] };
+    const userDoc = await isRegisteredEmail(testEmail);
+    if (!userDoc) { dbg.steps.push({ step: 'user', status: 'NOT FOUND' }); return res.json(dbg); }
+    const userId = userDoc.name.split('/').pop();
+    dbg.steps.push({ step: 'user', status: 'FOUND', userId, userFields: Object.keys(userDoc.fields || {}) });
+    const teamMembers = await getTeamMembers(userId, userDoc.fields);
+    dbg.steps.push({ step: 'team', count: teamMembers.length, members: teamMembers });
+    if (teamMembers.length) {
+      const testText = req.query.text || 'לרותי - בדיקה';
+      const aiResult = await extractAssigneeFromText(testText, teamMembers);
+      dbg.steps.push({ step: 'ai_assignee', text: testText, result: aiResult });
+      const workerMatch = (aiResult ? findWorkerByName(aiResult, teamMembers) : null) || findWorkerMatch(testText, teamMembers) || (teamMembers.length === 1 ? teamMembers[0] : null);
+      dbg.steps.push({ step: 'worker_match', matched: workerMatch?.name || null });
+    }
+    return res.status(200).json(dbg);
+  }
+
   if (req.method !== 'POST') return res.status(200).json({ ok: true, message: 'Email webhook ready' });
 
   try {
