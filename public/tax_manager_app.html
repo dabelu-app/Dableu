@@ -4947,6 +4947,8 @@ document.addEventListener('DOMContentLoaded', function(){
         var initials=(first[0]+((last&&last[0])||'')).toUpperCase();
         S.user={name:name,email:email,initials:initials,officeName:office||'Dabelu',uid:result.uid,subscription:result.subscription};
         if(office&&S.office) S.office.name=office;
+        // משתמש חדש — אפס לחלוטין למניעת דליפת נתונים מסשן קודם
+        S.tasks=[]; S.clients=[]; S.team=[]; S.appointments=[];
         // שליחת הודעת פתיחה (מייל + ווצאפ) — לא חוסמת
         fetch('https://dabelu.vercel.app/api/send-onboarding',{
           method:'POST', headers:{'Content-Type':'application/json'},
@@ -5113,12 +5115,16 @@ document.addEventListener('DOMContentLoaded', function(){
         const tasks    = await window.loadTasksFromDB(canonicalUid);
         const clients  = await window.loadClientsFromDB(canonicalUid);
         const teamData = await window.loadTeamFromDB(canonicalUid);
-        if(tasks.length)  S.tasks = tasks;
-        if(clients.length) S.clients = clients;
-        if(teamData?.team?.length) {
-          S.team = teamData.team;
-          if(teamData.nextMemberId) S.nextMemberId = teamData.nextMemberId;
-        }
+        // תמיד אפס — מונע דליפת נתונים מסשן קודם
+        S.tasks   = tasks   || [];
+        S.clients = clients || [];
+        S.team    = teamData?.team || [];
+        if(teamData?.nextMemberId) S.nextMemberId = teamData.nextMemberId;
+      } else {
+        // משתמש חדש לחלוטין — וודא שהסטייט נקי
+        S.tasks   = [];
+        S.clients = [];
+        S.team    = [];
       }
       // שמור lastLogin תחת ה-UID הקנוני (לא UID חדש של Google)
       await saveUserData(canonicalUid, { name: S.user.name, email, officeName: S.user.officeName, lastLogin: new Date().toISOString() });
@@ -5242,16 +5248,14 @@ document.addEventListener('DOMContentLoaded', function(){
         if(uData.officeName) S.office.name = uData.officeName;
         // טעינת הגדרות התראות
         if(uData.notif) S.notif = uData.notif;
-        // טעינת צוות, משימות ולקוחות
+        // טעינת צוות, משימות ולקוחות — תמיד אפס קודם למניעת דליפת נתונים
         const tasks   = await window.loadTasksFromDB(uDoc.id);
         const clients = await window.loadClientsFromDB(uDoc.id);
         const teamData= await window.loadTeamFromDB(uDoc.id);
-        if(tasks.length)   S.tasks   = tasks;
-        if(clients.length) S.clients = clients;
-        if(teamData && teamData.team && teamData.team.length) {
-          S.team = teamData.team;
-          if(teamData.nextMemberId) S.nextMemberId = teamData.nextMemberId;
-        }
+        S.tasks   = tasks   || [];
+        S.clients = clients || [];
+        S.team    = teamData?.team || [];
+        if(teamData?.nextMemberId) S.nextMemberId = teamData.nextMemberId;
         enterApp();
       }
     } catch(e) {
