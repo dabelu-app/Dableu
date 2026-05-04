@@ -1,11 +1,23 @@
 {
   "version": 2,
+  "outputDirectory": "public",
+  "headers": [
+    {
+      "source": "/(.*).html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ],
   "functions": {
     "api/whatsapp-webhook.js": {
       "maxDuration": 60
     },
     "api/check-emails.js": {
       "maxDuration": 60
+    },
+    "api/payment-webhook.js": {
+      "maxDuration": 30
     }
   },
   "crons": [

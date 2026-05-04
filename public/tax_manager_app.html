@@ -4886,14 +4886,12 @@ document.addEventListener('DOMContentLoaded', function(){
         }).catch(()=>{});
         // תכנית בתשלום — הפניה לדף תשלום Bamit/YoPay
         if((plan==='basic'||plan==='business') && BAMIT_PAYMENT[plan]) {
-          var amount  = plan==='basic' ? 20 : 50;
-          var retUrl  = encodeURIComponent(location.href.split('?')[0]+'?pay_ok=1&uid='+result.uid+'&plan='+plan);
-          var payUrl  = BAMIT_PAYMENT[plan]
+          // שמור uid ותוכנית ב-localStorage לפני המעבר
+          localStorage.setItem('pending_payment', JSON.stringify({uid: result.uid, plan: plan, email: email}));
+          var payUrl = BAMIT_PAYMENT[plan]
             +(BAMIT_PAYMENT[plan].includes('?')?'&':'?')
             +'customer_name='+encodeURIComponent(name)
-            +'&customer_email='+encodeURIComponent(email)
-            +'&sum='+amount
-            +'&success_url='+retUrl;
+            +'&customer_email='+encodeURIComponent(email);
           window.location.href = payUrl;
           return;
         }
@@ -4913,16 +4911,18 @@ document.addEventListener('DOMContentLoaded', function(){
   (async function checkPaymentReturn(){
     var params = new URLSearchParams(location.search);
     if(params.get('pay_ok') !== '1') return;
-    var uid  = params.get('uid');
-    var plan = params.get('plan');
-    if(!uid || !plan) return;
-    // נקה params מ-URL
     history.replaceState({}, '', location.pathname);
+    // שחזר uid ותוכנית מ-localStorage
+    var pending = null;
+    try { pending = JSON.parse(localStorage.getItem('pending_payment') || 'null'); } catch(e){}
+    if(!pending || !pending.uid || !pending.plan) return;
+    localStorage.removeItem('pending_payment');
     // עדכן subscription ב-Firestore
     if(typeof window.saveUserProfileToDB === 'function') {
-      await window.saveUserProfileToDB(uid, { subscription: plan });
+      await window.saveUserProfileToDB(pending.uid, { subscription: pending.plan });
     }
-    toast('✅ התשלום התקבל! המנוי שלך פעיל.');
+    if(S.user) S.user.subscription = pending.plan;
+    toast('✅ התשלום התקבל! המנוי ' + (pending.plan==='basic'?'Basic':'Business') + ' פעיל.');
   })();
 });
 </script>
