@@ -34,7 +34,7 @@ async function sendEmail(to, name) {
   const html = `
   <div dir="rtl" style="font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff">
     <div style="background:#f0eeff;padding:24px 32px;text-align:center;border-bottom:1px solid #ddd6fe">
-      <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:64px;max-width:220px;display:block;margin:0 auto">
+      <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:90px;max-width:280px;display:block;margin:0 auto">
     </div>
     <div style="background:linear-gradient(135deg,#1e40af,#2563eb);padding:24px 28px;text-align:center">
       <h1 style="color:#fff;font-size:20px;margin:0">⏰ תקופת הניסיון שלך מסתיימת מחר</h1>

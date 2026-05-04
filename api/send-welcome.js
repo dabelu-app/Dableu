@@ -14,7 +14,7 @@ module.exports = async (req, res) => {
   const html = `
     <div dir="rtl" style="font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
       <div style="background:#f0eeff;padding:24px 32px;text-align:center;border-bottom:1px solid #ddd6fe">
-        <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:64px;max-width:220px;display:block;margin:0 auto">
+        <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:90px;max-width:280px;display:block;margin:0 auto">
       </div>
       <div style="padding:28px">
         <h1 style="color:#1e40af;text-align:center;font-size:22px;margin:0 0 18px">ברוכים הבאים! 🎉</h1>

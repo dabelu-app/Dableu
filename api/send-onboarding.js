@@ -53,7 +53,7 @@ module.exports = async (req, res) => {
 
   <!-- Header -->
   <div style="background:#f0eeff;padding:24px 32px;text-align:center;border-bottom:1px solid #ddd6fe">
-    <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:64px;max-width:220px;display:block;margin:0 auto">
+    <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:90px;max-width:280px;display:block;margin:0 auto">
   </div>
   <div style="background:linear-gradient(135deg,#1e40af,#2563eb);padding:28px 32px;text-align:center">
     <h1 style="color:#fff;font-size:24px;margin:0;font-weight:800">ברוכים הבאים!</h1>
