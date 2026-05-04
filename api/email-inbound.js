@@ -84,11 +84,10 @@ async function sendReplyEmail(to, taskTitle, status) {
     auth: { user: 'tasks@dabelu.pro', pass: process.env.ZOHO_PASS }
   });
 
-  const SITE_URL = 'https://cosmic-daifuku-4d8c28.netlify.app';
+  const SITE_URL = 'https://dabelu.vercel.app';
   const header = `
-    <div style="background:#1a1a2e;padding:24px;text-align:center;border-radius:12px 12px 0 0">
-      <img src="https://cosmic-daifuku-4d8c28.netlify.app/logo.png" alt="Dabelu" height="48" style="max-height:48px" onerror="this.style.display='none'"/>
-      <h1 style="color:#ffffff;margin:8px 0 0;font-family:Arial,sans-serif;font-size:28px;letter-spacing:2px">DABELU</h1>
+    <div style="background:#f0eeff;padding:24px 32px;text-align:center;border-bottom:1px solid #ddd6fe;border-radius:12px 12px 0 0">
+      <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:64px;max-width:220px;display:block;margin:0 auto">
     </div>`;
 
   let html, subject;
@@ -99,9 +98,9 @@ async function sendReplyEmail(to, taskTitle, status) {
       ${header}
       <div style="padding:32px;background:#fff;text-align:center">
         <p style="font-size:40px;margin:0">❌</p>
-        <h2 style="color:#1a1a2e;margin:12px 0 8px">אינך מנוי במערכת Dabelu</h2>
+        <h2 style="color:#1e293b;margin:12px 0 8px">אינך מנוי במערכת Dabelu</h2>
         <p style="color:#666;margin:0 0 24px">כדי להתחיל ליצור משימות דרך מייל, יש להירשם למערכת.</p>
-        <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">להרשמה לחץ כאן</a>
+        <a href="${SITE_URL}" style="background:#2563eb;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">להרשמה לחץ כאן</a>
       </div>
       <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
     </div>`;
@@ -112,12 +111,12 @@ async function sendReplyEmail(to, taskTitle, status) {
       ${header}
       <div style="padding:32px;background:#fff;text-align:center">
         <p style="font-size:40px;margin:0">✅</p>
-        <h2 style="color:#1a1a2e;margin:12px 0 8px">המשימה נוצרה בהצלחה!</h2>
+        <h2 style="color:#1e293b;margin:12px 0 8px">המשימה נוצרה בהצלחה!</h2>
         <div style="background:#f0f4ff;border-radius:8px;padding:16px;margin:16px 0;text-align:right">
           <span style="color:#666;font-size:13px">📝 משימה:</span>
           <p style="color:#1a1a2e;font-weight:bold;margin:4px 0 0;font-size:16px">${taskTitle}</p>
         </div>
-        <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">פתח את Dabelu</a>
+        <a href="${SITE_URL}" style="background:#2563eb;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">פתח את Dabelu</a>
       </div>
       <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
     </div>`;
@@ -128,9 +127,13 @@ async function sendReplyEmail(to, taskTitle, status) {
       ${header}
       <div style="padding:32px;background:#fff;text-align:center">
         <p style="font-size:40px;margin:0">⚠️</p>
-        <h2 style="color:#1a1a2e;margin:12px 0 8px">ההודעה אינה ברורה</h2>
-        <p style="color:#666;margin:0 0 24px">לא הצלחנו להבין את המשימה. אנא שלח שנית עם פירוט ברור יותר.</p>
-        <a href="${SITE_URL}" style="background:#1a1a2e;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">פתח את Dabelu</a>
+        <h2 style="color:#1e293b;margin:12px 0 8px">ההודעה אינה ברורה</h2>
+        <p style="color:#666;margin:0 0 16px">לא הצלחנו להבין את המשימה. אנא שלח שנית עם פירוט ברור יותר.</p>
+        <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:16px;margin:0 0 24px;text-align:right">
+          <span style="color:#888;font-size:13px">📩 ההודעה שנשלחה:</span>
+          <p style="color:#1a1a2e;font-weight:bold;margin:4px 0 0;font-size:15px">${taskTitle}</p>
+        </div>
+        <a href="${SITE_URL}" style="background:#2563eb;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">פתח את Dabelu</a>
       </div>
       <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
     </div>`;
@@ -141,7 +144,7 @@ async function sendReplyEmail(to, taskTitle, status) {
       ${header}
       <div style="padding:32px;background:#fff;text-align:center">
         <p style="font-size:40px;margin:0">⚠️</p>
-        <h2 style="color:#1a1a2e;margin:12px 0 8px">לא ניתן היה ליצור את המשימה</h2>
+        <h2 style="color:#1e293b;margin:12px 0 8px">לא ניתן היה ליצור את המשימה</h2>
         <p style="color:#666">אנא נסה שנית מאוחר יותר.</p>
       </div>
       <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
@@ -172,14 +175,19 @@ module.exports = async (req, res) => {
     const text      = body.text || body.body || body.bodyPlain || '';
     const taskTitle = subject || text.split('\n')[0];
 
+    console.log('📧 EMAIL INBOUND | from:', fromEmail, '| subject:', taskTitle);
+
     if (!fromEmail || !taskTitle) {
+      console.log('❌ Missing email or subject');
       return res.status(200).json({ ok: false, message: 'Missing email or subject' });
     }
 
     // בדוק אם רשום
     const userDoc = await isRegisteredEmail(fromEmail);
+    console.log('🔍 isRegistered:', fromEmail, '→', userDoc ? 'FOUND (' + userDoc.name + ')' : 'NOT FOUND');
     if (!userDoc) {
       await sendReplyEmail(fromEmail, '', 'not_registered');
+      console.log('📨 Sent not_registered to:', fromEmail);
       return res.status(200).json({ ok: true, registered: false });
     }
 
