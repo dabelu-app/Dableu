@@ -52,9 +52,11 @@ module.exports = async (req, res) => {
 <div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:auto;background:#f0f4ff;border-radius:16px;overflow:hidden">
 
   <!-- Header -->
-  <div style="background:linear-gradient(135deg,#1e40af,#2563eb);padding:32px;text-align:center">
-    <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:56px;max-width:200px;display:block;margin:0 auto 14px">
-    <h1 style="color:#fff;font-size:24px;margin:0;font-weight:800">ברוכים הבאים ל-${siteName}!</h1>
+  <div style="background:#f0eeff;padding:24px 32px;text-align:center;border-bottom:1px solid #ddd6fe">
+    <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:64px;max-width:220px;display:block;margin:0 auto">
+  </div>
+  <div style="background:linear-gradient(135deg,#1e40af,#2563eb);padding:28px 32px;text-align:center">
+    <h1 style="color:#fff;font-size:24px;margin:0;font-weight:800">ברוכים הבאים!</h1>
     <p style="color:#bfdbfe;font-size:14px;margin:8px 0 0">מנהל המשימות החכם של המשרד שלכם</p>
   </div>
 
