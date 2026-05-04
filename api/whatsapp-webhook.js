@@ -191,11 +191,11 @@ async function classifyMessage(text) {
   "time": "HH:MM"|null,
   "with": "שם הלקוח שהפגישה איתו"|null,
   "assignee": "שם העובד שהמשימה מיועדת אליו"|null,
-  "title": "כותרת קצרה ונקייה בעברית — ללא שם עובד"
+  "title": "תוכן ההודעה המלא בדיוק — ללא שם עובד בלבד מהתחלה"
 }
 
 לפגישות: חלץ תאריך, שעה, שם הלקוח (אחרי "עם"). "מחר"=מחר, "שלישי"=שלישי הקרוב. null אם לא צוין.
-למשימות: אם ההודעה כוללת שם של אדם שאליו המשימה מיועדת (לפלוני / עבור / ל[שם] / [שם] צריך) — שמו → assignee. הכותרת ללא שם העובד.
+למשימות: אם ההודעה כוללת שם של אדם שאליו המשימה מיועדת (לפלוני / עבור / ל[שם] / [שם] צריך) — שמו → assignee. ב-title: שמור את כל המלל המקורי, הסר רק את שם העובד מהתחלה.
 אם לא מצוין עובד ברור — assignee: null`
           },
           { role:'user', content:text }
@@ -812,9 +812,12 @@ module.exports = async (req, res) => {
   const workerMatch = (aiAssignee ? findWorkerByName(aiAssignee, teamMembers) : null)
                    || findWorkerMatch(msgText, teamMembers);
 
-  console.log(`👥 assignee from AI: "${aiAssignee}" | regex match: ${workerMatch?.name || 'none'}`);
+  console.log(`👥 assignee from AI: "${aiAssignee}" | matched: ${workerMatch?.name || 'none'}`);
 
-  const cleanTitle  = workerMatch ? cleanTitleFromWorker(title, workerMatch.name) : title;
+  // תמיד שומרים את הטקסט המקורי המלא — רק מסירים שם עובד מההתחלה
+  const cleanTitle = workerMatch
+    ? cleanTitleFromWorker(msgText.trim(), workerMatch.name)
+    : msgText.trim();
 
   // שם המשוב: עובד אם נמצא בצוות, אחרת המעביד עצמו ("כללי")
   const assigneeName  = workerMatch ? workerMatch.name  : clientName;

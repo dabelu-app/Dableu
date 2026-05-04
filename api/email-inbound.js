@@ -32,7 +32,7 @@ async function isRegisteredEmail(email) {
 // ───────────────────────────────────────────
 // Firestore — שמירת משימה
 // ───────────────────────────────────────────
-async function saveTask(title, senderName, source, userId, assignee, assigneeEmail) {
+async function saveTask(title, senderName, source, userId, assignee, assigneeEmail, description) {
   const fields = {
     title:       { stringValue: title.trim() },
     clientName:  { stringValue: senderName },
@@ -40,7 +40,7 @@ async function saveTask(title, senderName, source, userId, assignee, assigneeEma
     status:      { stringValue: 'pending' },
     priority:    { stringValue: 'normal' },
     createdAt:   { stringValue: new Date().toISOString() },
-    description: { stringValue: '' },
+    description: { stringValue: description || '' },
     userId:      { stringValue: userId || '' }
   };
   if (assignee) {
@@ -430,7 +430,13 @@ module.exports = async (req, res) => {
 
     console.log(`📧 assignee from AI: "${aiAssignee}" | matched: ${workerMatch?.name || 'none'}`);
 
-    const cleanTitle  = workerMatch ? cleanTitleFromWorker(taskTitle, workerMatch.name) : taskTitle;
+    // תמיד שומרים את הטקסט המקורי — רק מסירים שם עובד מהתחלת הכותרת
+    const cleanTitle = workerMatch
+      ? cleanTitleFromWorker(taskTitle, workerMatch.name)
+      : taskTitle;
+
+    // גוף המייל נשמר כ-description (לא אובד מלל)
+    const bodyText = text.trim();
 
     // שיוך: לעובד אם זוהה, לבעל העסק אם לא
     const assigneeName  = workerMatch ? workerMatch.name  : '';
@@ -438,7 +444,7 @@ module.exports = async (req, res) => {
 
     // ── שמירה ב-Firestore ──
     const { ok: firestoreOk, docId: taskDocId } = await saveTask(
-      cleanTitle, ownerName, 'email', userId, assigneeName, assigneeEmail
+      cleanTitle, ownerName, 'email', userId, assigneeName, assigneeEmail, bodyText
     );
 
     // ── sharedTask + התרעה לעובד ──
