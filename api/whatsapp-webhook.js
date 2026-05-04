@@ -61,25 +61,34 @@ async function clearPending(docName) {
 }
 
 // ───────────────────────────────────────────
-// לקוחות (clients collection)
+// לקוחות — מסוננים לפי userId (אזור אישי!)
 // ───────────────────────────────────────────
-async function getClients() {
+async function getClients(userId) {
   try {
     const resp = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/clients?key=${FIREBASE_API_KEY}&pageSize=100`
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ structuredQuery:{
+          from:[{collectionId:'clients'}],
+          where:{ fieldFilter:{ field:{fieldPath:'userId'}, op:'EQUAL', value:{stringValue: userId||''} }},
+          limit:100
+        }})
+      }
     );
     const data = await resp.json();
-    if (!data.documents) return [];
-    return data.documents.map(doc => ({
-      id:       doc.name.split('/').pop(),
-      name:     doc.fields?.name?.stringValue     || '',
-      email:    doc.fields?.email?.stringValue    || '',
-      whatsapp: doc.fields?.whatsapp?.stringValue || ''
-    })).filter(c => c.name);
+    if (!Array.isArray(data)) return [];
+    return data
+      .filter(item => item.document)
+      .map(item => ({
+        id:       item.document.name.split('/').pop(),
+        name:     item.document.fields?.name?.stringValue     || '',
+        email:    item.document.fields?.email?.stringValue    || '',
+        whatsapp: item.document.fields?.whatsapp?.stringValue || ''
+      })).filter(c => c.name);
   } catch(e) { return []; }
 }
 
-async function createClient(name, email, whatsapp) {
+async function createClient(name, email, whatsapp, userId) {
   try {
     await fetch(
       `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/clients?key=${FIREBASE_API_KEY}`,
@@ -88,6 +97,7 @@ async function createClient(name, email, whatsapp) {
           name:      { stringValue: name      },
           email:     { stringValue: email     || '' },
           whatsapp:  { stringValue: whatsapp  || '' },
+          userId:    { stringValue: userId    || '' },
           createdAt: { stringValue: new Date().toISOString() }
         }})
       }
@@ -95,13 +105,12 @@ async function createClient(name, email, whatsapp) {
   } catch(e) { console.error('createClient error:', e); }
 }
 
-// עדכן לקוח קיים או צור חדש
-async function upsertClient(name, email, whatsapp) {
+// עדכן לקוח קיים (של המשתמש הזה) או צור חדש
+async function upsertClient(name, email, whatsapp, userId) {
   try {
-    const clients = await getClients();
+    const clients = await getClients(userId);
     const existing = clients.find(c => c.name.toLowerCase() === (name||'').toLowerCase());
     if (existing && existing.id) {
-      // עדכן שדות קיימים
       const fields = {};
       if (email)    fields.email    = { stringValue: email };
       if (whatsapp) fields.whatsapp = { stringValue: whatsapp };
@@ -112,7 +121,7 @@ async function upsertClient(name, email, whatsapp) {
         { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ fields }) }
       );
     } else {
-      await createClient(name, email, whatsapp);
+      await createClient(name, email, whatsapp, userId);
     }
   } catch(e) { console.error('upsertClient error:', e); }
 }
@@ -242,7 +251,7 @@ async function createCalendarEvent(title, date, time, clientName, calendarId, cl
 // ───────────────────────────────────────────
 // Firestore — שמירת פגישה / משימה
 // ───────────────────────────────────────────
-async function saveAppointment(title, date, time, clientName, chatId, googleEventId) {
+async function saveAppointment(title, date, time, clientName, chatId, googleEventId, userId) {
   await fetch(
     `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/appointments?key=${FIREBASE_API_KEY}`,
     { method:'POST', headers:{'Content-Type':'application/json'},
@@ -253,6 +262,7 @@ async function saveAppointment(title, date, time, clientName, chatId, googleEven
         clientName:   {stringValue: clientName},
         chatId:       {stringValue: chatId},
         googleEventId:{stringValue: googleEventId||''},
+        userId:       {stringValue: userId||''},
         status:       {stringValue: 'confirmed'},
         createdAt:    {stringValue: new Date().toISOString()},
         reminderSent: {booleanValue: false}
@@ -412,7 +422,7 @@ async function notifyWorkerOfTask(workerMember, taskTitle, senderName) {
 // pending.withEmail = מייל הלקוח (לזימון)
 // senderCalId       = יומן גוגל אישי של השולח (אם חובר)
 // ───────────────────────────────────────────
-async function finalizeAppointment(chatId, userDocName, pending, senderCalId) {
+async function finalizeAppointment(chatId, userDocName, pending, senderCalId, userId) {
   await clearPending(userDocName);
 
   const apptWith  = pending.withName  || '';
@@ -422,12 +432,10 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId) {
   let eventId = null;
   try {
     if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.GOOGLE_CALENDAR_ID) {
-      // יומן דבליו מרכזי — תמיד
       eventId = await createCalendarEvent(
         cleanTitle, pending.date, pending.time||null,
         apptWith, process.env.GOOGLE_CALENDAR_ID, apptEmail
       );
-      // יומן גוגל אישי של השולח — רק אם חיבר
       if (senderCalId) {
         await createCalendarEvent(
           cleanTitle, pending.date, pending.time||null,
@@ -437,7 +445,7 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId) {
     }
   } catch(e) { console.error('Calendar finalize error:', e); }
 
-  await saveAppointment(cleanTitle, pending.date, pending.time||'', apptWith, chatId, eventId);
+  await saveAppointment(cleanTitle, pending.date, pending.time||'', apptWith, chatId, eventId, userId);
 
   const dateStr   = formatDateHebrew(pending.date);
   const timeStr   = pending.time ? ` בשעה ${pending.time}` : '';
@@ -458,9 +466,8 @@ function formatDateHebrew(dateStr) {
 // עזר: אחרי שיש תאריך+שעה+שם — בדוק אם יש מייל
 // אם כן → קבע. אם לא → שאל פרטי קשר.
 // ───────────────────────────────────────────
-async function tryFinalize(chatId, userDocName, pending, senderCalId, res) {
+async function tryFinalize(chatId, userDocName, pending, senderCalId, res, userId) {
   if (pending.withEmail || pending.withWhatsapp) {
-    // יש פרטי קשר — שלח זימון ישירות ללא שאלה
     if (pending.withWhatsapp && !pending.withEmail) {
       const phoneClean = pending.withWhatsapp.replace(/[-\s+]/g, '');
       const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
@@ -470,7 +477,7 @@ async function tryFinalize(chatId, userDocName, pending, senderCalId, res) {
         `📅 זימון לפגישה!\n\nנקבעה לך פגישה${timeStr}\n${dateStr}\n\nנתראה! 👋`
       ).catch(()=>{});
     }
-    await finalizeAppointment(chatId, userDocName, pending, senderCalId);
+    await finalizeAppointment(chatId, userDocName, pending, senderCalId, userId);
   } else {
     await setPending(userDocName, { ...pending, step:'ask_contact', contactAskedAt: new Date().toISOString() });
     await sendWhatsAppReply(chatId,
@@ -507,6 +514,7 @@ module.exports = async (req, res) => {
   }
 
   const userDocName  = userDoc.name;
+  const userDocId    = userDocName.split('/').pop();          // ← מזהה ייחודי של המשתמש
   const clientEmail  = userDoc.fields?.email?.stringValue  || '';
   const clientName   = userDoc.fields?.name?.stringValue   || senderName;
   const senderCalId  = userDoc.fields?.googleCalendarId?.stringValue || '';
@@ -520,8 +528,8 @@ module.exports = async (req, res) => {
   if (pending && pending.step === 'ask_contact' && pending.contactAskedAt) {
     const elapsed = Date.now() - new Date(pending.contactAskedAt).getTime();
     if (elapsed > 60 * 60 * 1000) { // שעה
-      await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId);
-      pending = null; // המשך עיבוד ההודעה הנוכחית כהודעה חדשה
+      await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
+      pending = null;
     }
   }
 
@@ -540,10 +548,10 @@ module.exports = async (req, res) => {
       const upd = { ...pending, date: parsed.date, time: parsed.time || pending.time || '' };
 
       if (upd.date && upd.time && upd.withName) {
-        return tryFinalize(chatId, userDocName, upd, senderCalId, res);
+        return tryFinalize(chatId, userDocName, upd, senderCalId, res, userDocId);
       }
       if (upd.date && upd.time && !upd.withName) {
-        const clients = await getClients();
+        const clients = await getClients(userDocId);
         const list = clients.slice(0,20).map((c,i)=>`${i+1}. ${c.name}`).join('\n');
         await setPending(userDocName, { ...upd, step:'ask_with_whom' });
         await sendWhatsAppReply(chatId, `📅 ${formatDateHebrew(upd.date)} בשעה ${upd.time} ✓\n\nעם מי הפגישה?\n${list||'(שם הלקוח)'}`);
@@ -567,9 +575,9 @@ module.exports = async (req, res) => {
       const upd = { ...pending, time };
 
       if (upd.withName) {
-        return tryFinalize(chatId, userDocName, upd, senderCalId, res);
+        return tryFinalize(chatId, userDocName, upd, senderCalId, res, userDocId);
       }
-      const clients = await getClients();
+      const clients = await getClients(userDocId);
       const list = clients.slice(0,20).map((c,i)=>`${i+1}. ${c.name}`).join('\n');
       await setPending(userDocName, { ...upd, step:'ask_with_whom' });
       await sendWhatsAppReply(chatId, `🕐 שעה ${time} ✓\n\nעם מי הפגישה?\n${list||'(שם הלקוח)'}`);
@@ -578,7 +586,7 @@ module.exports = async (req, res) => {
 
     // ── שלב: עם מי (חיפוש בלקוחות) ──
     if (pending.step === 'ask_with_whom') {
-      const clients = await getClients();
+      const clients = await getClients(userDocId);
 
       // שלב 1: חלץ שם אדם מהטקסט (לא להעתיק מילה במילה)
       const personName = await extractPersonName(inText);
@@ -615,7 +623,7 @@ module.exports = async (req, res) => {
             `📅 זימון לפגישה!\n\nנקבעה לך פגישה${timeStr}\n${dateStr}\n\nנתראה! 👋`
           ).catch(()=>{});
         }
-        await finalizeAppointment(chatId, userDocName, upd, senderCalId);
+        await finalizeAppointment(chatId, userDocName, upd, senderCalId, userDocId);
       } else {
         await setPending(userDocName, { ...upd, step:'ask_contact', contactAskedAt: new Date().toISOString() });
         await sendWhatsAppReply(chatId,
@@ -631,31 +639,30 @@ module.exports = async (req, res) => {
 
       // ללא זימון
       if (/^ללא(\s+זימון)?$|^לא$/i.test(txt)) {
-        await upsertClient(pending.withName, '', '');
-        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId);
+        await upsertClient(pending.withName, '', '', userDocId);
+        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
         return res.status(200).send('ok');
       }
 
       // מייל
       if (txt.includes('@') && txt.includes('.')) {
         const email = txt.toLowerCase();
-        await upsertClient(pending.withName, email, '');
-        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail: email }, senderCalId);
+        await upsertClient(pending.withName, email, '', userDocId);
+        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail: email }, senderCalId, userDocId);
         return res.status(200).send('ok');
       }
 
       // ווצאפ / טלפון
       const phoneClean = txt.replace(/[-\s+]/g, '');
       if (/^\d{9,12}$/.test(phoneClean)) {
-        await upsertClient(pending.withName, '', phoneClean);
-        // שלח הודעת ווצאפ ללקוח כזימון
+        await upsertClient(pending.withName, '', phoneClean, userDocId);
         const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
         const dateStr = formatDateHebrew(pending.date);
         const timeStr = pending.time ? ` בשעה ${pending.time}` : '';
         await sendWhatsAppReply(waId,
           `📅 זימון לפגישה!\n\nנקבעה לך פגישה${timeStr}\n📋 ${pending.title||'פגישה'}\n${dateStr}\n\nנתראה! 👋`
         );
-        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId);
+        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
         return res.status(200).send('ok');
       }
 
@@ -744,8 +751,8 @@ module.exports = async (req, res) => {
   if (classified.intent === 'appointment') {
     const apptTitle = title || 'פגישה';
 
-    // נסה לזהות לקוח מהמשפט הראשון
-    const clients = await getClients();
+    // נסה לזהות לקוח — רק לקוחות של המשתמש הזה
+    const clients = await getClients(userDocId);
     let matchedClient = null;
     let withName = classified.with || '';
     if (withName) {
@@ -771,7 +778,7 @@ module.exports = async (req, res) => {
     // ── הכל ידוע + לקוח נמצא ──
     if (hasDate && hasTime && hasMatch) {
       const upd = { date:classified.date, time:classified.time, title:apptTitle, ...knownWith };
-      return tryFinalize(chatId, userDocName, upd, senderCalId, res);
+      return tryFinalize(chatId, userDocName, upd, senderCalId, res, userDocId);
     }
 
     // ── תאריך+שעה ידועים, שם צוין אבל לא נמצא ──
@@ -802,7 +809,6 @@ module.exports = async (req, res) => {
   }
 
   // ── משימה — זיהוי עובד ושיוך ──
-  const userDocId = userDocName.split('/').pop();
   let teamMembers = [];
   try { teamMembers = await getTeamMembers(userDocId); } catch(e) {}
 
