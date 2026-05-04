@@ -361,9 +361,9 @@ textarea.form-input{resize:vertical}
   <!-- ── REGISTER PANEL ── -->
   <div id="frm-reg" style="display:none">
     <div id="reg-err" style="color:#dc2626;font-size:12px;text-align:center;margin-bottom:8px;display:none"></div>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <input id="r-firstname" type="text" placeholder="שם פרטי *" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box"/>
-      <input id="r-lastname" type="text" placeholder="שם משפחה" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box"/>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="r-firstname" type="text" placeholder="שם פרטי *" style="flex:0 0 42%;min-width:0;padding:10px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box"/>
+      <input id="r-lastname" type="text" placeholder="שם משפחה" style="flex:1;min-width:0;padding:10px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box"/>
     </div>
     <input id="r-office" type="text" placeholder="שם המשרד / החברה" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box"/>
     <input id="r-email" type="email" placeholder="אימייל *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
@@ -374,25 +374,31 @@ textarea.form-input{resize:vertical}
     <!-- Plan Selection -->
     <div style="margin-bottom:14px">
       <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px">בחרי תכנית:</div>
-      <div style="display:flex;gap:8px">
-        <label id="plan-free-lbl" style="flex:1;border:2px solid #2563eb;border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;background:#eff6ff;transition:all .2s">
+      <div style="display:flex;gap:5px">
+        <label id="plan-free-lbl" style="flex:1;border:2px solid #2563eb;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#eff6ff;transition:all .2s">
           <input type="radio" name="r-plan" id="r-plan-free" value="free" checked style="display:none"/>
-          <div style="font-size:18px;margin-bottom:4px">🎁</div>
-          <div style="font-size:13px;font-weight:700;color:#1e40af">חינמי</div>
-          <div style="font-size:11px;color:#3b82f6;margin-top:2px">תכונות בסיסיות</div>
+          <div style="font-size:16px;margin-bottom:3px">🎁</div>
+          <div style="font-size:12px;font-weight:700;color:#1e40af">חינמי</div>
+          <div style="font-size:10px;color:#3b82f6;margin-top:2px">תכונות בסיסיות</div>
         </label>
-        <label id="plan-premium-lbl" style="flex:1;border:2px solid #e2e8f0;border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;background:#f8fafc;transition:all .2s">
-          <input type="radio" name="r-plan" id="r-plan-premium" value="active" style="display:none"/>
-          <div style="font-size:18px;margin-bottom:4px">⭐</div>
-          <div style="font-size:13px;font-weight:700;color:#475569">פרימיום</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:2px">99₪/חודש — כל התכונות</div>
+        <label id="plan-basic-lbl" style="flex:1;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#f8fafc;transition:all .2s">
+          <input type="radio" name="r-plan" id="r-plan-basic" value="basic" style="display:none"/>
+          <div style="font-size:16px;margin-bottom:3px">💼</div>
+          <div style="font-size:12px;font-weight:700;color:#475569">Basic</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">49₪/חודש</div>
+        </label>
+        <label id="plan-business-lbl" style="flex:1;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#f8fafc;transition:all .2s">
+          <input type="radio" name="r-plan" id="r-plan-business" value="business" style="display:none"/>
+          <div style="font-size:16px;margin-bottom:3px">🚀</div>
+          <div style="font-size:12px;font-weight:700;color:#475569">Business</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">99₪/חודש</div>
         </label>
       </div>
     </div>
 
     <div id="premium-note" style="display:none;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-bottom:12px;text-align:center">
-      💳 לאחר ההרשמה תפנה/י אלינו לסליקה<br>
-      <strong>WhatsApp: <a href="https://wa.me/972XXXXXXXXX" style="color:#92400e">972XXXXXXXXX</a></strong>
+      💳 לאחר ההרשמה תועבר/י לדף תשלום מאובטח<br>
+      <span id="plan-price-note" style="font-weight:600"></span>
     </div>
 
     <div id="reg-btn" style="width:100%;padding:13px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">הרשמה ←</div>
@@ -933,8 +939,8 @@ function checkSubscription() {
     return;
   }
 
-  // מנוי פעיל
-  if(S.user.subscription === 'active') return;
+  // מנוי פעיל (כולל basic ו-business)
+  if(['active','basic','business'].indexOf(S.user.subscription) !== -1) return;
 
   // ניסיון
   var trialKey = 'trial_start_' + uid;
@@ -4301,7 +4307,10 @@ function renderAdminPage(){
       <select id="adm-f-status">
         <option value="trial">ניסיון (7 ימים)</option>
         <option value="free">חינמי (ללא הגבלה)</option>
-        <option value="active">מנוי פעיל</option>
+        <option value="basic">Basic (49₪/חודש)</option>
+        <option value="business">Business (99₪/חודש)</option>
+        <option value="active">מנוי פעיל (ישן)</option>
+        <option value="pending">ממתין לתשלום</option>
         <option value="blocked">חסום</option>
       </select>
     </div>
@@ -4335,7 +4344,7 @@ function admRenderTable(users, hierarchy, orphans){
   if(hierarchy!==undefined){_admHierarchy=hierarchy;_admOrphans=orphans||[];}
   // stats (always based on all users)
   const total=users.length;
-  const active=users.filter(u=>u.subscription==='active'||u.subscription==='free').length;
+  const active=users.filter(u=>['active','free','basic','business'].includes(u.subscription)).length;
   const trial=users.filter(u=>u.subscription==='trial'||!u.subscription).length;
   const blocked=users.filter(u=>u.subscription==='blocked').length;
   if(stats) stats.innerHTML=`
@@ -4349,7 +4358,7 @@ function admRenderTable(users, hierarchy, orphans){
 }
 
 const _BADGE_CLS={trial:'trial',free:'free',active:'active',blocked:'blocked'};
-const _BADGE_LBL={trial:'ניסיון',free:'חינמי',active:'מנוי פעיל',blocked:'חסום'};
+const _BADGE_LBL={trial:'ניסיון',free:'חינמי',active:'מנוי פעיל',basic:'Basic',business:'Business',pending:'ממתין תשלום',blocked:'חסום'};
 
 function _admWorkerSubRow(w, uid){
   const sub=w.subscription||'trial';
@@ -4809,22 +4818,36 @@ function authShowTab(tab) {
   }
 }
 
+// ── Bamit / YoPay payment page URLs ──
+// Replace these URLs with your actual YoPay payment page links
+var BAMIT_PAYMENT = {
+  basic:    '',   // <-- הכנס כאן את קישור YoPay לתכנית Basic (49₪)
+  business: ''    // <-- הכנס כאן את קישור YoPay לתכנית Business (99₪)
+};
+
 // ── Plan selection highlight ──
 document.addEventListener('DOMContentLoaded', function(){
-  var planFree    = document.getElementById('r-plan-free');
-  var planPremium = document.getElementById('r-plan-premium');
-  var lblFree     = document.getElementById('plan-free-lbl');
-  var lblPremium  = document.getElementById('plan-premium-lbl');
-  var premNote    = document.getElementById('premium-note');
+  var PLAN_KEYS = ['free','basic','business'];
+  var premNote  = document.getElementById('premium-note');
+  var planPriceNote = document.getElementById('plan-price-note');
 
   function updatePlanUI(){
-    var isPremium = planPremium && planPremium.checked;
-    if(lblFree)    { lblFree.style.border    = isPremium?'2px solid #e2e8f0':'2px solid #2563eb'; lblFree.style.background    = isPremium?'#f8fafc':'#eff6ff'; }
-    if(lblPremium) { lblPremium.style.border = isPremium?'2px solid #2563eb':'2px solid #e2e8f0'; lblPremium.style.background = isPremium?'#eff6ff':'#f8fafc'; }
-    if(premNote)   premNote.style.display = isPremium?'block':'none';
+    var selected = document.querySelector('input[name="r-plan"]:checked')?.value || 'free';
+    var isPaid   = selected === 'basic' || selected === 'business';
+    PLAN_KEYS.forEach(function(p){
+      var lbl = document.getElementById('plan-'+p+'-lbl');
+      if(!lbl) return;
+      var active = selected === p;
+      lbl.style.border     = active ? '2px solid #2563eb' : '2px solid #e2e8f0';
+      lbl.style.background = active ? '#eff6ff' : '#f8fafc';
+    });
+    if(premNote) premNote.style.display = isPaid ? 'block' : 'none';
+    if(planPriceNote) planPriceNote.textContent = selected==='basic' ? 'Basic — 49₪/חודש' : selected==='business' ? 'Business — 99₪/חודש' : '';
   }
-  if(planFree)    planFree.addEventListener('change', updatePlanUI);
-  if(planPremium) planPremium.addEventListener('change', updatePlanUI);
+  PLAN_KEYS.forEach(function(p){
+    var el = document.getElementById('r-plan-'+p);
+    if(el) el.addEventListener('change', updatePlanUI);
+  });
 
   // ── Register button ──
   var btnReg = document.getElementById('reg-btn');
@@ -4854,13 +4877,26 @@ document.addEventListener('DOMContentLoaded', function(){
         var result = await window.registerNewUser(name, email, pass, office, plan);
         if(result.error){ showErr(result.error); return; }
         var initials=(first[0]+((last&&last[0])||'')).toUpperCase();
-        S.user={name:name,email:email,initials:initials,officeName:office||'Dabelu',uid:result.uid};
+        S.user={name:name,email:email,initials:initials,officeName:office||'Dabelu',uid:result.uid,subscription:result.subscription};
         if(office&&S.office) S.office.name=office;
         // שליחת הודעת פתיחה (מייל + ווצאפ) — לא חוסמת
         fetch('https://dabelu.vercel.app/api/send-onboarding',{
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ name, email, phone: phone||'', plan })
         }).catch(()=>{});
+        // תכנית בתשלום — הפניה לדף תשלום Bamit/YoPay
+        if((plan==='basic'||plan==='business') && BAMIT_PAYMENT[plan]) {
+          var amount  = plan==='basic' ? 49 : 99;
+          var retUrl  = encodeURIComponent(location.href.split('?')[0]+'?pay_ok=1&uid='+result.uid+'&plan='+plan);
+          var payUrl  = BAMIT_PAYMENT[plan]
+            +(BAMIT_PAYMENT[plan].includes('?')?'&':'?')
+            +'customer_name='+encodeURIComponent(name)
+            +'&customer_email='+encodeURIComponent(email)
+            +'&sum='+amount
+            +'&success_url='+retUrl;
+          window.location.href = payUrl;
+          return;
+        }
         enterApp();
       } else {
         showErr('טעינה עדיין בתהליך — נסו שנית עוד שנייה');
@@ -4872,6 +4908,22 @@ document.addEventListener('DOMContentLoaded', function(){
       btnReg.style.pointerEvents='';
     }
   });
+
+  // ── חזרה מדף תשלום מוצלח ──
+  (async function checkPaymentReturn(){
+    var params = new URLSearchParams(location.search);
+    if(params.get('pay_ok') !== '1') return;
+    var uid  = params.get('uid');
+    var plan = params.get('plan');
+    if(!uid || !plan) return;
+    // נקה params מ-URL
+    history.replaceState({}, '', location.pathname);
+    // עדכן subscription ב-Firestore
+    if(typeof window.saveUserProfileToDB === 'function') {
+      await window.saveUserProfileToDB(uid, { subscription: plan });
+    }
+    toast('✅ התשלום התקבל! המנוי שלך פעיל.');
+  })();
 });
 </script>
 <script>
@@ -5250,22 +5302,32 @@ document.addEventListener('DOMContentLoaded', function(){
     const em = email.toLowerCase();
     // בדיקה שהמייל לא קיים כבר
     const existing = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
-    if (!existing.empty) return { error: 'אימייל זה כבר רשום במערכת' };
+    if (!existing.empty) {
+      const existSub = existing.docs[0]?.data()?.subscription || '';
+      if(plan === 'free' && existSub === 'free')
+        return { error: 'כבר קיים חשבון חינמי לאימייל זה. ניתן להתחבר או לשדרג למנוי.' };
+      return { error: 'אימייל זה כבר רשום במערכת — ניתן להתחבר בלשונית "כניסה"' };
+    }
     const passHash = await hashPass(pass);
     const uid = 'reg_' + Date.now();
-    // free = חינמי, active = פרימיום (ממתין לאישור תשלום), trial = ניסיון
-    const subscription = (plan === 'free' || plan === 'active') ? plan : 'trial';
+    // free=חינמי, basic/business=ממתין לתשלום, אחר=ניסיון
+    const subscription = plan === 'free' ? 'free'
+                       : plan === 'basic' ? 'pending'
+                       : plan === 'business' ? 'pending'
+                       : plan === 'active'   ? 'active'
+                       : 'trial';
     await setDoc(doc(db, 'users', uid), {
       name: name,
       email: em,
       passwordHash: passHash,
       officeName: officeName || 'Dabelu',
       subscription: subscription,
+      plan: plan,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
       source: 'self-register'
     });
-    return { uid, name, email: em, officeName, subscription };
+    return { uid, name, email: em, officeName, subscription, plan };
   };
   document.getElementById('btn-google').addEventListener('click', function(){ if(typeof window.signInWithGoogle==='function') window.signInWithGoogle(); });
 
