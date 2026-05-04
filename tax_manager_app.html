@@ -1110,9 +1110,19 @@ function enterApp(){
 }
 function logout(){
   if(!confirm('להתנתק?'))return;
+  // נקה localStorage של המשתמש הנוכחי
+  try {
+    const uid = S.user?.uid || S.user?.email || 'guest';
+    ['dabelu_tasks_','dabelu_team_','dabelu_settings_'].forEach(k=>localStorage.removeItem(k+uid));
+    localStorage.removeItem('dabelu_appts_'+uid);
+  } catch(e){}
+  // נקה זיכרון — הנתונים לא יעברו למשתמש הבא
+  S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
+  S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
+  S.office={name:'',phone:'',email:'',addr:''};
+  S.user=null;
   document.getElementById('screen-app').style.display='none';
   document.getElementById('screen-auth').style.display='flex';
-  S.user=null;
 }
 
 // ══════════════════════════════════════
@@ -4925,6 +4935,10 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // ── הכנסה לאפליקציה אחרי אימות ──
   async function handleAuthSuccess(user) {
+    // נקה נתונים ישנים מהזיכרון לפני טעינת המשתמש החדש
+    S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
+    S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
+    S.office={name:'',phone:'',email:'',addr:''};
     const nameParts = (user.displayName || user.email).split(' ');
     const initials = nameParts.map(n => n[0]).join('').slice(0,2).toUpperCase();
     const existing = await loadUserData(user.uid);
@@ -4966,6 +4980,12 @@ document.addEventListener('DOMContentLoaded', function(){
   // ── כניסה עם אימייל + סיסמה (בדיקה מול Firestore) ──
   window.doEmailPasswordLogin = async function(email, pass) {
     const errEl = document.getElementById('aerr');
+    // נקה נתונים ישנים מהזיכרון לפני כניסת משתמש חדש
+    S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
+    S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
+    S.office={name:'',phone:'',email:'',addr:''};
+    // נקה localStorage שעלול להכיל נתונים של משתמש קודם
+    try { Object.keys(localStorage).filter(k=>k.startsWith('dabelu_')).forEach(k=>localStorage.removeItem(k)); } catch(e){}
     try {
       const em = email.toLowerCase();
       const passHash = await hashPass(pass);
