@@ -523,34 +523,86 @@ async function notifyWorkerOfTask(workerMember, taskTitle, senderName) {
 async function finalizeAppointment(chatId, userDocName, pending, senderCalId, userId) {
   await clearPending(userDocName);
 
-  const apptWith  = pending.withName  || '';
-  const apptEmail = pending.withEmail || '';
-  const cleanTitle = `פגישה עם ${apptWith}`;
+  const apptWith     = pending.withName     || '';
+  const apptEmail    = pending.withEmail    || '';
+  const apptWhatsapp = pending.withWhatsapp || '';
+  const cleanTitle   = `פגישה עם ${apptWith}`;
 
   let eventId = null;
+  let addedToClientCalendar = false;
+
   try {
     if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.GOOGLE_CALENDAR_ID) {
+      // יומן של בעל העסק
       eventId = await createCalendarEvent(
         cleanTitle, pending.date, pending.time||null,
         apptWith, process.env.GOOGLE_CALENDAR_ID, apptEmail
       );
+      // יומן אישי של השולח (אם חיבר)
       if (senderCalId) {
         await createCalendarEvent(
           cleanTitle, pending.date, pending.time||null,
           apptWith, senderCalId, apptEmail
         );
       }
+      // ── בדוק אם הלקוח עצמו הוא משתמש רשום במערכת ──
+      // מחפש לפי ווצאפ ואם לא נמצא — לפי מייל
+      let clientUserDoc = null;
+      if (apptWhatsapp) {
+        const digits = apptWhatsapp.replace(/[^\d]/g, '');
+        try { clientUserDoc = await getUserDoc(digits); } catch(e) {}
+      }
+      if (!clientUserDoc && apptEmail) {
+        try {
+          const resp = await fetch(
+            `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ structuredQuery: {
+                from: [{ collectionId: 'users' }],
+                where: { fieldFilter: { field: { fieldPath: 'email' }, op: 'EQUAL', value: { stringValue: apptEmail.toLowerCase() } } },
+                limit: 1
+              }})
+            }
+          );
+          const data = await resp.json();
+          if (Array.isArray(data) && data[0]?.document) clientUserDoc = data[0].document;
+        } catch(e) {}
+      }
+
+      if (clientUserDoc) {
+        const clientCalId    = clientUserDoc.fields?.googleCalendarId?.stringValue || '';
+        const clientUserName = clientUserDoc.fields?.name?.stringValue || apptWith;
+        if (clientCalId) {
+          // שלוף מייל של בעל העסק לצורך הזמנה ביומן הלקוח
+          let ownerEmail = '';
+          try {
+            const ownerResp = await fetch(
+              `https://firestore.googleapis.com/v1/${userDocName}?key=${FIREBASE_API_KEY}`
+            );
+            const ownerData = await ownerResp.json();
+            ownerEmail = ownerData.fields?.email?.stringValue || '';
+          } catch(e) {}
+
+          await createCalendarEvent(
+            cleanTitle, pending.date, pending.time||null,
+            clientUserName, clientCalId, ownerEmail
+          );
+          addedToClientCalendar = true;
+          console.log(`📅 פגישה נוספה גם ליומן הלקוח ${clientUserName} (${clientCalId})`);
+        }
+      }
     }
   } catch(e) { console.error('Calendar finalize error:', e); }
 
   await saveAppointment(cleanTitle, pending.date, pending.time||'', apptWith, chatId, eventId, userId);
 
-  const dateStr   = formatDateHebrew(pending.date);
-  const timeStr   = pending.time ? ` בשעה ${pending.time}` : '';
-  const inviteMsg = apptEmail ? `\n📧 זימון נשלח ל-${apptEmail}` : '';
+  const dateStr      = formatDateHebrew(pending.date);
+  const timeStr      = pending.time ? ` בשעה ${pending.time}` : '';
+  const inviteMsg    = apptEmail ? `\n📧 זימון נשלח ל-${apptEmail}` : '';
+  const clientCalMsg = addedToClientCalendar ? `\n📅 נוסף גם ליומן של ${apptWith} אוטומטית!` : '';
 
   await sendWhatsAppReply(chatId,
-    `✅ הפגישה נקבעה! 📆\n👤 עם: ${apptWith}\n📅 ${dateStr}${timeStr}${inviteMsg}\n\n🔔 תקבל תזכורת יום לפני!`
+    `✅ הפגישה נקבעה! 📆\n👤 עם: ${apptWith}\n📅 ${dateStr}${timeStr}${inviteMsg}${clientCalMsg}\n\n🔔 תקבל תזכורת יום לפני!`
   );
 }
 
