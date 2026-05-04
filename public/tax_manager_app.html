@@ -4818,6 +4818,13 @@ function authShowTab(tab) {
   }
 }
 
+// ── פתיחה ישירה בלשונית הרשמה אם ?reg=1 בURL ──
+(function(){
+  if(new URLSearchParams(location.search).get('reg') === '1') {
+    authShowTab('reg');
+  }
+})();
+
 // ── Bamit / YoPay payment page URLs ──
 // Replace these URLs with your actual YoPay payment page links
 var BAMIT_PAYMENT = {
