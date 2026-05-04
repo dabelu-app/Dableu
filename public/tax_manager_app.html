@@ -4294,21 +4294,34 @@ function renderAdminPage(){
 .adm-toggle-btn{background:none;border:1.5px solid var(--border);border-radius:6px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0;color:var(--text2);padding:0;transition:background .15s}
 .adm-toggle-btn:hover{background:var(--surface2)}
 .adm-orphan-sep td{background:#fffbeb;font-size:12px;color:#92400e;font-weight:600;padding:8px 14px}
+.adm-tab-btn{background:var(--surface2);color:var(--text2);border:1.5px solid var(--border);font-weight:500}
+.adm-tab-btn:hover{background:#e2e8f0}
+.adm-tab-active{background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important}
+.adm-badge.basic{background:#eff6ff;color:#2563eb}
+.adm-badge.business{background:#f0fdf4;color:#16a34a}
+.adm-badge.pending{background:#fff7ed;color:#ea580c}
+.adm-badge.trial_expired{background:#fef2f2;color:#dc2626}
 </style>
 
 <div class="adm-stats" id="adm-stats"><div class="adm-stat"><div class="adm-stat-num">...</div><div class="adm-stat-lbl">טוען...</div></div></div>
 
 <div class="adm-toolbar">
   <input class="adm-search" id="adm-search" placeholder="🔍 חיפוש לפי שם / מייל..." oninput="admFilter(this.value)">
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="adm-btn adm-tab-btn adm-tab-active" id="adm-tab-all" onclick="admSetTab('all')">הכל</button>
+    <button class="adm-btn adm-tab-btn" id="adm-tab-paying" onclick="admSetTab('paying')">💳 מנויים משלמים</button>
+    <button class="adm-btn adm-tab-btn" id="adm-tab-trial" onclick="admSetTab('trial')">⏳ ניסיון</button>
+    <button class="adm-btn adm-tab-btn" id="adm-tab-blocked" onclick="admSetTab('blocked')">🚫 חסומים</button>
+  </div>
   <button class="adm-btn adm-btn-primary" onclick="admOpenAdd()">➕ הוסף משתמש</button>
 </div>
 
 <div class="adm-table-wrap">
   <table class="adm-table">
     <thead><tr>
-      <th>משתמש</th><th>מייל</th><th>משרד</th><th>סטטוס</th><th>כניסה אחרונה</th><th>פעולות</th>
+      <th>משתמש</th><th>מייל</th><th>משרד</th><th>סטטוס</th><th>תאריך תשלום</th><th>תאריך הרשמה</th><th>כניסה אחרונה</th><th>פעולות</th>
     </tr></thead>
-    <tbody id="adm-tbody"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text3)">⏳ טוען משתמשים...</td></tr></tbody>
+    <tbody id="adm-tbody"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">⏳ טוען משתמשים...</td></tr></tbody>
   </table>
 </div>
 
@@ -4353,6 +4366,21 @@ function renderAdminPage(){
 let _admAllUsers=[];
 let _admHierarchy=[];
 let _admOrphans=[];
+let _admCurrentTab='all';
+
+function admSetTab(tab){
+  _admCurrentTab=tab;
+  // update button styles
+  ['all','paying','trial','blocked'].forEach(t=>{
+    const btn=document.getElementById('adm-tab-'+t);
+    if(btn) btn.classList.toggle('adm-tab-active', t===tab);
+  });
+  admRenderHierarchyRows(document.getElementById('adm-search')?.value||'');
+}
+
+function admFilter(q){
+  admRenderHierarchyRows(q);
+}
 
 function admRenderTable(users, hierarchy, orphans){
   const tbody=document.getElementById('adm-tbody');
@@ -4362,12 +4390,14 @@ function admRenderTable(users, hierarchy, orphans){
   if(hierarchy!==undefined){_admHierarchy=hierarchy;_admOrphans=orphans||[];}
   // stats (always based on all users)
   const total=users.length;
+  const paying=users.filter(u=>['basic','business'].includes(u.subscription)).length;
   const active=users.filter(u=>['active','free','basic','business'].includes(u.subscription)).length;
   const trial=users.filter(u=>u.subscription==='trial'||!u.subscription).length;
   const blocked=users.filter(u=>u.subscription==='blocked').length;
   if(stats) stats.innerHTML=`
     <div class="adm-stat"><div class="adm-stat-num">${total}</div><div class="adm-stat-lbl">סה"כ משתמשים</div></div>
-    <div class="adm-stat"><div class="adm-stat-num" style="color:#16a34a">${active}</div><div class="adm-stat-lbl">פעילים / חינמי</div></div>
+    <div class="adm-stat" style="cursor:pointer;border-color:#16a34a" onclick="admSetTab('paying')"><div class="adm-stat-num" style="color:#16a34a">${paying}</div><div class="adm-stat-lbl">💳 מנויים משלמים</div></div>
+    <div class="adm-stat"><div class="adm-stat-num" style="color:#2563eb">${active}</div><div class="adm-stat-lbl">פעילים / חינמי</div></div>
     <div class="adm-stat"><div class="adm-stat-num" style="color:#d97706">${trial}</div><div class="adm-stat-lbl">בניסיון</div></div>
     <div class="adm-stat"><div class="adm-stat-num" style="color:#dc2626">${blocked}</div><div class="adm-stat-lbl">חסומים</div></div>
   `;
@@ -4381,6 +4411,7 @@ const _BADGE_LBL={trial:'ניסיון',free:'חינמי',active:'מנוי פעי
 function _admWorkerSubRow(w, uid){
   const sub=w.subscription||'trial';
   const lastLogin=w.lastLogin?new Date(w.lastLogin).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+  const createdAt=w.createdAt?new Date(w.createdAt).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
   const initials=(w.name||w.email||'?').slice(0,2).toUpperCase();
   const wUid=(w.uid||'').replace(/'/g,'');
   const wName=(w.name||w.email||'').replace(/'/g,'');
@@ -4394,6 +4425,8 @@ function _admWorkerSubRow(w, uid){
     <td style="color:var(--text2);font-size:13px">${w.email||'—'}</td>
     <td style="color:var(--text2);font-size:13px">${w.officeName||'—'}</td>
     <td>${teamOnly?'<span class="adm-badge" style="background:#f1f5f9;color:#64748b">צוות בלבד</span>':'<span class="adm-badge '+(_BADGE_CLS[sub]||'trial')+'">'+(_BADGE_LBL[sub]||sub)+'</span>'}</td>
+    <td style="color:var(--text3);font-size:12px">—</td>
+    <td style="color:var(--text3);font-size:12px">${createdAt}</td>
     <td style="color:var(--text3);font-size:12px">${lastLogin}</td>
     <td>${teamOnly?'':'<button class="adm-action adm-edit" onclick="admOpenEdit(\''+wUid+'\')">✏️ עריכה</button><button class="adm-action adm-del" onclick="admDelete(\''+wUid+'\',\''+wName+'\')">🗑️</button>'}</td>
   </tr>`;
@@ -4414,11 +4447,17 @@ function admRenderHierarchyRows(filterQ){
 
     const status=emp.subscription||'trial';
     const lastLogin=emp.lastLogin?new Date(emp.lastLogin).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+    const createdAt=emp.createdAt?new Date(emp.createdAt).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+    const paidAt=emp.paidAt?new Date(emp.paidAt).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
     const initials=(emp.name||emp.email||'?').slice(0,2).toUpperCase();
     const notes=emp.notes?`<span title="${emp.notes}" style="color:var(--text3);font-size:11px"> 📝</span>`:'';
     const uid=emp.uid||'';
     const safeName=(emp.name||emp.email||'').replace(/'/g,'');
     const wCount=workers.length;
+    // tab filter
+    if(_admCurrentTab==='paying' && !['basic','business'].includes(status)) return;
+    if(_admCurrentTab==='trial' && status!=='trial') return;
+    if(_admCurrentTab==='blocked' && status!=='blocked') return;
     // auto-expand when search matches a worker
     const autoExpand=lq&&filteredWorkers.length>0;
 
@@ -4434,6 +4473,8 @@ function admRenderHierarchyRows(filterQ){
       <td style="color:var(--text2)">${emp.email||'—'}</td>
       <td style="color:var(--text2)">${emp.officeName||'—'}</td>
       <td><span class="adm-badge ${_BADGE_CLS[status]||'trial'}">${_BADGE_LBL[status]||status}</span></td>
+      <td style="color:${emp.paidAt?'#16a34a':'var(--text3)'};font-size:12px;font-weight:${emp.paidAt?'600':'400'}">${emp.paidAt?'✅ '+paidAt:'—'}</td>
+      <td style="color:var(--text3);font-size:12px">${createdAt}</td>
       <td style="color:var(--text3);font-size:12px">${lastLogin}</td>
       <td onclick="event.stopPropagation()">
         <button class="adm-action adm-edit" onclick="admOpenEdit('${uid}')">✏️ עריכה</button>
@@ -4451,12 +4492,14 @@ function admRenderHierarchyRows(filterQ){
   });
 
   // orphan workers (workers not linked to any employer)
+  if(_admCurrentTab!=='paying'&&_admCurrentTab!=='blocked'){
   const filteredOrphans=lq?_admOrphans.filter(w=>(w.name||'').toLowerCase().includes(lq)||(w.email||'').toLowerCase().includes(lq)||(w.officeName||'').toLowerCase().includes(lq)):_admOrphans;
   if(filteredOrphans.length>0){
-    html+=`<tr class="adm-orphan-sep"><td colspan="6">👤 עובדים ללא מעסיק מוגדר</td></tr>`;
+    html+=`<tr class="adm-orphan-sep"><td colspan="8">👤 עובדים ללא מעסיק מוגדר</td></tr>`;
     filteredOrphans.forEach(w=>{
       const sub=w.subscription||'trial';
       const lastLogin=w.lastLogin?new Date(w.lastLogin).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+      const createdAt=w.createdAt?new Date(w.createdAt).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
       const initials=(w.name||w.email||'?').slice(0,2).toUpperCase();
       const wUid=(w.uid||'').replace(/'/g,'');
       const wName=(w.name||w.email||'').replace(/'/g,'');
@@ -4470,6 +4513,8 @@ function admRenderHierarchyRows(filterQ){
         <td style="color:var(--text2)">${w.email||'—'}</td>
         <td style="color:var(--text2)">${w.officeName||'—'}</td>
         <td><span class="adm-badge ${_BADGE_CLS[sub]||'trial'}">${_BADGE_LBL[sub]||sub}</span></td>
+        <td style="color:var(--text3);font-size:12px">—</td>
+        <td style="color:var(--text3);font-size:12px">${createdAt}</td>
         <td style="color:var(--text3);font-size:12px">${lastLogin}</td>
         <td>
           <button class="adm-action adm-edit" onclick="admOpenEdit('${wUid}')">✏️ עריכה</button>
@@ -4478,8 +4523,9 @@ function admRenderHierarchyRows(filterQ){
       </tr>`;
     });
   }
+  }
 
-  if(!html) html='<tr><td colspan="6" class="adm-empty">לא נמצאו תוצאות</td></tr>';
+  if(!html) html='<tr><td colspan="8" class="adm-empty">לא נמצאו תוצאות</td></tr>';
   tbody.innerHTML=html;
 }
 
@@ -4491,9 +4537,6 @@ function admToggleWorkers(uid){
   if(btn) btn.textContent=isOpen?'▶':'▼';
 }
 
-function admFilter(q){
-  admRenderHierarchyRows(q);
-}
 function admOpenAdd(){
   document.getElementById('adm-modal-title').textContent='➕ הוסף משתמש';
   document.getElementById('adm-edit-uid').value='';
