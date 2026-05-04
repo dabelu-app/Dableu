@@ -272,25 +272,65 @@ async function saveAppointment(title, date, time, clientName, chatId, googleEven
 }
 
 // ───────────────────────────────────────────
-// צוות עובדים — לזיהוי שיוך משימה
+// צוות עובדים — שליפה מ-Firestore (מנסה מספר מיקומים)
 // ───────────────────────────────────────────
-async function getTeamMembers(userDocId) {
+function parseTeamArray(arr) {
+  return (arr || []).map(v => {
+    const f = v.mapValue?.fields || {};
+    return {
+      name:  f.name?.stringValue  || '',
+      email: f.email?.stringValue || '',
+      phone: f.phone?.stringValue || ''
+    };
+  }).filter(m => m.name && m.name.length > 1);
+}
+
+async function getTeamMembers(userDocId, userDocFields) {
+  // מיקום 1: שדה team ישיר במסמך המשתמש (users/{uid}.team)
+  const directArr = userDocFields?.team?.arrayValue?.values;
+  if (directArr && directArr.length > 0) {
+    const members = parseTeamArray(directArr);
+    console.log(`📋 team from user doc: ${members.length} members:`, members.map(m=>m.name));
+    return members;
+  }
+
+  // מיקום 2: users/{uid}/data/team (sub-document)
   try {
     const resp = await fetch(
       `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/data/team?key=${FIREBASE_API_KEY}`
     );
     const data = await resp.json();
-    if (!data.fields) return [];
-    const arr = data.fields?.team?.arrayValue?.values || [];
-    return arr.map(v => {
-      const f = v.mapValue?.fields || {};
-      return {
-        name:  f.name?.stringValue  || '',
-        email: f.email?.stringValue || '',
-        phone: f.phone?.stringValue || ''
-      };
-    }).filter(m => m.name && m.name.length > 1);
-  } catch(e) { return []; }
+    console.log(`📋 team subcollection raw:`, JSON.stringify(data).slice(0, 300));
+    if (data.fields) {
+      const arr = data.fields?.team?.arrayValue?.values || [];
+      const members = parseTeamArray(arr);
+      console.log(`📋 team from subcollection: ${members.length} members:`, members.map(m=>m.name));
+      return members;
+    }
+  } catch(e) { console.error('getTeamMembers subcollection error:', e.message); }
+
+  // מיקום 3: users/{uid}/team (subcollection עם מסמכים נפרדים)
+  try {
+    const resp = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/team?key=${FIREBASE_API_KEY}&pageSize=50`
+    );
+    const data = await resp.json();
+    if (data.documents && data.documents.length > 0) {
+      const members = data.documents.map(doc => {
+        const f = doc.fields || {};
+        return {
+          name:  f.name?.stringValue  || '',
+          email: f.email?.stringValue || '',
+          phone: f.phone?.stringValue || f.whatsapp?.stringValue || ''
+        };
+      }).filter(m => m.name && m.name.length > 1);
+      console.log(`📋 team from docs: ${members.length} members:`, members.map(m=>m.name));
+      return members;
+    }
+  } catch(e) { console.error('getTeamMembers team-docs error:', e.message); }
+
+  console.log(`📋 no team found for userId=${userDocId}`);
+  return [];
 }
 
 // התאמה גמישה של שם עובד לרשימת הצוות (כולל וריאציות עבריות)
@@ -809,8 +849,11 @@ module.exports = async (req, res) => {
   }
 
   // ── משימה — זיהוי עובד ושיוך ──
+  // מעביר את שדות המשתמש כדי לחפש team בכל מיקום אפשרי
   let teamMembers = [];
-  try { teamMembers = await getTeamMembers(userDocId); } catch(e) {}
+  try { teamMembers = await getTeamMembers(userDocId, userDoc.fields); } catch(e) {
+    console.error('getTeamMembers failed:', e.message);
+  }
 
   // עדיפות 1: Groq זיהה שם עובד בסיווג → התאמה גמישה
   // עדיפות 2: חיפוש regex בטקסט המלא
