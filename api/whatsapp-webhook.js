@@ -95,6 +95,28 @@ async function createClient(name, email, whatsapp) {
   } catch(e) { console.error('createClient error:', e); }
 }
 
+// עדכן לקוח קיים או צור חדש
+async function upsertClient(name, email, whatsapp) {
+  try {
+    const clients = await getClients();
+    const existing = clients.find(c => c.name.toLowerCase() === (name||'').toLowerCase());
+    if (existing && existing.id) {
+      // עדכן שדות קיימים
+      const fields = {};
+      if (email)    fields.email    = { stringValue: email };
+      if (whatsapp) fields.whatsapp = { stringValue: whatsapp };
+      if (!Object.keys(fields).length) return;
+      const masks = Object.keys(fields).map(k=>`updateMask.fieldPaths=${k}`).join('&');
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/clients/${existing.id}?${masks}&key=${FIREBASE_API_KEY}`,
+        { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ fields }) }
+      );
+    } else {
+      await createClient(name, email, whatsapp);
+    }
+  } catch(e) { console.error('upsertClient error:', e); }
+}
+
 function matchClient(clients, text) {
   const t = text.toLowerCase().trim();
   return clients.find(c =>
@@ -154,22 +176,27 @@ async function classifyMessage(text) {
 `היום הוא ${today}. אתה מסווג הודעות בעברית למשרד יעוץ מס.
 
 קטגוריות:
-- "appointment" - בקשה לפגישה / תור / להיפגש
-- "task" - משימה, תזכורת, שאלה, בקשת פעולה
-- "invalid" - הודעה חסרת משמעות, ניסוי, מילה אחת אקראית
+- "appointment" - בקשה לפגישה / תור / להיפגש / קביעה
+- "task" - כל בקשה, משימה, תזכורת, שאלה, הודעה עם תוכן כלשהו — כולל אם לא ברורה לחלוטין
+- "invalid" - רק הודעות ריקות / ברכות קצרות ללא שום תוכן עבודה ("שלום", "היי", "בוקר טוב", "תודה", "ok", "123", "test")
 
-סימני פגישה: פגישה, תור, נפגש, להיפגש, קבע, קביעת, מתי פנוי, אפשר לקבוע
+כלל ברזל: כל ספק → "task"! עדיף משימה מיותרת מאשר לאבד מידע.
 
-החזר JSON בלבד:
+סימני פגישה: פגישה, תור, נפגש, להיפגש, קבע, קביעת, מתי פנוי, אפשר לקבוע, נתראה
+
+החזר JSON בלבד (ללא הסברים נוספים):
 {
   "intent": "appointment"|"task"|"invalid",
   "date": "YYYY-MM-DD"|null,
   "time": "HH:MM"|null,
-  "with": "שם האדם שהפגישה איתו"|null,
-  "title": "כותרת קצרה בעברית"
+  "with": "שם הלקוח שהפגישה איתו"|null,
+  "assignee": "שם העובד שהמשימה מיועדת אליו"|null,
+  "title": "כותרת קצרה ונקייה בעברית — ללא שם עובד"
 }
 
-לפגישות: חלץ תאריך, שעה, ושם האדם שהפגישה איתו (אחרי "עם"). "מחר"=מחר, "שלישי"=שלישי הקרוב. null אם לא צוין.`
+לפגישות: חלץ תאריך, שעה, שם הלקוח (אחרי "עם"). "מחר"=מחר, "שלישי"=שלישי הקרוב. null אם לא צוין.
+למשימות: אם ההודעה כוללת שם של אדם שאליו המשימה מיועדת (לפלוני / עבור / ל[שם] / [שם] צריך) — שמו → assignee. הכותרת ללא שם העובד.
+אם לא מצוין עובד ברור — assignee: null`
           },
           { role:'user', content:text }
         ],
@@ -234,22 +261,149 @@ async function saveAppointment(title, date, time, clientName, chatId, googleEven
   );
 }
 
-async function saveTask(title, clientName, source) {
+// ───────────────────────────────────────────
+// צוות עובדים — לזיהוי שיוך משימה
+// ───────────────────────────────────────────
+async function getTeamMembers(userDocId) {
+  try {
+    const resp = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/data/team?key=${FIREBASE_API_KEY}`
+    );
+    const data = await resp.json();
+    if (!data.fields) return [];
+    const arr = data.fields?.team?.arrayValue?.values || [];
+    return arr.map(v => {
+      const f = v.mapValue?.fields || {};
+      return {
+        name:  f.name?.stringValue  || '',
+        email: f.email?.stringValue || '',
+        phone: f.phone?.stringValue || ''
+      };
+    }).filter(m => m.name && m.name.length > 1);
+  } catch(e) { return []; }
+}
+
+// התאמה גמישה של שם עובד לרשימת הצוות (כולל וריאציות עבריות)
+function findWorkerByName(extractedName, team) {
+  if (!extractedName || !team.length) return null;
+  const q = extractedName.toLowerCase().trim();
+  // 1. התאמה מדויקת
+  for (const m of team) {
+    if (m.name.toLowerCase() === q) return m;
+  }
+  // 2. שם פרטי מדויק
+  for (const m of team) {
+    const first = m.name.split(' ')[0].toLowerCase();
+    const qFirst = q.split(' ')[0];
+    if (first === qFirst) return m;
+  }
+  // 3. וריאציה עברית — אחד מתחיל בשני (רות↔רותי, יוסף↔יוסי)
+  for (const m of team) {
+    const first = m.name.split(' ')[0].toLowerCase();
+    const qFirst = q.split(' ')[0];
+    if (first.startsWith(qFirst) || qFirst.startsWith(first)) return m;
+  }
+  return null;
+}
+
+// מחפש שם עובד בתוך הטקסט (חיפוש רגקס כגיבוי)
+function findWorkerMatch(text, team) {
+  if (!text || !team.length) return null;
+  const lower = text.toLowerCase().trim();
+  for (const m of team) {
+    if (!m.name || m.name.length < 2) continue;
+    const full  = m.name.toLowerCase();
+    const first = m.name.split(' ')[0].toLowerCase();
+    if (first.length < 2) continue;
+    // שם מלא בטקסט בכל מיקום
+    if (lower.includes(full)) return m;
+    // שם פרטי עם אות שימוש עברית לפניו (ל, מ, ב, ש, כ) בכל מיקום
+    if (new RegExp(`(?:^|\\s)[לבמשכ]?${first}(?:[:\\-,\\s]|$)`).test(lower)) return m;
+  }
+  return null;
+}
+
+// ניקוי כותרת מרישום שם עובד בהתחלה
+function cleanTitleFromWorker(title, workerName) {
+  if (!workerName || !title) return title;
+  const first = workerName.split(' ')[0];
+  return title
+    .replace(new RegExp(`^ל?${workerName}[:\\-,\\s]+`, 'i'), '')
+    .replace(new RegExp(`^ל?${first}[:\\-,\\s]+`,       'i'), '')
+    .trim() || title;
+}
+
+// שמירת משימה (מחזיר { ok, docId })
+async function saveTask(title, clientName, source, userDocId, assignee, assigneeEmail) {
+  const fields = {
+    title:      {stringValue: title.trim()},
+    clientName: {stringValue: clientName},
+    source:     {stringValue: source},
+    status:     {stringValue: 'pending'},
+    priority:   {stringValue: 'normal'},
+    createdAt:  {stringValue: new Date().toISOString()},
+    description:{stringValue: source!=='whatsapp-text' ? '🎤 תומלל מהודעה קולית' : ''},
+    userId:     {stringValue: userDocId || ''}
+  };
+  if (assignee) {
+    fields.assignee      = {stringValue: assignee};
+    fields.assigneeEmail = {stringValue: assigneeEmail || ''};
+  }
   const resp = await fetch(
     `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/tasks?key=${FIREBASE_API_KEY}`,
     { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ fields:{
-        title:      {stringValue: title.trim()},
-        clientName: {stringValue: clientName},
-        source:     {stringValue: source},
-        status:     {stringValue: 'pending'},
-        priority:   {stringValue: 'normal'},
-        createdAt:  {stringValue: new Date().toISOString()},
-        description:{stringValue: source!=='whatsapp-text' ? '🎤 תומלל מהודעה קולית' : ''}
-      }})
-    }
+      body: JSON.stringify({ fields }) }
   );
-  return resp.ok;
+  const data = await resp.json();
+  return { ok: resp.ok, docId: data.name?.split('/').pop() || '' };
+}
+
+// יצירת sharedTask כדי שהעובד יראה את המשימה
+async function createSharedTask(taskDocId, title, assigneeName, assigneeEmail, employerEmail, clientName, source) {
+  try {
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/sharedTasks?documentId=${taskDocId}&key=${FIREBASE_API_KEY}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ fields:{
+          title:             {stringValue: title},
+          status:            {stringValue: 'pending'},
+          priority:          {stringValue: 'normal'},
+          description:       {stringValue: ''},
+          assignee:          {stringValue: assigneeName},
+          assigneeEmail:     {stringValue: assigneeEmail},
+          employerEmail:     {stringValue: employerEmail},
+          client:            {stringValue: clientName},
+          source:            {stringValue: source},
+          createdAt:         {stringValue: new Date().toISOString()},
+          workerUnreadCount: {integerValue: '1'},
+          unreadCount:       {integerValue: '0'},
+          lastMessage:       {stringValue: ''},
+          taskId:            {stringValue: taskDocId}
+        }})
+      }
+    );
+  } catch(e) { console.error('createSharedTask error:', e); }
+}
+
+// נרמול טלפון — מסיר את כל התווים שאינם ספרות (כולל תווי Unicode)
+function normalizeWorkerPhone(phone) {
+  if (!phone) return null;
+  const digits = phone.toString().replace(/[^\d]/g, '');
+  if (!digits) return null;
+  return digits.startsWith('972') ? digits : '972' + digits.replace(/^0/, '');
+}
+
+// שליחת הודעת ווצאפ לעובד
+async function notifyWorkerOfTask(workerMember, taskTitle, senderName) {
+  try {
+    if (!workerMember.phone) return;
+    const normalized = normalizeWorkerPhone(workerMember.phone);
+    if (!normalized) return;
+    console.log('notifyWorker → chatId:', normalized + '@c.us');
+    await sendWhatsAppReply(normalized + '@c.us',
+      `📋 *משימה חדשה שובצה אליך!*\n\n📝 ${taskTitle}\n👤 הוקצה על ידי: ${senderName}\n\nיש לפתוח את המערכת לפרטים ולאישור ✅`
+    );
+  } catch(e) { console.error('notifyWorker error:', e); }
 }
 
 // ───────────────────────────────────────────
@@ -305,7 +459,17 @@ function formatDateHebrew(dateStr) {
 // אם כן → קבע. אם לא → שאל פרטי קשר.
 // ───────────────────────────────────────────
 async function tryFinalize(chatId, userDocName, pending, senderCalId, res) {
-  if (pending.withEmail) {
+  if (pending.withEmail || pending.withWhatsapp) {
+    // יש פרטי קשר — שלח זימון ישירות ללא שאלה
+    if (pending.withWhatsapp && !pending.withEmail) {
+      const phoneClean = pending.withWhatsapp.replace(/[-\s+]/g, '');
+      const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
+      const dateStr = formatDateHebrew(pending.date || '');
+      const timeStr = pending.time ? ` בשעה ${pending.time}` : '';
+      await sendWhatsAppReply(waId,
+        `📅 זימון לפגישה!\n\nנקבעה לך פגישה${timeStr}\n${dateStr}\n\nנתראה! 👋`
+      ).catch(()=>{});
+    }
     await finalizeAppointment(chatId, userDocName, pending, senderCalId);
   } else {
     await setPending(userDocName, { ...pending, step:'ask_contact', contactAskedAt: new Date().toISOString() });
@@ -440,7 +604,17 @@ module.exports = async (req, res) => {
 
       // לקוח קיים
       const upd = { ...pending, withName: matched.name, withEmail: matched.email || '' };
-      if (matched.email) {
+      if (matched.email || matched.whatsapp) {
+        // יש פרטי קשר שמורים — שלח זימון ישירות ללא שאלה
+        if (matched.whatsapp && !matched.email) {
+          const phoneClean = matched.whatsapp.replace(/[-\s+]/g, '');
+          const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
+          const dateStr = formatDateHebrew(upd.date || '');
+          const timeStr = upd.time ? ` בשעה ${upd.time}` : '';
+          await sendWhatsAppReply(waId,
+            `📅 זימון לפגישה!\n\nנקבעה לך פגישה${timeStr}\n${dateStr}\n\nנתראה! 👋`
+          ).catch(()=>{});
+        }
         await finalizeAppointment(chatId, userDocName, upd, senderCalId);
       } else {
         await setPending(userDocName, { ...upd, step:'ask_contact', contactAskedAt: new Date().toISOString() });
@@ -457,7 +631,7 @@ module.exports = async (req, res) => {
 
       // ללא זימון
       if (/^ללא(\s+זימון)?$|^לא$/i.test(txt)) {
-        await createClient(pending.withName, '', '');
+        await upsertClient(pending.withName, '', '');
         await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId);
         return res.status(200).send('ok');
       }
@@ -465,7 +639,7 @@ module.exports = async (req, res) => {
       // מייל
       if (txt.includes('@') && txt.includes('.')) {
         const email = txt.toLowerCase();
-        await createClient(pending.withName, email, '');
+        await upsertClient(pending.withName, email, '');
         await finalizeAppointment(chatId, userDocName, { ...pending, withEmail: email }, senderCalId);
         return res.status(200).send('ok');
       }
@@ -473,7 +647,7 @@ module.exports = async (req, res) => {
       // ווצאפ / טלפון
       const phoneClean = txt.replace(/[-\s+]/g, '');
       if (/^\d{9,12}$/.test(phoneClean)) {
-        await createClient(pending.withName, '', phoneClean);
+        await upsertClient(pending.withName, '', phoneClean);
         // שלח הודעת ווצאפ ללקוח כזימון
         const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
         const dateStr = formatDateHebrew(pending.date);
@@ -560,7 +734,9 @@ module.exports = async (req, res) => {
   const title = classified.title || msgText.trim();
 
   if (classified.intent === 'invalid') {
-    if (chatId) await sendWhatsAppReply(chatId, '⚠️ הודעה אינה ברורה, נא שילחו שנית.');
+    if (chatId) await sendWhatsAppReply(chatId,
+      '👋 שלום!\n\nכדי ליצור משימה — שלחו הודעה עם תוכן המשימה.\nכדי לקבוע פגישה — ציינו "פגישה" בהודעה.\n\nניתן גם לשלוח הודעה קולית! 🎤'
+    );
     return res.status(200).send('unclear');
   }
 
@@ -587,10 +763,10 @@ module.exports = async (req, res) => {
     const hasMatch = !!matchedClient;  // נמצא ברשימת הלקוחות
 
     const knownWith = hasMatch
-      ? { withName: matchedClient.name, withEmail: matchedClient.email || '' }
+      ? { withName: matchedClient.name, withEmail: matchedClient.email || '', withWhatsapp: matchedClient.whatsapp || '' }
       : hasWith
-        ? { withName: withName,          withEmail: '' }
-        : { withName: '',                withEmail: '' };
+        ? { withName: withName,          withEmail: '', withWhatsapp: '' }
+        : { withName: '',                withEmail: '', withWhatsapp: '' };
 
     // ── הכל ידוע + לקוח נמצא ──
     if (hasDate && hasTime && hasMatch) {
@@ -625,12 +801,43 @@ module.exports = async (req, res) => {
     }
   }
 
-  // ── משימה ──
-  const firestoreOk = await saveTask(title, clientName, source);
+  // ── משימה — זיהוי עובד ושיוך ──
+  const userDocId = userDocName.split('/').pop();
+  let teamMembers = [];
+  try { teamMembers = await getTeamMembers(userDocId); } catch(e) {}
+
+  // עדיפות 1: Groq זיהה שם עובד בסיווג → התאמה גמישה
+  // עדיפות 2: חיפוש regex בטקסט המלא
+  const aiAssignee  = classified.assignee || null;
+  const workerMatch = (aiAssignee ? findWorkerByName(aiAssignee, teamMembers) : null)
+                   || findWorkerMatch(msgText, teamMembers);
+
+  console.log(`👥 assignee from AI: "${aiAssignee}" | regex match: ${workerMatch?.name || 'none'}`);
+
+  const cleanTitle  = workerMatch ? cleanTitleFromWorker(title, workerMatch.name) : title;
+
+  // שם המשוב: עובד אם נמצא בצוות, אחרת המעביד עצמו ("כללי")
+  const assigneeName  = workerMatch ? workerMatch.name  : clientName;
+  const assigneeEmail = workerMatch ? workerMatch.email : clientEmail;
+
+  const { ok: firestoreOk, docId: taskDocId } = await saveTask(
+    cleanTitle, clientName, source, userDocId,
+    assigneeName, assigneeEmail
+  );
+
+  // sharedTask + התרעה — רק כשמשובצת לעובד (לא לכללי)
+  if (firestoreOk && workerMatch && taskDocId) {
+    await createSharedTask(taskDocId, cleanTitle, workerMatch.name, workerMatch.email, clientEmail, clientName, source);
+    await notifyWorkerOfTask(workerMatch, cleanTitle, clientName);
+  }
+
   if (chatId) {
+    const assignMsg = workerMatch
+      ? `\n👤 שובצה ל: *${workerMatch.name}*`
+      : `\n👤 שובצה כללי (${clientName})`;
     await sendWhatsAppReply(chatId, firestoreOk
-      ? `✅ המשימה נוצרה בהצלחה!\n📝 ${title}`
+      ? `✅ המשימה נוצרה בהצלחה!${assignMsg}\n📝 ${cleanTitle}`
       : '⚠️ ההודעה התקבלה אך הייתה בעיה בשמירה.');
   }
-  return res.status(200).json({ ok:true, type:'task', task:title });
+  return res.status(200).json({ ok:true, type:'task', task:cleanTitle });
 };

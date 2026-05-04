@@ -139,7 +139,27 @@ async function getTeamMembers(userDocId) {
   } catch(e) { return []; }
 }
 
-// חיפוש שם עובד בתוך הטקסט
+// התאמה גמישה של שם עובד לרשימת הצוות (כולל וריאציות עבריות: רות↔רותי)
+function findWorkerByName(extractedName, team) {
+  if (!extractedName || !team.length) return null;
+  const q = extractedName.toLowerCase().trim();
+  for (const m of team) {
+    if (m.name.toLowerCase() === q) return m;
+  }
+  for (const m of team) {
+    const first = m.name.split(' ')[0].toLowerCase();
+    const qFirst = q.split(' ')[0];
+    if (first === qFirst) return m;
+  }
+  for (const m of team) {
+    const first = m.name.split(' ')[0].toLowerCase();
+    const qFirst = q.split(' ')[0];
+    if (first.startsWith(qFirst) || qFirst.startsWith(first)) return m;
+  }
+  return null;
+}
+
+// חיפוש שם עובד בטקסט עם regex (גיבוי)
 function findWorkerMatch(text, team) {
   if (!text || !team.length) return null;
   const lower = text.toLowerCase().trim();
@@ -149,10 +169,41 @@ function findWorkerMatch(text, team) {
     const first = m.name.split(' ')[0].toLowerCase();
     if (first.length < 2) continue;
     if (lower.includes(full)) return m;
-    if (new RegExp(`^ל?${first}[:\\-,\\s]`).test(lower)) return m;
-    if (new RegExp(`\\s${first}[:\\-,\\s]`).test(lower)) return m;
+    if (new RegExp(`(?:^|\\s)[לבמשכ]?${first}(?:[:\\-,\\s]|$)`).test(lower)) return m;
   }
   return null;
+}
+
+// Groq — חילוץ שם עובד מהמשימה
+async function extractAssigneeFromText(text) {
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_KEY}` },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          { role: 'system', content:
+`בהינתן משימה בעברית, חלץ את שם העובד שאליו המשימה מיועדת.
+חפש: "לרותי", "לדינה:", "עבור משה", "ל[שם] -", "[שם] צריך ל".
+אם לא מצוין עובד ברור — החזר: null
+החזר את השם בלבד, ללא הסברים.
+דוגמאות:
+"לרותי - לעדכן תיק מע"מ" → "רותי"
+"משימה לדינה: לשלוח דוח" → "דינה"
+"עבור יוסי כהן - לחתום" → "יוסי כהן"
+"לשלוח חשבונית ללקוח" → null` },
+          { role: 'user', content: text.slice(0, 300) }
+        ],
+        max_tokens: 30,
+        temperature: 0
+      })
+    });
+    const data = await resp.json();
+    const content = (data.choices?.[0]?.message?.content || '').trim();
+    if (!content || /^null$/i.test(content)) return null;
+    return content;
+  } catch(e) { return null; }
 }
 
 // ניקוי שם עובד מהכותרת
@@ -371,7 +422,14 @@ module.exports = async (req, res) => {
     let teamMembers = [];
     try { teamMembers = await getTeamMembers(userId); } catch(e) {}
 
-    const workerMatch = findWorkerMatch(fullText, teamMembers);
+    // עדיפות 1: Groq חולץ שם עובד → התאמה גמישה
+    // עדיפות 2: regex בטקסט המלא
+    const aiAssignee  = teamMembers.length ? await extractAssigneeFromText(fullText) : null;
+    const workerMatch = (aiAssignee ? findWorkerByName(aiAssignee, teamMembers) : null)
+                     || findWorkerMatch(fullText, teamMembers);
+
+    console.log(`📧 assignee from AI: "${aiAssignee}" | matched: ${workerMatch?.name || 'none'}`);
+
     const cleanTitle  = workerMatch ? cleanTitleFromWorker(taskTitle, workerMatch.name) : taskTitle;
 
     // שיוך: לעובד אם זוהה, לבעל העסק אם לא
