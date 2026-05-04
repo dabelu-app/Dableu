@@ -1000,9 +1000,7 @@ function goToPayment(plan) {
   var url   = (typeof BAMIT_PAYMENT !== 'undefined') ? BAMIT_PAYMENT[plan] : '';
   if (!url) { toast('⚠️ קישור תשלום אינו מוגדר'); return; }
   localStorage.setItem('pending_payment', JSON.stringify({ uid: uid, plan: plan, email: email }));
-  window.location.href = url + (url.includes('?') ? '&' : '?')
-    + 'customer_email=' + encodeURIComponent(email)
-    + '&customer_name='  + encodeURIComponent((S.user && S.user.name) || '');
+  window.location.href = url; // ← URL נקי — YoPay לא מקבל פרמטרים נוספים
 }
 
 function showPaywall() {
@@ -4915,11 +4913,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if((plan==='basic'||plan==='business') && BAMIT_PAYMENT[plan]) {
           // שמור uid ותוכנית ב-localStorage לפני המעבר
           localStorage.setItem('pending_payment', JSON.stringify({uid: result.uid, plan: plan, email: email}));
-          var payUrl = BAMIT_PAYMENT[plan]
-            +(BAMIT_PAYMENT[plan].includes('?')?'&':'?')
-            +'customer_name='+encodeURIComponent(name)
-            +'&customer_email='+encodeURIComponent(email);
-          window.location.href = payUrl;
+          window.location.href = BAMIT_PAYMENT[plan]; // ← URL נקי בלי פרמטרים נוספים
           return;
         }
         enterApp();
@@ -4944,12 +4938,28 @@ document.addEventListener('DOMContentLoaded', function(){
     try { pending = JSON.parse(localStorage.getItem('pending_payment') || 'null'); } catch(e){}
     if(!pending || !pending.uid || !pending.plan) return;
     localStorage.removeItem('pending_payment');
-    // עדכן subscription ב-Firestore
-    if(typeof window.saveUserProfileToDB === 'function') {
-      await window.saveUserProfileToDB(pending.uid, { subscription: pending.plan });
-    }
+    // עדכן subscription ב-Firestore דרך REST API ישיר (saveUserProfileToDB טוען async)
+    try {
+      await fetch(
+        'https://firestore.googleapis.com/v1/projects/dabelu/databases/(default)/documents/users/'
+        + pending.uid
+        + '?updateMask.fieldPaths=subscription&updateMask.fieldPaths=plan&updateMask.fieldPaths=paidAt'
+        + '&key=AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0',
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: {
+            subscription: { stringValue: pending.plan },
+            plan:         { stringValue: pending.plan },
+            paidAt:       { stringValue: new Date().toISOString() }
+          }})
+        }
+      );
+    } catch(e) { console.error('payment return update failed:', e); }
     if(S.user) S.user.subscription = pending.plan;
-    toast('✅ התשלום התקבל! המנוי ' + (pending.plan==='basic'?'Basic':'Business') + ' פעיל.');
+    setTimeout(function(){
+      toast('✅ התשלום התקבל! מנוי ' + (pending.plan==='basic'?'Basic':'Business') + ' פעיל — התחבר/י לאפליקציה');
+    }, 800);
   })();
 });
 </script>
@@ -5894,10 +5904,7 @@ document.addEventListener('DOMContentLoaded', function(){
         const plan = userData.plan || 'basic';
         if (BAMIT_PAYMENT[plan]) {
           localStorage.setItem('pending_payment', JSON.stringify({ uid, plan, email }));
-          window.location.href = BAMIT_PAYMENT[plan]
-            + (BAMIT_PAYMENT[plan].includes('?') ? '&' : '?')
-            + 'customer_email=' + encodeURIComponent(email)
-            + '&customer_name=' + encodeURIComponent(userData.name || '');
+          window.location.href = BAMIT_PAYMENT[plan]; // ← URL נקי
           return;
         }
         document.getElementById('aerr').textContent = 'החשבון ממתין לאישור תשלום — צור קשר עמנו';
