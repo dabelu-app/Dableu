@@ -385,29 +385,31 @@ function cleanTitleFromWorker(title, workerName) {
     .trim() || title;
 }
 
-// שמירת משימה (מחזיר { ok, docId })
+// שמירת משימה — נשמרת ב-users/{uid}/data/tasks (המקום שהאפליקציה קוראת ממנו)
 async function saveTask(title, clientName, source, userDocId, assignee, assigneeEmail) {
-  const fields = {
-    title:      {stringValue: title.trim()},
-    clientName: {stringValue: clientName},
-    source:     {stringValue: source},
-    status:     {stringValue: 'pending'},
-    priority:   {stringValue: 'normal'},
-    createdAt:  {stringValue: new Date().toISOString()},
-    description:{stringValue: source!=='whatsapp-text' ? '🎤 תומלל מהודעה קולית' : ''},
-    userId:     {stringValue: userDocId || ''}
+  const taskId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const taskFields = {
+    id:          { stringValue: taskId },
+    title:       { stringValue: title.trim() },
+    assignee:    { stringValue: assignee || '' },
+    clientName:  { stringValue: clientName || '' },
+    source:      { stringValue: source || 'bot' },
+    status:      { stringValue: 'pending' },
+    priority:    { stringValue: 'normal' },
+    createdAt:   { stringValue: new Date().toISOString() },
+    description: { stringValue: source !== 'whatsapp-text' ? '🎤 תומלל מהודעה קולית' : '' }
   };
-  if (assignee) {
-    fields.assignee      = {stringValue: assignee};
-    fields.assigneeEmail = {stringValue: assigneeEmail || ''};
-  }
   const resp = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/tasks?key=${FIREBASE_API_KEY}`,
-    { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ fields }) }
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:commit?key=${FIREBASE_API_KEY}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ writes: [{ transform: {
+        document: `projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/data/tasks`,
+        fieldTransforms: [{ fieldPath: 'tasks', appendMissingElements: { values: [{ mapValue: { fields: taskFields } }] } }]
+      }}]})
+    }
   );
-  const data = await resp.json();
-  return { ok: resp.ok, docId: data.name?.split('/').pop() || '' };
+  console.log(`💾 saveTask → users/${userDocId}/data/tasks | id:${taskId} | assignee:${assignee}`);
+  return { ok: resp.ok, docId: taskId };
 }
 
 // יצירת sharedTask כדי שהעובד יראה את המשימה

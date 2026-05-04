@@ -32,31 +32,31 @@ async function isRegisteredEmail(email) {
 // ───────────────────────────────────────────
 // Firestore — שמירת משימה
 // ───────────────────────────────────────────
+// שמירת משימה — נשמרת ב-users/{uid}/data/tasks (המקום שהאפליקציה קוראת ממנו)
 async function saveTask(title, senderName, source, userId, assignee, assigneeEmail, description) {
-  const fields = {
+  const taskId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const taskFields = {
+    id:          { stringValue: taskId },
     title:       { stringValue: title.trim() },
-    clientName:  { stringValue: senderName },
-    source:      { stringValue: source },
+    assignee:    { stringValue: assignee || '' },
+    clientName:  { stringValue: senderName || '' },
+    source:      { stringValue: source || 'email' },
     status:      { stringValue: 'pending' },
     priority:    { stringValue: 'normal' },
     createdAt:   { stringValue: new Date().toISOString() },
-    description: { stringValue: description || '' },
-    userId:      { stringValue: userId || '' }
+    description: { stringValue: description || '' }
   };
-  if (assignee) {
-    fields.assignee      = { stringValue: assignee };
-    fields.assigneeEmail = { stringValue: assigneeEmail || '' };
-  }
   const resp = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/tasks?key=${FIREBASE_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields })
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:commit?key=${FIREBASE_API_KEY}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ writes: [{ transform: {
+        document: `projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userId}/data/tasks`,
+        fieldTransforms: [{ fieldPath: 'tasks', appendMissingElements: { values: [{ mapValue: { fields: taskFields } }] } }]
+      }}]})
     }
   );
-  const data = await resp.json();
-  return { ok: resp.ok, docId: data.name?.split('/').pop() || '' };
+  console.log(`💾 saveTask → users/${userId}/data/tasks | id:${taskId} | assignee:${assignee}`);
+  return { ok: resp.ok, docId: taskId };
 }
 
 // ───────────────────────────────────────────
@@ -366,21 +366,27 @@ async function sendReplyEmail(to, taskTitle, status, workerName) {
     </div>`;
   } else if (status === 'ok') {
     const assignLine = workerName
-      ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 16px;margin:12px 0;text-align:right;font-size:14px;color:#16a34a;font-weight:600">👤 שובצה ל: ${workerName}</div>`
-      : '';
+      ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 16px;margin:12px 0;text-align:right">
+           <span style="font-size:13px;color:#16a34a;font-weight:700">👤 שובצה ל: ${workerName}</span>
+         </div>`
+      : `<div style="background:#f8fafc;border-radius:8px;padding:10px 16px;margin:8px 0;text-align:right">
+           <span style="font-size:13px;color:#64748b">👤 שובצה לכללי</span>
+         </div>`;
     subject = `✅ משימה נוצרה: ${taskTitle}`;
     html = `
     <div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0">
       ${header}
-      <div style="padding:32px;background:#fff;text-align:center">
-        <p style="font-size:40px;margin:0">✅</p>
-        <h2 style="color:#1e293b;margin:12px 0 8px">המשימה נוצרה בהצלחה!</h2>
-        <div style="background:#f0f4ff;border-radius:8px;padding:16px;margin:16px 0;text-align:right">
-          <span style="color:#666;font-size:13px">📝 משימה:</span>
-          <p style="color:#1e293b;font-weight:bold;margin:4px 0 0;font-size:16px">${taskTitle}</p>
+      <div style="padding:28px;background:#fff">
+        <p style="font-size:22px;text-align:center;margin:0 0 12px">✅</p>
+        <h2 style="color:#1e293b;margin:0 0 20px;text-align:center;font-size:18px">המשימה נוצרה בהצלחה!</h2>
+        <div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px;padding:16px;margin-bottom:12px;text-align:right">
+          <div style="color:#6366f1;font-size:12px;font-weight:600;margin-bottom:6px">📝 תוכן המשימה</div>
+          <div style="color:#1e293b;font-weight:700;font-size:15px;line-height:1.5">${taskTitle}</div>
         </div>
         ${assignLine}
-        <a href="${SITE_URL}" style="background:#2563eb;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;display:inline-block">פתח את Dabelu</a>
+        <div style="text-align:center;margin-top:20px">
+          <a href="${SITE_URL}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;display:inline-block">פתח את Dabelu ←</a>
+        </div>
       </div>
       <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
     </div>`;
