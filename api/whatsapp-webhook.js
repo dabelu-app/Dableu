@@ -277,10 +277,12 @@ async function saveAppointment(title, date, time, clientName, chatId, googleEven
 function parseTeamArray(arr) {
   return (arr || []).map(v => {
     const f = v.mapValue?.fields || {};
+    // phone ו-whatsapp יכולים להיות שדות נפרדים — ניקח את מה שיש
+    const phone = f.phone?.stringValue || f.whatsapp?.stringValue || '';
     return {
       name:  f.name?.stringValue  || '',
       email: f.email?.stringValue || '',
-      phone: f.phone?.stringValue || ''
+      phone
     };
   }).filter(m => m.name && m.name.length > 1);
 }
@@ -443,17 +445,71 @@ function normalizeWorkerPhone(phone) {
   return digits.startsWith('972') ? digits : '972' + digits.replace(/^0/, '');
 }
 
-// שליחת הודעת ווצאפ לעובד
-async function notifyWorkerOfTask(workerMember, taskTitle, senderName) {
+// שליחת מייל לעובד
+async function notifyWorkerByEmail(workerEmail, workerName, taskTitle, senderName) {
   try {
-    if (!workerMember.phone) return;
-    const normalized = normalizeWorkerPhone(workerMember.phone);
-    if (!normalized) return;
-    console.log('notifyWorker → chatId:', normalized + '@c.us');
-    await sendWhatsAppReply(normalized + '@c.us',
-      `📋 *משימה חדשה שובצה אליך!*\n\n📝 ${taskTitle}\n👤 הוקצה על ידי: ${senderName}\n\nיש לפתוח את המערכת לפרטים ולאישור ✅`
-    );
-  } catch(e) { console.error('notifyWorker error:', e); }
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.zoho.com', port: 587, secure: false,
+      auth: { user: 'tasks@dabelu.pro', pass: process.env.ZOHO_PASS }
+    });
+    const SITE_URL = 'https://dabelu.vercel.app';
+    const html = `
+    <div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0">
+      <div style="background:#f0eeff;padding:24px 32px;text-align:center;border-bottom:1px solid #ddd6fe;border-radius:12px 12px 0 0">
+        <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:64px;max-width:220px;display:block;margin:0 auto">
+      </div>
+      <div style="background:linear-gradient(135deg,#1e40af,#2563eb);padding:20px 28px;text-align:center">
+        <h1 style="color:#fff;margin:0;font-size:20px;font-weight:700">📋 משימה חדשה שובצה אליך!</h1>
+      </div>
+      <div style="padding:32px;background:#fff">
+        <p style="font-size:16px;color:#1e293b;margin:0 0 8px">שלום <strong>${workerName}</strong> 👋</p>
+        <p style="font-size:14px;color:#475569;margin:0 0 24px">${senderName} שיבצ/ה לך משימה חדשה:</p>
+        <div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:10px;padding:18px 20px;margin-bottom:28px">
+          <div style="color:#6366f1;font-size:12px;font-weight:600;margin-bottom:8px">📝 פרטי המשימה</div>
+          <div style="color:#1e293b;font-size:16px;font-weight:700">${taskTitle}</div>
+        </div>
+        <div style="text-align:center">
+          <a href="${SITE_URL}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700">פתח את Dabelu לאישור ←</a>
+        </div>
+      </div>
+      <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
+    </div>`;
+    await transporter.sendMail({
+      from: '"Dabelu מערכת משימות" <tasks@dabelu.pro>',
+      to: workerEmail,
+      subject: `📋 משימה חדשה: ${taskTitle}`,
+      html
+    });
+    console.log('✅ worker email sent to:', workerEmail);
+  } catch(e) { console.error('notifyWorkerByEmail error:', e.message); }
+}
+
+// שליחה לעובד לפי נתוני ההתקשרות שהוגדרו לו — ווצאפ אם יש טלפון, מייל אם יש מייל
+async function notifyWorkerOfTask(workerMember, taskTitle, senderName) {
+  const { name, email, phone } = workerMember;
+
+  // ווצאפ — אם הוגדר טלפון לעובד
+  if (phone) {
+    try {
+      const normalized = normalizeWorkerPhone(phone);
+      if (normalized) {
+        await sendWhatsAppReply(normalized + '@c.us',
+          `📋 *משימה חדשה שובצה אליך!*\n\n📝 ${taskTitle}\n👤 הוקצה על ידי: ${senderName}\n\nיש לפתוח את המערכת לפרטים ולאישור ✅`
+        );
+        console.log('✅ worker WA sent to:', normalized);
+      }
+    } catch(e) { console.error('notifyWorker WA error:', e.message); }
+  }
+
+  // מייל — אם הוגדר מייל לעובד
+  if (email) {
+    await notifyWorkerByEmail(email, name, taskTitle, senderName);
+  }
+
+  if (!phone && !email) {
+    console.warn(`⚠️ worker ${name} has no contact info — cannot notify`);
+  }
 }
 
 // ───────────────────────────────────────────

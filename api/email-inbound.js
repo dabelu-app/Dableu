@@ -123,10 +123,11 @@ async function isValidTask(taskTitle) {
 function parseTeamArray(arr) {
   return (arr || []).map(v => {
     const f = v.mapValue?.fields || {};
+    const phone = f.phone?.stringValue || f.whatsapp?.stringValue || '';
     return {
       name:  f.name?.stringValue  || '',
       email: f.email?.stringValue || '',
-      phone: f.phone?.stringValue || ''
+      phone
     };
   }).filter(m => m.name && m.name.length > 1);
 }
