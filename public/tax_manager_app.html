@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
 <meta charset="UTF-8"/>
@@ -385,13 +385,13 @@ textarea.form-input{resize:vertical}
           <input type="radio" name="r-plan" id="r-plan-basic" value="basic" style="display:none"/>
           <div style="font-size:16px;margin-bottom:3px">💼</div>
           <div style="font-size:12px;font-weight:700;color:#475569">Basic</div>
-          <div style="font-size:10px;color:#94a3b8;margin-top:2px">49₪/חודש</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">20₪/חודש</div>
         </label>
         <label id="plan-business-lbl" style="flex:1;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#f8fafc;transition:all .2s">
           <input type="radio" name="r-plan" id="r-plan-business" value="business" style="display:none"/>
           <div style="font-size:16px;margin-bottom:3px">🚀</div>
           <div style="font-size:12px;font-weight:700;color:#475569">Business</div>
-          <div style="font-size:10px;color:#94a3b8;margin-top:2px">99₪/חודש</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">50₪/חודש</div>
         </label>
       </div>
     </div>
@@ -4307,8 +4307,8 @@ function renderAdminPage(){
       <select id="adm-f-status">
         <option value="trial">ניסיון (7 ימים)</option>
         <option value="free">חינמי (ללא הגבלה)</option>
-        <option value="basic">Basic (49₪/חודש)</option>
-        <option value="business">Business (99₪/חודש)</option>
+        <option value="basic">Basic (20₪/חודש)</option>
+        <option value="business">Business (50₪/חודש)</option>
         <option value="active">מנוי פעיל (ישן)</option>
         <option value="pending">ממתין לתשלום</option>
         <option value="blocked">חסום</option>
@@ -4842,7 +4842,7 @@ document.addEventListener('DOMContentLoaded', function(){
       lbl.style.background = active ? '#eff6ff' : '#f8fafc';
     });
     if(premNote) premNote.style.display = isPaid ? 'block' : 'none';
-    if(planPriceNote) planPriceNote.textContent = selected==='basic' ? 'Basic — 49₪/חודש' : selected==='business' ? 'Business — 99₪/חודש' : '';
+    if(planPriceNote) planPriceNote.textContent = selected==='basic' ? 'Basic — 20₪/חודש' : selected==='business' ? 'Business — 50₪/חודש' : '';
   }
   PLAN_KEYS.forEach(function(p){
     var el = document.getElementById('r-plan-'+p);
@@ -4886,7 +4886,7 @@ document.addEventListener('DOMContentLoaded', function(){
         }).catch(()=>{});
         // תכנית בתשלום — הפניה לדף תשלום Bamit/YoPay
         if((plan==='basic'||plan==='business') && BAMIT_PAYMENT[plan]) {
-          var amount  = plan==='basic' ? 49 : 99;
+          var amount  = plan==='basic' ? 20 : 50;
           var retUrl  = encodeURIComponent(location.href.split('?')[0]+'?pay_ok=1&uid='+result.uid+'&plan='+plan);
           var payUrl  = BAMIT_PAYMENT[plan]
             +(BAMIT_PAYMENT[plan].includes('?')?'&':'?')
