@@ -322,33 +322,85 @@ textarea.form-input{resize:vertical}
 <body>
 
 <!-- ══════════ AUTH ══════════ -->
-<div id="screen-auth" style="position:fixed;inset:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;z-index:1000">
-<div style="background:white;border-radius:16px;padding:32px;width:340px;font-family:Arial,sans-serif;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,.4)">
-  <div style="text-align:center;margin-bottom:20px">
-    <div style="font-size:40px;margin-bottom:8px">📋</div>
+<div id="screen-auth" style="position:fixed;inset:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;z-index:1000;overflow-y:auto">
+<div style="background:white;border-radius:16px;padding:28px 28px 24px;width:360px;max-width:95vw;font-family:Arial,sans-serif;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,.4);margin:auto">
+
+  <!-- Logo -->
+  <div style="text-align:center;margin-bottom:18px">
+    <div style="font-size:38px;margin-bottom:6px">📋</div>
     <div style="font-size:20px;font-weight:bold;color:#1a1a2e">Dabelu</div>
-    <div style="font-size:13px;color:#888;margin-top:4px">מנהל משימות מס</div>
+    <div style="font-size:12px;color:#888;margin-top:3px">מנהל משימות מס</div>
   </div>
 
-  <!-- Google Sign In Button -->
-  <div id="btn-google" style="width:100%;padding:12px;background:#fff;border:2px solid #ddd;border-radius:10px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;transition:all .2s;box-sizing:border-box" onmouseover="this.style.background='#f5f5f5';this.style.borderColor='#4285F4'" onmouseout="this.style.background='#fff';this.style.borderColor='#ddd'">
-    <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-    כניסה עם Google
+  <!-- Tabs -->
+  <div style="display:flex;border:1.5px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:20px">
+    <div id="tab-login" onclick="authShowTab('login')" style="flex:1;padding:9px;text-align:center;font-size:14px;font-weight:700;cursor:pointer;background:#2563eb;color:#fff;transition:all .2s">כניסה</div>
+    <div id="tab-reg" onclick="authShowTab('reg')" style="flex:1;padding:9px;text-align:center;font-size:14px;font-weight:700;cursor:pointer;background:#f8fafc;color:#64748b;transition:all .2s">הרשמה</div>
   </div>
 
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <div style="flex:1;height:1px;background:#eee"></div>
-    <span style="font-size:12px;color:#aaa">או</span>
-    <div style="flex:1;height:1px;background:#eee"></div>
+  <!-- ── LOGIN PANEL ── -->
+  <div id="frm-login">
+    <div id="btn-google" style="width:100%;padding:11px;background:#fff;border:2px solid #ddd;border-radius:10px;font-size:14px;font-weight:bold;text-align:center;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px;transition:all .2s;box-sizing:border-box" onmouseover="this.style.background='#f5f5f5';this.style.borderColor='#4285F4'" onmouseout="this.style.background='#fff';this.style.borderColor='#ddd'">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      כניסה עם Google
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="flex:1;height:1px;background:#eee"></div>
+      <span style="font-size:12px;color:#aaa">או</span>
+      <div style="flex:1;height:1px;background:#eee"></div>
+    </div>
+    <div id="aerr" style="color:red;font-size:12px;text-align:center;margin-bottom:8px"></div>
+    <input id="aem" type="email" placeholder="אימייל" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
+    <div style="position:relative;margin-bottom:14px">
+      <input id="apw" type="password" placeholder="סיסמה" style="width:100%;padding:10px;padding-right:36px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;direction:ltr;text-align:left"/>
+      <span id="toggle-pw" onclick="var f=document.getElementById('apw'),s=document.getElementById('toggle-pw');f.type=f.type==='password'?'text':'password';s.innerHTML=f.type==='password'?'<svg width=18 height=18 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><path d=&quot;M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z&quot;/><circle cx=12 cy=12 r=3/></svg>':'<svg width=18 height=18 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><path d=&quot;M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24&quot;/><line x1=1 y1=1 x2=23 y2=23/></svg>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#888;line-height:0;user-select:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+    </div>
+    <div id="abtn" style="width:100%;padding:12px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">כניסה ←</div>
   </div>
 
-  <div id="aerr" style="color:red;font-size:12px;text-align:center;margin-bottom:8px"></div>
-  <input id="aem" type="email" placeholder="אימייל" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
-  <div style="position:relative;margin-bottom:14px">
-    <input id="apw" type="password" placeholder="סיסמה" style="width:100%;padding:10px;padding-right:36px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;direction:ltr;text-align:left"/>
-    <span id="toggle-pw" onclick="var f=document.getElementById('apw'),s=document.getElementById('toggle-pw');f.type=f.type==='password'?'text':'password';s.innerHTML=f.type==='password'?'<svg width=18 height=18 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><path d=&quot;M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z&quot;/><circle cx=12 cy=12 r=3/></svg>':'<svg width=18 height=18 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><path d=&quot;M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24&quot;/><line x1=1 y1=1 x2=23 y2=23/></svg>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#888;line-height:0;user-select:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+  <!-- ── REGISTER PANEL ── -->
+  <div id="frm-reg" style="display:none">
+    <div id="reg-err" style="color:#dc2626;font-size:12px;text-align:center;margin-bottom:8px;display:none"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="r-firstname" type="text" placeholder="שם פרטי *" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box"/>
+      <input id="r-lastname" type="text" placeholder="שם משפחה" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box"/>
+    </div>
+    <input id="r-office" type="text" placeholder="שם המשרד / החברה" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box"/>
+    <input id="r-email" type="email" placeholder="אימייל *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
+    <input id="r-pass" type="password" placeholder="סיסמה (לפחות 6 תווים) *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
+    <input id="r-pass2" type="password" placeholder="אימות סיסמה *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
+    <input id="r-phone" type="tel" placeholder="📱 ווצאפ לקבלת הודעת פתיחה (לא חובה)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;direction:ltr"/>
+
+    <!-- Plan Selection -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px">בחרי תכנית:</div>
+      <div style="display:flex;gap:8px">
+        <label id="plan-free-lbl" style="flex:1;border:2px solid #2563eb;border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;background:#eff6ff;transition:all .2s">
+          <input type="radio" name="r-plan" id="r-plan-free" value="free" checked style="display:none"/>
+          <div style="font-size:18px;margin-bottom:4px">🎁</div>
+          <div style="font-size:13px;font-weight:700;color:#1e40af">חינמי</div>
+          <div style="font-size:11px;color:#3b82f6;margin-top:2px">תכונות בסיסיות</div>
+        </label>
+        <label id="plan-premium-lbl" style="flex:1;border:2px solid #e2e8f0;border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;background:#f8fafc;transition:all .2s">
+          <input type="radio" name="r-plan" id="r-plan-premium" value="active" style="display:none"/>
+          <div style="font-size:18px;margin-bottom:4px">⭐</div>
+          <div style="font-size:13px;font-weight:700;color:#475569">פרימיום</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">99₪/חודש — כל התכונות</div>
+        </label>
+      </div>
+    </div>
+
+    <div id="premium-note" style="display:none;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-bottom:12px;text-align:center">
+      💳 לאחר ההרשמה תפנה/י אלינו לסליקה<br>
+      <strong>WhatsApp: <a href="https://wa.me/972XXXXXXXXX" style="color:#92400e">972XXXXXXXXX</a></strong>
+    </div>
+
+    <div id="reg-btn" style="width:100%;padding:13px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">הרשמה ←</div>
+    <div style="text-align:center;margin-top:12px;font-size:12px;color:#94a3b8">
+      כבר יש לך חשבון? <span onclick="authShowTab('login')" style="color:#2563eb;cursor:pointer;font-weight:600">כניסה</span>
+    </div>
   </div>
-  <div id="abtn" style="width:100%;padding:12px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">כניסה ←</div>
+
 </div>
 
 <!-- מסך כניסה ראשונה / הגדרת סיסמה -->
@@ -386,7 +438,7 @@ textarea.form-input{resize:vertical}
       <div class="nav-item" onclick="nav('clients',this)"><span class="nav-icon">👥</span><span class="nav-label">לקוחות</span></div>
       <div class="nav-item" onclick="nav('deadlines',this)"><span class="nav-icon">📅</span><span class="nav-label">דדליינים</span></div>
       <div class="nav-item" onclick="nav('reminders',this)"><span class="nav-icon">🔔</span><span class="nav-label">תזכורות</span></div>
-      <div class="nav-item" onclick="nav('messages',this)"><span class="nav-icon">💬</span><span class="nav-label">הודעות</span></div>
+      <div class="nav-item" id="nav-worker-chats" onclick="nav('worker-chats',this)"><span class="nav-icon">💬</span><span class="nav-label">הודעות</span><span class="nav-badge" id="nb-worker-chats" style="display:none">0</span></div>
       <div class="nav-item" id="nav-admin" style="display:none" onclick="nav('admin',this)"><span class="nav-icon">👑</span><span class="nav-label">ניהול משתמשים</span></div>
       <div class="nav-item" id="nav-worker-tasks" style="display:none" onclick="nav('worker-tasks',this)"><span class="nav-icon">📋</span><span class="nav-label">המשימות שלי</span><span class="nav-badge" id="nb-worker-tasks" style="display:none">0</span></div>
       <div class="nav-item" id="nav-worker-chat" style="display:none" onclick="nav('worker-chat',this)"><span class="nav-icon">💬</span><span class="nav-label">שיחות</span><span class="nav-badge" id="nb-worker-chat" style="display:none">0</span></div>
@@ -998,15 +1050,16 @@ function enterApp(){
   if(av2) av2.textContent=initials;
   if(nm2) nm2.textContent=name;
   if(of2) of2.textContent='🏢 '+office;
-  const isEmp = !S.user.role || S.user.role !== 'worker';
+  const isEmp = !S.user.role || (S.user.role !== 'worker' && S.user.role !== 'employee');
 
   if (!isEmp) {
-    // ── מצב עובד ──
+    // ── מצב עובד ── רק לשונית משימות שלו
     S.workerTasks = [];
-    // הסתר לשוניות מעביד, הצג לשוניות עובד
-    document.querySelectorAll('.nav-item:not(#nav-worker-tasks):not(#nav-worker-chat)').forEach(n=>n.style.display='none');
+    // הסתר הכל — לשוניות, כותרות קבוצה (כולל שיחות עובדים שרלוונטית רק למעסיק)
+    document.querySelectorAll('.nav-item').forEach(n=>n.style.display='none');
+    document.querySelectorAll('.nav-group-label').forEach(n=>n.style.display='none');
+    // הצג רק לשונית "המשימות שלי"
     document.getElementById('nav-worker-tasks').style.display='flex';
-    document.getElementById('nav-worker-chat').style.display='flex';
     // הסתר כפתור "משימה חדשה"
     const topBtn = document.getElementById('topbar-main-btn');
     if(topBtn) topBtn.style.display='none';
@@ -1038,8 +1091,20 @@ function enterApp(){
       if(typeof window.enablePushNotifications === 'function') window.enablePushNotifications();
       if(typeof window.listenAllSharedTasks === 'function') window.listenAllSharedTasks(function(tasks){
         S.sharedTasks = tasks;
-        if(S.page==='tasks'||S.page==='dashboard') renderPage();
+        // עדכן badge הודעות — רק משימות פעילות עם הודעה שלא נקראה
+        const totalUnread = tasks.filter(t=>t.lastMessage && t.status!=='done').reduce((s,t)=>s+(t.unreadCount||0),0);
+        const nbChats = document.getElementById('nb-worker-chats');
+        if(nbChats){ nbChats.textContent=totalUnread; nbChats.style.display=totalUnread?'':'none'; }
+        if(S.page==='tasks'||S.page==='dashboard'||S.page==='worker-chats') renderPage();
       });
+      // סנכרון ראשוני — שולח לsharedTasks את כל המשימות שכבר הוקצו לעובדים
+      setTimeout(function(){
+        if(typeof window.syncAssignedTasksToShared === 'function'){
+          (S.tasks||[]).forEach(t=>{
+            if(t.assignee && !t.done) window.syncAssignedTasksToShared(t).catch(()=>{});
+          });
+        }
+      }, 1200);
     }, 500);
   }
 }
@@ -1053,7 +1118,7 @@ function logout(){
 // ══════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════
-const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',messages:'הודעות',whatsapp:'הודעות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות'};
+const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
 function nav(page,el){
   S.page=page;
   if(el){
@@ -1114,6 +1179,7 @@ function renderPage(){
   else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
   else if(S.page==='worker-all')el.innerHTML=renderWorkerAllTasksPage();
   else if(S.page==='worker-chat')el.innerHTML=renderWorkerChatListPage();
+  else if(S.page==='worker-chats')el.innerHTML=renderEmployerChatsPage();
 }
 
 function updateNavBadge(){
@@ -1308,6 +1374,7 @@ function renderTasksPage(){
   const fs  = S.taskFilter?.sort    || 'priority';
   const fv  = S.taskFilter?.view    || 'tabs'; // 'tabs' | 'worker' | 'client'
   const fc  = S.taskFilter?.client  || '';
+  const fq  = (S.taskFilter?.search || '').trim().toLowerCase();
 
   const assigneeOpts = getTeamWithOwner().map(m=>`<option value="${m.name}" ${fa===m.name?'selected':''}>${m.name}${m.isOwner||isOwnerName(m.name)?' 👑':''}</option>`).join('');
 
@@ -1338,6 +1405,10 @@ function renderTasksPage(){
     }
     if(ft) list=list.filter(t=>t.type===ft);
     if(fc) list=list.filter(t=>taskClientMap[t.id]===fc);
+    if(fq) list=list.filter(t=>{
+      const hay=((t.title||'')+' '+(t.description||'')+' '+(t.assignee||'')+' '+(t.client||'')+' '+(t.clientName||'')).toLowerCase();
+      return hay.includes(fq);
+    });
     return list;
   };
   const applySort = list => {
@@ -1481,8 +1552,16 @@ function renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cp,ci,cd,t
   </div>
 
   <!-- FILTER BAR: chips inline with type+sort -->
-  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg)">
+  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:2.5px solid #1e293b;border-radius:var(--radius-lg)">
     <span style="font-size:11px;font-weight:600;color:var(--text3);flex-shrink:0;margin-left:4px">סינון ומיון:</span>
+
+    ${fv==='tabs'?`
+    <input id="task-search-input" type="text" placeholder="🔍 חיפוש חופשי..." value="${(S.taskFilter?.search||'').replace(/"/g,'&quot;')}"
+      oninput="setTaskSearch(this.value)"
+      style="flex:1;min-width:120px;max-width:220px;padding:4px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:11px;font-family:'Heebo',sans-serif;color:var(--text);background:var(--bg);outline:none;transition:border-color .15s"
+      onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"/>
+    ${S.taskFilter?.search?`<button onclick="setTaskSearch('')" title="נקה חיפוש" style="padding:2px 7px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif">✕</button>`:''}
+    `:''}
 
     ${fv==='worker'?`
     <!-- Worker chips -->
@@ -1783,6 +1862,30 @@ function taskAccordionHTML(t){
         })()}
       </div>
       ${t.description?`<div style="font-size:12px;color:var(--text2);padding:8px 10px;background:var(--surface);border-radius:var(--radius);border-right:3px solid var(--accent);border:1px solid var(--border);margin-bottom:12px;line-height:1.5">${t.description}</div>`:''}
+      ${(()=>{
+        if(!t.sharedTaskId) return '';
+        const st=(S.sharedTasks||[]).find(s=>s.id===t.sharedTaskId);
+        const unread=st?.unreadCount||0;
+        const last=st?.lastMessage||'';
+        const chatBg    = unread ? '#eff6ff'    : 'var(--surface)';
+        const chatBorder = unread ? '#93c5fd'    : 'var(--border)';
+        const chatColor  = unread ? '#1d4ed8'    : 'var(--text2)';
+        const chatWeight = unread ? '600'        : '400';
+        const safeTitle  = (t.title||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+        return `<div onclick="event.stopPropagation();openTaskChat('${t.sharedTaskId}','${safeTitle}')"
+          style="display:flex;align-items:center;gap:10px;padding:9px 12px;margin-bottom:10px;border-radius:var(--radius);border:1.5px solid ${chatBorder};background:${chatBg};cursor:pointer;transition:all .15s"
+          onmouseenter="this.style.background='#eff6ff';this.style.borderColor='#93c5fd'"
+          onmouseleave="this.style.background='${chatBg}';this.style.borderColor='${chatBorder}'">
+          <span style="font-size:20px;flex-shrink:0">💬</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:1px">שיחה עם ${t.assignee||'העובד'}</div>
+            <div style="font-size:12px;font-weight:${chatWeight};color:${chatColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              ${last||'לחץ לפתיחת שיחה'}
+            </div>
+          </div>
+          ${unread ? '<span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:50%;min-width:20px;height:20px;padding:0 4px;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+unread+'</span>' : '<span style="color:var(--text3);font-size:18px">&#8250;</span>'}
+        </div>`;
+      })()}
       ${snoozeStr&&!isDone?`<div class="snooze-label" style="margin-bottom:10px">⏰ תזכורת הבאה: ${snoozeStr}</div>`:''}
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
         ${!isDone?`
@@ -1883,6 +1986,10 @@ function pinTask(id){
 function deleteTask(id){
   const t=S.tasks.find(t=>t.id===id);if(!t)return;
   if(!confirm(`למחוק את המשימה "${t.title}"?`))return;
+  // מחק מ-Firestore tasks collection אם זו משימת ווצאפ
+  if(t.source==='whatsapp' && t.waDocId && typeof window.deleteWATaskFromDB==='function'){
+    window.deleteWATaskFromDB(t.waDocId).catch(()=>{});
+  }
   S.tasks=S.tasks.filter(t=>t.id!==id);
   _saveTasks();
   renderPage();toast('🗑️ המשימה נמחקה');
@@ -2291,6 +2398,8 @@ function renderAppointmentsPage(){
     const d=new Date((a.date||'2000-01-01')+'T12:00:00');
     const dateHe=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
     const isPast=(a.date||'')<now;
+    const safeId=(a.id||'').replace(/'/g,"\\'");
+    const safeEventId=(a.googleEventId||'').replace(/'/g,"\\'");
     return `<div style="background:var(--surface);border:1.5px solid ${isPast?'var(--border)':'var(--accent)'};border-radius:var(--radius-lg);padding:14px 16px;display:flex;align-items:flex-start;gap:12px;opacity:${isPast?.7:1}">
       <div style="width:44px;height:44px;border-radius:10px;background:${isPast?'var(--surface3)':'var(--accent-light)'};display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
         <div style="font-size:15px;font-weight:700;color:${isPast?'var(--text2)':'var(--accent)'};line-height:1">${(a.date||'').slice(8,10)}</div>
@@ -2304,8 +2413,14 @@ function renderAppointmentsPage(){
           ${a.reminderSent?`<span style="color:var(--success)">🔔 תזכורת נשלחה</span>`:''}
         </div>
       </div>
-      <div style="font-size:11px;padding:3px 8px;border-radius:20px;background:${isPast?'var(--surface3)':'var(--success-bg)'};color:${isPast?'var(--text3)':'var(--success)'}">
-        ${isPast?'עבר':'מאושר'}
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <div style="font-size:11px;padding:3px 8px;border-radius:20px;background:${isPast?'var(--surface3)':'var(--success-bg)'};color:${isPast?'var(--text3)':'var(--success)'}">
+          ${isPast?'עבר':'מאושר'}
+        </div>
+        <button onclick="deleteAppointment('${safeId}','${safeEventId}')"
+          title="מחק פגישה"
+          style="background:none;border:1.5px solid #fca5a5;border-radius:8px;padding:4px 8px;cursor:pointer;color:#dc2626;font-size:14px;line-height:1;transition:background .15s"
+          onmouseenter="this.style.background='#fee2e2'" onmouseleave="this.style.background='none'">🗑️</button>
       </div>
     </div>`;
   }
@@ -2344,6 +2459,26 @@ function renderAppointmentsPage(){
       </div>
     `:''}
   </div>`;
+}
+
+async function deleteAppointment(apptId, googleEventId){
+  if(!confirm('למחוק את הפגישה? היא תוסר גם מהיומן.')) return;
+  // מחק מ-Firestore
+  if(typeof window.deleteAppointmentFromDB==='function'){
+    await window.deleteAppointmentFromDB(apptId).catch(()=>{});
+  }
+  // מחק מ-Google Calendar דרך Vercel API
+  if(googleEventId){
+    fetch('https://dabelu.vercel.app/api/delete-appointment', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ googleEventId })
+    }).catch(()=>{});
+  }
+  // עדכן ממשק מיידית
+  S.appointments=(S.appointments||[]).filter(a=>String(a.id)!==String(apptId));
+  renderPage();
+  toast('🗑️ הפגישה נמחקה');
 }
 
 // ══════════════════════════════════════
@@ -2501,6 +2636,17 @@ function confirmDeleteClient(id,name){
 let sSection='office';
 let taskTab='pending';
 function renderSettingsPage(){
+  const _isWorker = S.user?.role === 'worker' || S.user?.role === 'employee';
+
+  // ── מצב עובד: פרופיל אישי בלבד ──
+  if (_isWorker) {
+    return `
+    <div style="max-width:520px">
+      ${renderPersonalSettings()}
+    </div>`;
+  }
+
+  // ── מצב מעסיק: כל הסקשנים ──
   const sections={
     office: renderOfficeSettings(),
     personal: renderPersonalSettings(),
@@ -2529,7 +2675,6 @@ function renderSettingsPage(){
   <div class="settings-layout">
     <div class="settings-nav">
       ${navItems.map(n=>`<div class="s-nav-item ${sSection===n.id?'active':''}" onclick="switchSSection('${n.id}')">${n.icon} ${n.label}</div>`).join('')}
-      <!-- שם משרד בפינה כמו פייסבוק -->
       <div style="position:absolute;bottom:0;right:0;left:0;padding:12px;border-top:1px solid var(--border);background:var(--surface)">
         <div style="display:flex;align-items:center;gap:8px">
           <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${S.user?.initials||'?'}</div>
@@ -2750,12 +2895,13 @@ function shareCode(code, role){
 
 
 function renderNotifSettings(){
-  if(!S.notif) S.notif={auto48:true,morning:true,deadline:true,doneConfirm:false,weekly:false,quietFrom:'22:00',quietTo:'08:00'};
+  if(!S.notif) S.notif={auto48:true,morning:true,deadline:true,doneConfirm:false,weekly:false,quietFrom:'22:00',quietTo:'08:00',reminderHours:48};
+  const rh = S.notif.reminderHours || 48;
   return `
   <div class="s-card">
     <div class="s-card-title">הגדרות התראות</div>
     ${[
-      ['notif-auto48','תזכורת אוטומטית 48 שעות','שולחת וואטסאפ אם משימה לא בוצעה','auto48'],
+      ['notif-auto48','תזכורת על משימה לא מטופלת','שולחת וואטסאפ לעובד ולמעסיק לפי הזמן שנקבע למטה','auto48'],
       ['notif-morning','סיכום בוקר יומי','משימות היום ב-08:00','morning'],
       ['notif-deadline','התראת דדליין מס','7 ימים לפני כל דדליין','deadline'],
       ['notif-done','אישור ביצוע בוואטסאפ','עובד סימן בוצע – שולחת אישור','doneConfirm'],
@@ -2765,6 +2911,20 @@ function renderNotifSettings(){
       <div class="toggle-info"><div class="tl">${l}</div><div class="ts">${s}</div></div>
       <div class="t-track ${S.notif[key]?'on':''}" id="${id}" onclick="S.notif['${key}']=!S.notif['${key}'];this.classList.toggle('on')"><div class="t-thumb"></div></div>
     </div>`).join('')}
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div class="form-row">
+        <label class="form-label">⏰ שעות עד תזכורת על משימה לא מטופלת</label>
+        <select class="form-input" id="notif-reminder-hours" style="max-width:220px">
+          <option value="12"  ${rh===12 ?'selected':''}>12 שעות</option>
+          <option value="24"  ${rh===24 ?'selected':''}>24 שעות (יום)</option>
+          <option value="48"  ${rh===48 ?'selected':''}>48 שעות (ברירת מחדל)</option>
+          <option value="72"  ${rh===72 ?'selected':''}>72 שעות (3 ימים)</option>
+          <option value="96"  ${rh===96 ?'selected':''}>96 שעות (4 ימים)</option>
+          <option value="168" ${rh===168?'selected':''}>168 שעות (שבוע)</option>
+        </select>
+        <span class="form-hint">התראה תשלח לעובד ולמעסיק אם המשימה לא טופלה תוך הזמן שנבחר</span>
+      </div>
+    </div>
     <div class="save-row"><span class="saved-ok" id="sv-notifications">✓ נשמר</span><button class="btn primary" onclick="saveSection('notifications')">שמור התראות</button></div>
   </div>
   <div class="s-card">
@@ -3911,6 +4071,12 @@ function _saveTasks(){
   if(S.user?.uid && window.saveTasksToDB){
     window.saveTasksToDB(S.user.uid, S.tasks||[]).catch(e=>console.warn('saveTasksToDB:',e));
   }
+  // סנכרון אוטומטי: משימות עם עובד → sharedTasks
+  if(typeof window.syncAssignedTasksToShared === 'function'){
+    (S.tasks||[]).forEach(t=>{
+      if(t.assignee && !t.done) window.syncAssignedTasksToShared(t).catch(()=>{});
+    });
+  }
 }
 
 function _saveTeam(){
@@ -4015,9 +4181,10 @@ async function saveSection(id){
       }
     }
     if(id==='notifications'){
-      if(!S.notif) S.notif={auto48:true,morning:true,deadline:true,doneConfirm:false,weekly:false,quietFrom:'22:00',quietTo:'08:00'};
+      if(!S.notif) S.notif={auto48:true,morning:true,deadline:true,doneConfirm:false,weekly:false,quietFrom:'22:00',quietTo:'08:00',reminderHours:48};
       S.notif.quietFrom=document.getElementById('notif-quiet-from')?.value||'22:00';
       S.notif.quietTo=document.getElementById('notif-quiet-to')?.value||'08:00';
+      S.notif.reminderHours=parseInt(document.getElementById('notif-reminder-hours')?.value||'48')||48;
       _saveToLocalStorage();
       if(S.user?.uid && window.saveUserProfileToDB){
         await window.saveUserProfileToDB(S.user.uid,{notif:S.notif});
@@ -4059,6 +4226,7 @@ async function changePassword(){
 // ══════════════════════════════════════
 function renderAdminPage(){
   return `
+<!-- v2.1 hierarchy -->
 <style>
 .adm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
 .adm-stat{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px}
@@ -4097,12 +4265,19 @@ function renderAdminPage(){
 .adm-field input:focus,.adm-field select:focus{outline:none;border-color:var(--accent)}
 .adm-modal-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
 .adm-empty{text-align:center;padding:48px;color:var(--text3)}
+.adm-worker-row td{background:#f8fafc}
+.adm-worker-row:hover td{background:#f1f5fb!important}
+.adm-employer-row:hover td{background:#f0f4ff!important}
+.adm-toggle-btn{background:none;border:1.5px solid var(--border);border-radius:6px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0;color:var(--text2);padding:0;transition:background .15s}
+.adm-toggle-btn:hover{background:var(--surface2)}
+.adm-orphan-sep td{background:#fffbeb;font-size:12px;color:#92400e;font-weight:600;padding:8px 14px}
 </style>
 
 <div class="adm-stats" id="adm-stats"><div class="adm-stat"><div class="adm-stat-num">...</div><div class="adm-stat-lbl">טוען...</div></div></div>
 
 <div class="adm-toolbar">
   <input class="adm-search" id="adm-search" placeholder="🔍 חיפוש לפי שם / מייל..." oninput="admFilter(this.value)">
+  <button class="adm-btn adm-btn-primary" onclick="admOpenAdd()">➕ הוסף משתמש</button>
 </div>
 
 <div class="adm-table-wrap">
@@ -4149,12 +4324,16 @@ function renderAdminPage(){
 }
 
 let _admAllUsers=[];
-function admRenderTable(users){
+let _admHierarchy=[];
+let _admOrphans=[];
+
+function admRenderTable(users, hierarchy, orphans){
   const tbody=document.getElementById('adm-tbody');
   const stats=document.getElementById('adm-stats');
   if(!tbody)return;
   _admAllUsers=users;
-  // stats
+  if(hierarchy!==undefined){_admHierarchy=hierarchy;_admOrphans=orphans||[];}
+  // stats (always based on all users)
   const total=users.length;
   const active=users.filter(u=>u.subscription==='active'||u.subscription==='free').length;
   const trial=users.filter(u=>u.subscription==='trial'||!u.subscription).length;
@@ -4166,33 +4345,127 @@ function admRenderTable(users){
     <div class="adm-stat"><div class="adm-stat-num" style="color:#dc2626">${blocked}</div><div class="adm-stat-lbl">חסומים</div></div>
   `;
   if(!users.length){tbody.innerHTML='<tr><td colspan="6" class="adm-empty">אין משתמשים עדיין</td></tr>';return;}
-  const badgeClass={trial:'trial',free:'free',active:'active',blocked:'blocked'};
-  const badgeLabel={trial:'ניסיון',free:'חינמי',active:'מנוי פעיל',blocked:'חסום'};
-  tbody.innerHTML=users.map(u=>{
-    const status=u.subscription||'trial';
-    const lastLogin=u.lastLogin?new Date(u.lastLogin).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
-    const initials=(u.name||u.email||'?').slice(0,2).toUpperCase();
-    const notes=u.notes?`<span title="${u.notes}" style="color:var(--text3);font-size:11px"> 📝</span>`:'';
-    return `<tr>
+  admRenderHierarchyRows('');
+}
+
+const _BADGE_CLS={trial:'trial',free:'free',active:'active',blocked:'blocked'};
+const _BADGE_LBL={trial:'ניסיון',free:'חינמי',active:'מנוי פעיל',blocked:'חסום'};
+
+function _admWorkerSubRow(w, uid){
+  const sub=w.subscription||'trial';
+  const lastLogin=w.lastLogin?new Date(w.lastLogin).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+  const initials=(w.name||w.email||'?').slice(0,2).toUpperCase();
+  const wUid=(w.uid||'').replace(/'/g,'');
+  const wName=(w.name||w.email||'').replace(/'/g,'');
+  const teamOnly=!!w._teamOnly;
+  return `<tr class="adm-worker-row adm-worker-group-${uid}" style="display:none">
+    <td style="padding-right:52px"><div style="display:flex;align-items:center;gap:8px">
+      <div style="width:3px;height:28px;background:#94a3b8;border-radius:2px;flex-shrink:0;opacity:.6"></div>
+      <div style="width:28px;height:28px;border-radius:50%;background:#94a3b8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${initials}</div>
+      <div><div style="font-weight:500;font-size:13px">${w.name||'—'}</div><div style="font-size:11px;color:var(--text3)">${w.chatId||''}</div></div>
+    </div></td>
+    <td style="color:var(--text2);font-size:13px">${w.email||'—'}</td>
+    <td style="color:var(--text2);font-size:13px">${w.officeName||'—'}</td>
+    <td>${teamOnly?'<span class="adm-badge" style="background:#f1f5f9;color:#64748b">צוות בלבד</span>':'<span class="adm-badge '+(_BADGE_CLS[sub]||'trial')+'">'+(_BADGE_LBL[sub]||sub)+'</span>'}</td>
+    <td style="color:var(--text3);font-size:12px">${lastLogin}</td>
+    <td>${teamOnly?'':'<button class="adm-action adm-edit" onclick="admOpenEdit(\''+wUid+'\')">✏️ עריכה</button><button class="adm-action adm-del" onclick="admDelete(\''+wUid+'\',\''+wName+'\')">🗑️</button>'}</td>
+  </tr>`;
+}
+
+function admRenderHierarchyRows(filterQ){
+  const tbody=document.getElementById('adm-tbody');
+  if(!tbody)return;
+  const lq=(filterQ||'').toLowerCase();
+  let html='';
+
+  _admHierarchy.forEach(emp=>{
+    const workers=emp._workers||[];
+    // apply filter: show employer if emp matches OR any worker matches
+    const empMatch=!lq||(emp.name||'').toLowerCase().includes(lq)||(emp.email||'').toLowerCase().includes(lq)||(emp.officeName||'').toLowerCase().includes(lq);
+    const filteredWorkers=lq?workers.filter(w=>(w.name||'').toLowerCase().includes(lq)||(w.email||'').toLowerCase().includes(lq)||(w.officeName||'').toLowerCase().includes(lq)):workers;
+    if(!empMatch && !filteredWorkers.length) return;
+
+    const status=emp.subscription||'trial';
+    const lastLogin=emp.lastLogin?new Date(emp.lastLogin).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+    const initials=(emp.name||emp.email||'?').slice(0,2).toUpperCase();
+    const notes=emp.notes?`<span title="${emp.notes}" style="color:var(--text3);font-size:11px"> 📝</span>`:'';
+    const uid=emp.uid||'';
+    const safeName=(emp.name||emp.email||'').replace(/'/g,'');
+    const wCount=workers.length;
+    // auto-expand when search matches a worker
+    const autoExpand=lq&&filteredWorkers.length>0;
+
+    html+=`<tr class="adm-employer-row" onclick="admToggleWorkers('${uid}')" style="cursor:${wCount>0?'pointer':'default'}">
       <td><div style="display:flex;align-items:center;gap:8px">
+        ${wCount>0?`<button class="adm-toggle-btn" id="toggle-${uid}" onclick="event.stopPropagation();admToggleWorkers('${uid}')">${autoExpand?'▼':'▶'}</button>`:'<div style="width:22px;flex-shrink:0"></div>'}
         <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${initials}</div>
-        <div><div style="font-weight:600">${u.name||'—'}${notes}</div><div style="font-size:11px;color:var(--text3)">${u.chatId||''}</div></div>
+        <div>
+          <div style="font-weight:600">${emp.name||'—'}${notes}${wCount>0?`<span style="font-size:11px;color:var(--text3);margin-right:6px;font-weight:400">(${wCount} עובדים)</span>`:''}</div>
+          <div style="font-size:11px;color:var(--text3)">${emp.chatId||''}</div>
+        </div>
       </div></td>
-      <td style="color:var(--text2)">${u.email||'—'}</td>
-      <td style="color:var(--text2)">${u.officeName||'—'}</td>
-      <td><span class="adm-badge ${badgeClass[status]||'trial'}">${badgeLabel[status]||status}</span></td>
+      <td style="color:var(--text2)">${emp.email||'—'}</td>
+      <td style="color:var(--text2)">${emp.officeName||'—'}</td>
+      <td><span class="adm-badge ${_BADGE_CLS[status]||'trial'}">${_BADGE_LBL[status]||status}</span></td>
       <td style="color:var(--text3);font-size:12px">${lastLogin}</td>
-      <td>
-        <button class="adm-action adm-edit" onclick="admOpenEdit('${u.uid}')">✏️ עריכה</button>
-        <button class="adm-action adm-del" onclick="admDelete('${u.uid}','${(u.name||u.email||'').replace(/'/g,'')}')">🗑️</button>
+      <td onclick="event.stopPropagation()">
+        <button class="adm-action adm-edit" onclick="admOpenEdit('${uid}')">✏️ עריכה</button>
+        <button class="adm-action adm-del" onclick="admDelete('${uid}','${safeName}')">🗑️</button>
       </td>
     </tr>`;
-  }).join('');
+
+    // worker sub-rows
+    const renderWorkers = lq ? filteredWorkers : workers;
+    renderWorkers.forEach(w=>{
+      const rowHtml=_admWorkerSubRow(w, uid);
+      // if auto-expand, change display to table-row
+      html+=autoExpand?rowHtml.replace('display:none','display:table-row'):rowHtml;
+    });
+  });
+
+  // orphan workers (workers not linked to any employer)
+  const filteredOrphans=lq?_admOrphans.filter(w=>(w.name||'').toLowerCase().includes(lq)||(w.email||'').toLowerCase().includes(lq)||(w.officeName||'').toLowerCase().includes(lq)):_admOrphans;
+  if(filteredOrphans.length>0){
+    html+=`<tr class="adm-orphan-sep"><td colspan="6">👤 עובדים ללא מעסיק מוגדר</td></tr>`;
+    filteredOrphans.forEach(w=>{
+      const sub=w.subscription||'trial';
+      const lastLogin=w.lastLogin?new Date(w.lastLogin).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+      const initials=(w.name||w.email||'?').slice(0,2).toUpperCase();
+      const wUid=(w.uid||'').replace(/'/g,'');
+      const wName=(w.name||w.email||'').replace(/'/g,'');
+      const notes=w.notes?`<span title="${w.notes}" style="color:var(--text3);font-size:11px"> 📝</span>`:'';
+      html+=`<tr>
+        <td><div style="display:flex;align-items:center;gap:8px">
+          <div style="width:22px;flex-shrink:0"></div>
+          <div style="width:32px;height:32px;border-radius:50%;background:#94a3b8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${initials}</div>
+          <div><div style="font-weight:600">${w.name||'—'}${notes}</div><div style="font-size:11px;color:var(--text3)">${w.chatId||''}</div></div>
+        </div></td>
+        <td style="color:var(--text2)">${w.email||'—'}</td>
+        <td style="color:var(--text2)">${w.officeName||'—'}</td>
+        <td><span class="adm-badge ${_BADGE_CLS[sub]||'trial'}">${_BADGE_LBL[sub]||sub}</span></td>
+        <td style="color:var(--text3);font-size:12px">${lastLogin}</td>
+        <td>
+          <button class="adm-action adm-edit" onclick="admOpenEdit('${wUid}')">✏️ עריכה</button>
+          <button class="adm-action adm-del" onclick="admDelete('${wUid}','${wName}')">🗑️</button>
+        </td>
+      </tr>`;
+    });
+  }
+
+  if(!html) html='<tr><td colspan="6" class="adm-empty">לא נמצאו תוצאות</td></tr>';
+  tbody.innerHTML=html;
 }
+
+function admToggleWorkers(uid){
+  const btn=document.getElementById('toggle-'+uid);
+  const rows=document.querySelectorAll('.adm-worker-group-'+uid);
+  const isOpen=btn&&btn.textContent==='▼';
+  rows.forEach(r=>r.style.display=isOpen?'none':'table-row');
+  if(btn) btn.textContent=isOpen?'▶':'▼';
+}
+
 function admFilter(q){
-  const lq=q.toLowerCase();
-  const filtered=_admAllUsers.filter(u=>(u.name||'').toLowerCase().includes(lq)||(u.email||'').toLowerCase().includes(lq)||(u.officeName||'').toLowerCase().includes(lq));
-  admRenderTable(filtered);
+  admRenderHierarchyRows(q);
 }
 function admOpenAdd(){
   document.getElementById('adm-modal-title').textContent='➕ הוסף משתמש';
@@ -4313,7 +4586,7 @@ function renderWorkerTasksPage(){
   const cards=tasks.length?tasks.map(t=>{
     const urgent=t.priority==='urgent';
     const isDone=t.status==='done';
-    const unread=t.unreadCount||0;
+    const unread=t.workerUnreadCount||0;
     return `<div class="wt-card ${urgent?'urgent':''} ${isDone?'done-card':''}">
       <div style="display:flex;align-items:flex-start;gap:10px">
         <div style="flex:1;min-width:0">
@@ -4332,7 +4605,7 @@ function renderWorkerTasksPage(){
         ${t.status!=='done'?`<button class="wt-btn done" onclick="workerSetStatus('${t.id}','done')">✓ בוצע</button>`:''}
         ${t.status!=='problem'&&t.status!=='done'?`<button class="wt-btn problem" onclick="workerSetStatus('${t.id}','problem')">⚠ נתקלתי בבעיה</button>`:''}
         <button class="wt-btn chat" onclick="openTaskChat('${t.id}','${(t.title||'').replace(/'/g,'\\\'').replace(/"/g,'&quot;')}')">
-          💬 שיחה${unread>0?`<span class="chat-unread">${unread}</span>`:''}
+          💬 שיחה${unread>0?`<span class="chat-unread" style="background:#16a34a">${unread}</span>`:''}
         </button>
       </div>
     </div>`;
@@ -4381,7 +4654,7 @@ function renderWorkerAllTasksPage(){
       </div>
       ${tasks.map(t => {
         const isMine = (t.assigneeEmail||'').toLowerCase()===myEmail;
-        const unread = t.unreadCount||0;
+        const unread = t.workerUnreadCount||0;
         return `
         <div class="wt-card ${t.priority==='urgent'?'urgent':''} ${t.status==='done'?'done-card':''}" style="margin-right:16px;margin-bottom:8px">
           <div style="display:flex;align-items:flex-start;gap:10px">
@@ -4400,11 +4673,37 @@ function renderWorkerAllTasksPage(){
             ${isMine && t.status!=='inprogress'&&t.status!=='done'?`<button class="wt-btn start" onclick="workerSetStatus('${t.id}','inprogress')">▶ התחלתי</button>`:''}
             ${isMine && t.status!=='done'?`<button class="wt-btn done" onclick="workerSetStatus('${t.id}','done')">✓ בוצע</button>`:''}
             ${isMine && t.status!=='problem'&&t.status!=='done'?`<button class="wt-btn problem" onclick="workerSetStatus('${t.id}','problem')">⚠ בעיה</button>`:''}
-            <button class="wt-btn chat" onclick="openTaskChat('${t.id}','${(t.title||'').replace(/'/g,"\\'")}')">💬 שיחה${unread>0?`<span class="chat-unread">${unread}</span>`:''}</button>
+            <button class="wt-btn chat" onclick="openTaskChat('${t.id}','${(t.title||'').replace(/'/g,"\\'")}')">💬 שיחה${unread>0?`<span class="chat-unread" style="background:#16a34a">${unread}</span>`:''}</button>
           </div>
         </div>`;
       }).join('')}
     </div>`;
+  }).join('');
+}
+
+// ── הודעות עובדים — צד מעסיק ──
+function renderEmployerChatsPage(){
+  // רק משימות עם הודעה מעובד + לא הושלמו
+  const chats=(S.sharedTasks||[]).filter(t=>t.lastMessage && t.status!=='done');
+  if(!chats.length) return `<div class="empty-state" style="padding:40px 20px">💬<br/><span style="font-size:14px;font-weight:600;display:block;margin:12px 0 6px">אין הודעות כרגע</span><span style="font-size:12px;color:var(--text3)">הודעות מעובדים יופיעו כאן</span></div>`;
+  return chats.sort((a,b)=>(b.lastMessageAt||b.createdAt||'').localeCompare(a.lastMessageAt||a.createdAt||'')).map(t=>{
+    const unread=t.unreadCount||0;
+    return `<div class="wt-card" style="cursor:pointer;${unread?'border-color:#93c5fd;background:#eff6ff;':''}" onclick="openTaskChat('${t.id}','${(t.title||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:40px;height:40px;border-radius:50%;background:${unread?'#2563eb':'#64748b'};color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        ${(t.assigneeName||t.assigneeEmail||'?')[0].toUpperCase()}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+          <span style="font-weight:700;font-size:13px">${t.title||'משימה'}</span>
+          ${unread?`<span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:50%;min-width:18px;height:18px;padding:0 4px;display:flex;align-items:center;justify-content:center">${unread}</span>`:''}
+        </div>
+        <div style="font-size:11px;color:var(--text3)">👤 ${t.assigneeName||t.assigneeEmail||''}</div>
+        <div style="font-size:12px;color:${unread?'#1d4ed8':'var(--text2)'};font-weight:${unread?600:400};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.lastMessage||'לחץ לפתיחת שיחה'}</div>
+      </div>
+      <span style="color:var(--text3);font-size:20px;flex-shrink:0">›</span>
+    </div>
+  </div>`;
   }).join('');
 }
 
@@ -4422,6 +4721,14 @@ function renderWorkerChatListPage(){
       ${(t.unreadCount||0)>0?`<span style="background:var(--danger);color:#fff;font-size:11px;font-weight:700;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center">${t.unreadCount}</span>`:''}
     </div>
   </div>`).join('');
+}
+
+function setTaskSearch(v){
+  S.taskFilter=S.taskFilter||{};
+  S.taskFilter.search=v;
+  renderPage();
+  const el=document.getElementById('task-search-input');
+  if(el){el.focus();const l=v.length;try{el.setSelectionRange(l,l);}catch(e){}}
 }
 
 function workerSetStatus(taskId,status){
@@ -4443,6 +4750,8 @@ function openTaskChat(taskId,title){
   if(typeof window.listenChatMessages==='function'){
     _chatUnsub=window.listenChatMessages(taskId,renderChatMessages);
   }
+  // אפס מונה הודעות לא נקראות (לפי תפקיד המשתמש)
+  if(typeof window.markChatAsRead==='function') window.markChatAsRead(taskId);
 }
 function closeChatModal(){
   document.getElementById('m-task-chat').classList.remove('open');
@@ -4482,57 +4791,88 @@ function toast(msg){
   el.textContent=msg;el.classList.add('show');
   clearTimeout(_toastT);_toastT=setTimeout(()=>el.classList.remove('show'),2600);
 }
-  document.addEventListener('DOMContentLoaded', function(){
-  const lnkToLogin = document.getElementById('lnkToLogin');
-  if(lnkToLogin) lnkToLogin.addEventListener('click', function(){
-    document.getElementById('frm-reg').style.display='none';
-    document.getElementById('frm-login').style.display='block';
-  });
-});
+// ── Auth tab switching ──
+function authShowTab(tab) {
+  var login = document.getElementById('frm-login');
+  var reg   = document.getElementById('frm-reg');
+  var tl    = document.getElementById('tab-login');
+  var tr    = document.getElementById('tab-reg');
+  if(!login||!reg) return;
+  if(tab==='login'){
+    login.style.display='block'; reg.style.display='none';
+    if(tl){tl.style.background='#2563eb';tl.style.color='#fff';}
+    if(tr){tr.style.background='#f8fafc';tr.style.color='#64748b';}
+  } else {
+    login.style.display='none'; reg.style.display='block';
+    if(tr){tr.style.background='#2563eb';tr.style.color='#fff';}
+    if(tl){tl.style.background='#f8fafc';tl.style.color='#64748b';}
+  }
+}
 
-  if(btnLogin) btnLogin.addEventListener('click', function(){
-    var e=document.getElementById('a-email').value.trim().toLowerCase();
-    var p=document.getElementById('a-pass').value;
-    if(!e||!p){alert('יש למלא אימייל וסיסמה');return;}
-    var found=S.registeredUsers&&S.registeredUsers.find(function(u){return u.email===e;});
-    if(found){
-      if(found.pass!==p){alert('סיסמה שגויה');return;}
-      S.user={name:found.name,email:found.email,initials:found.initials,officeName:found.officeName};
-    } else {
-      S.user={name:e.split('@')[0],email:e,initials:e.slice(0,2).toUpperCase()};
-    }
-    enterApp();
-  });
+// ── Plan selection highlight ──
+document.addEventListener('DOMContentLoaded', function(){
+  var planFree    = document.getElementById('r-plan-free');
+  var planPremium = document.getElementById('r-plan-premium');
+  var lblFree     = document.getElementById('plan-free-lbl');
+  var lblPremium  = document.getElementById('plan-premium-lbl');
+  var premNote    = document.getElementById('premium-note');
 
+  function updatePlanUI(){
+    var isPremium = planPremium && planPremium.checked;
+    if(lblFree)    { lblFree.style.border    = isPremium?'2px solid #e2e8f0':'2px solid #2563eb'; lblFree.style.background    = isPremium?'#f8fafc':'#eff6ff'; }
+    if(lblPremium) { lblPremium.style.border = isPremium?'2px solid #2563eb':'2px solid #e2e8f0'; lblPremium.style.background = isPremium?'#eff6ff':'#f8fafc'; }
+    if(premNote)   premNote.style.display = isPremium?'block':'none';
+  }
+  if(planFree)    planFree.addEventListener('change', updatePlanUI);
+  if(planPremium) planPremium.addEventListener('change', updatePlanUI);
+
+  // ── Register button ──
+  var btnReg = document.getElementById('reg-btn');
   if(btnReg) btnReg.addEventListener('click', async function(){
-    var first=document.getElementById('r-firstname').value.trim();
-    var last=document.getElementById('r-lastname').value.trim();
-    var office=document.getElementById('r-office').value.trim();
-    var email=document.getElementById('r-email').value.trim().toLowerCase();
-    var pass=document.getElementById('r-pass').value;
-    var pass2=document.getElementById('r-pass2').value;
-    if(!first||!email||!pass){alert('יש למלא שם, אימייל וסיסמה');return;}
-    if(pass.length<6){alert('סיסמה חייבת להיות לפחות 6 תווים');return;}
-    if(pass!==pass2){alert('הסיסמאות אינן תואמות');return;}
-    var name=first+(last?' '+last:'');
+    var first  = (document.getElementById('r-firstname')?.value||'').trim();
+    var last   = (document.getElementById('r-lastname')?.value||'').trim();
+    var office = (document.getElementById('r-office')?.value||'').trim();
+    var email  = (document.getElementById('r-email')?.value||'').trim().toLowerCase();
+    var pass   = (document.getElementById('r-pass')?.value||'');
+    var pass2  = (document.getElementById('r-pass2')?.value||'');
+    var phone  = (document.getElementById('r-phone')?.value||'').trim();
+    var plan   = document.querySelector('input[name="r-plan"]:checked')?.value || 'free';
+
+    var errEl = document.getElementById('reg-err');
+    function showErr(msg){ if(errEl){errEl.textContent=msg;errEl.style.display='block';} else alert(msg); }
+
+    if(!first||!email||!pass){ showErr('יש למלא שם, אימייל וסיסמה'); return; }
+    if(pass.length<6){ showErr('סיסמה חייבת להיות לפחות 6 תווים'); return; }
+    if(pass!==pass2){ showErr('הסיסמאות אינן תואמות'); return; }
+    if(errEl) errEl.style.display='none';
+
+    var name = first+(last?' '+last:'');
     btnReg.textContent='⏳ נרשמת...';
-    btnReg.disabled=true;
+    btnReg.style.pointerEvents='none';
     try {
       if(typeof window.registerNewUser === 'function') {
-        var result = await window.registerNewUser(name, email, pass, office);
-        if(result.error){ alert(result.error); return; }
+        var result = await window.registerNewUser(name, email, pass, office, plan);
+        if(result.error){ showErr(result.error); return; }
         var initials=(first[0]+((last&&last[0])||'')).toUpperCase();
-        S.user={name:name,email:email,initials:initials,officeName:office||'משרד ייעוץ מס',uid:result.uid};
+        S.user={name:name,email:email,initials:initials,officeName:office||'Dabelu',uid:result.uid};
         if(office&&S.office) S.office.name=office;
+        // שליחת הודעת פתיחה (מייל + ווצאפ) — לא חוסמת
+        fetch('https://dabelu.vercel.app/api/send-onboarding',{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ name, email, phone: phone||'', plan })
+        }).catch(()=>{});
         enterApp();
+      } else {
+        showErr('טעינה עדיין בתהליך — נסו שנית עוד שנייה');
       }
     } catch(e) {
-      alert('שגיאה בהרשמה: ' + e.message);
+      showErr('שגיאה בהרשמה: ' + e.message);
     } finally {
-      btnReg.textContent='הרשמה';
-      btnReg.disabled=false;
+      btnReg.textContent='הרשמה ←';
+      btnReg.style.pointerEvents='';
     }
   });
+});
 </script>
 <script>
 (function() {
@@ -4568,7 +4908,7 @@ function toast(msg){
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithEmailAndPassword, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -4906,41 +5246,28 @@ function toast(msg){
   })();
 
   // ── הרשמה עם אימייל + סיסמה (שמירה ל-Firestore) ──
-  window.registerNewUser = async function(name, email, pass, officeName) {
+  window.registerNewUser = async function(name, email, pass, officeName, plan) {
     const em = email.toLowerCase();
     // בדיקה שהמייל לא קיים כבר
     const existing = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
     if (!existing.empty) return { error: 'אימייל זה כבר רשום במערכת' };
     const passHash = await hashPass(pass);
     const uid = 'reg_' + Date.now();
+    // free = חינמי, active = פרימיום (ממתין לאישור תשלום), trial = ניסיון
+    const subscription = (plan === 'free' || plan === 'active') ? plan : 'trial';
     await setDoc(doc(db, 'users', uid), {
       name: name,
       email: em,
       passwordHash: passHash,
-      officeName: officeName || 'משרד ייעוץ מס',
-      subscription: 'trial',
+      officeName: officeName || 'Dabelu',
+      subscription: subscription,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
       source: 'self-register'
     });
-    return { uid, name, email: em, officeName };
+    return { uid, name, email: em, officeName, subscription };
   };
-  document.getElementById('btn-google').addEventListener('click', window.signInWithGoogle);
-  getRedirectResult(auth).then(async (result) => {
-    if (!result || !result.user) return;
-    const user = result.user;
-    const email = (user.email || '').toLowerCase();
-    // בדיקת הרשאה
-    if (!await isAuthorized(email)) {
-      await signOut(auth);
-      document.getElementById('aerr').textContent = 'מייל או סיסמה שגויים';
-      return;
-    }
-    await handleAuthSuccess(user);
-  }).catch(e => {
-    console.error('redirect result error:', e);
-    document.getElementById('aerr').textContent = 'מייל או סיסמה שגויים';
-  });
+  document.getElementById('btn-google').addEventListener('click', function(){ if(typeof window.signInWithGoogle==='function') window.signInWithGoogle(); });
 
   // ── שמירת נתוני משתמש ב-Firestore ──
   async function saveUserData(uid, data) {
@@ -5019,6 +5346,11 @@ function toast(msg){
     } catch(e) { console.error('loadTeam:', e); return null; }
   };
 
+  // ── מחיקת משימת ווצאפ מ-Firestore ──
+  window.deleteWATaskFromDB = async function(docId) {
+    try { await deleteDoc(doc(db, 'tasks', docId)); } catch(e) { console.error('deleteWATask:', e); }
+  };
+
   // ── האזנה בזמן אמת למשימות וואטסאפ (root collection) ──
   function waTaskId(str) {
     let h = 0;
@@ -5041,7 +5373,7 @@ function toast(msg){
         const prev = S.tasks && S.tasks.find(et => et.id === taskId);
         // כלל: override (localStorage) > גרסה קיימת בזיכרון > נתוני bot > ברירת מחדל
         const taskTitle      = o?.title       || prev?.title       || t.title       || 'משימה מוואטסאפ';
-        const taskAssignee   = o?.assignee    || prev?.assignee    || t.assignedTo  || t.workerName || ownerName || '';
+        const taskAssignee   = o?.assignee    || prev?.assignee    || t.assignee    || t.assignedTo  || t.workerName || ownerName || '';
         const taskStatus     = o?.status      || prev?.status      || t.status      || 'pending';
         const taskPinned     = o?.pinned      ?? prev?.pinned      ?? false;
         const taskClient     = o?.client      || prev?.client      || t.client      || '';
@@ -5063,6 +5395,7 @@ function toast(msg){
         const taskType = _isMeeting ? 'meeting' : (o?.type || prev?.type || t.type || 'tax');
         return {
           id: taskId,
+          waDocId: d.id,
           title: taskTitle,
           type: taskType,
           assignee: taskAssignee || ownerName,
@@ -5125,6 +5458,13 @@ function toast(msg){
     }, (err)=>{ console.warn('listenAppointments error:', err); });
   };
 
+  // מחיקת פגישה מ-Firestore
+  window.deleteAppointmentFromDB = async function(apptId) {
+    try {
+      await deleteDoc(doc(db, 'appointments', String(apptId)));
+    } catch(e) { console.warn('deleteAppointmentFromDB:', e); }
+  };
+
   // שמירת פגישה ידנית ל-Firestore
   window.saveAppointmentToDB = async function(appt){
     try{
@@ -5159,13 +5499,51 @@ function toast(msg){
     } catch(e) { console.error('deleteWAClient:', e); }
   };
 
-  // ── Admin: טעינת כל המשתמשים ──
+  // ── Admin: טעינת כל המשתמשים (היררכי: מעסיקים + עובדיהם) ──
   window.loadAdminUsers = async function() {
     try {
       const snap = await getDocs(collection(db, 'users'));
       const users = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
       users.sort((a,b) => (b.lastLogin||'').localeCompare(a.lastLogin||''));
-      if(typeof admRenderTable === 'function') admRenderTable(users);
+
+      // הפרד מעסיקים מעובדים
+      const employers = users.filter(u => u.role !== 'worker' && u.role !== 'employee');
+      const allWorkers = users.filter(u => u.role === 'worker' || u.role === 'employee');
+
+      // בנה מפת email→user לעובדים
+      const workerByEmail = {};
+      allWorkers.forEach(w => { if(w.email) workerByEmail[w.email.toLowerCase()] = w; });
+
+      // טען נתוני צוות לכל מעסיק במקביל
+      const teamResults = await Promise.all(employers.map(async emp => {
+        try {
+          const teamSnap = await getDoc(doc(db, 'users', emp.uid, 'data', 'team'));
+          return { uid: emp.uid, team: teamSnap.exists() ? (teamSnap.data().team || []) : [] };
+        } catch(e) { return { uid: emp.uid, team: [] }; }
+      }));
+
+      // בנה היררכיה: מעסיק + עובדיו
+      const attachedEmails = new Set();
+      const hierarchy = employers.map(emp => {
+        const result = teamResults.find(r => r.uid === emp.uid) || { team: [] };
+        const workers = result.team
+          .map(m => {
+            const email = (m.email||'').toLowerCase();
+            if(!email) return null;
+            attachedEmails.add(email);
+            const userDoc = workerByEmail[email];
+            if(userDoc) return userDoc;
+            // חבר צוות ללא חשבון עצמאי
+            return { uid: 'team_'+m.id, name: m.name, email: m.email, role: 'worker', _teamOnly: true };
+          })
+          .filter(Boolean);
+        return { ...emp, _workers: workers };
+      });
+
+      // עובדים ללא מעסיק
+      const orphans = allWorkers.filter(w => !attachedEmails.has((w.email||'').toLowerCase()));
+
+      if(typeof admRenderTable === 'function') admRenderTable(users, hierarchy, orphans);
     } catch(e) { console.error('loadAdminUsers:', e); }
   };
 
@@ -5202,6 +5580,53 @@ function toast(msg){
   };
 
   // ── משימות משותפות (עובד/מעביד) ──
+  // ── סנכרון אוטומטי: משימה עם עובד → sharedTasks (דו-כיווני) ──
+  window.syncAssignedTasksToShared = async function(task) {
+    if (!task || !task.assignee) return;
+    // בנה מפת שם→מייל מהצוות
+    const emailMap = {};
+    (S.team || []).forEach(m => {
+      if (m.name && m.email) emailMap[m.name.trim().toLowerCase()] = m.email.toLowerCase();
+    });
+    const assigneeEmail = emailMap[(task.assignee||'').trim().toLowerCase()];
+    if (!assigneeEmail) return; // לא מצא מייל לעובד הזה
+    const sharedData = {
+      title:        task.title || '',
+      status:       task.status || 'pending',
+      priority:     task.priority || 'normal',
+      dueDate:      task.date || '',
+      clientName:   task.client || task.clientName || '',
+      notes:        task.description || '',
+      assigneeEmail,
+      assigneeName: task.assignee || '',
+      createdBy:    S.user?.email || '',
+      createdByName:S.user?.name  || '',
+      taskId:       String(task.id),
+      ownerUid:     S.user?.uid   || '',
+      updatedAt:    new Date().toISOString()
+    };
+    try {
+      if (task.sharedTaskId) {
+        // עדכן קיים — אבל לא דרוס סטטוס שהעובד שינה (רק אם המעסיק שינה)
+        await updateDoc(doc(db, 'sharedTasks', task.sharedTaskId), sharedData);
+      } else {
+        // צור חדש
+        const ref = await addDoc(collection(db, 'sharedTasks'), {
+          ...sharedData, createdAt: new Date().toISOString()
+        });
+        task.sharedTaskId = ref.id;
+        // שמור sharedTaskId ישירות ב-localStorage וב-Firestore
+        try {
+          const key = 'dabelu_tasks_' + (S.user?.uid||S.user?.email||'guest');
+          localStorage.setItem(key, JSON.stringify(S.tasks||[]));
+        } catch(e) {}
+        if (S.user?.uid && window.saveTasksToDB) {
+          window.saveTasksToDB(S.user.uid, S.tasks||[]).catch(()=>{});
+        }
+      }
+    } catch(e) { console.error('syncAssignedTasksToShared:', e); }
+  };
+
   window.saveSharedTask = async function(taskData) {
     try {
       const ref = await addDoc(collection(db, 'sharedTasks'), {
@@ -5224,21 +5649,48 @@ function toast(msg){
       const pending = S.workerTasks.filter(t=>t.status!=='done').length;
       const nb = document.getElementById('nb-worker-tasks');
       if(nb){ nb.textContent=pending; nb.style.display=pending>0?'':'none'; }
-      if(S.page==='worker-tasks'||S.page==='worker-chat') if(typeof renderPage==='function') renderPage();
+      if(S.page==='worker-tasks') if(typeof renderPage==='function') renderPage();
     });
   };
 
   window.updateSharedTaskStatus = async function(taskId, status, email) {
     try {
-      await updateDoc(doc(db, 'sharedTasks', taskId), {
-        status, updatedBy: email, updatedAt: new Date().toISOString()
-      });
+      const docRef = doc(db, 'sharedTasks', taskId);
+      await updateDoc(docRef, { status, updatedBy: email, updatedAt: new Date().toISOString() });
+      // עדכן גם את המשימה המקורית אצל המעסיק
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const { ownerUid, taskId: origTaskId } = snap.data();
+        if (ownerUid && origTaskId) {
+          const empRef = doc(db, 'users', ownerUid, 'data', 'tasks');
+          const empSnap = await getDoc(empRef);
+          if (empSnap.exists()) {
+            const empTasks = empSnap.data().tasks || [];
+            const idx = empTasks.findIndex(t => String(t.id) === String(origTaskId));
+            if (idx >= 0) {
+              empTasks[idx].status = status;
+              await setDoc(empRef, { tasks: empTasks });
+            }
+          }
+        }
+      }
     } catch(e) { console.error('updateSharedTaskStatus:', e); }
   };
 
   window.listenAllSharedTasks = function(callback) {
     return onSnapshot(collection(db, 'sharedTasks'), snap => {
       const tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // סנכרון סטטוסים בזמן אמת ל-S.tasks אצל המעסיק
+      if (typeof S !== 'undefined' && S.tasks) {
+        let changed = false;
+        tasks.forEach(st => {
+          if (!st.taskId) return;
+          const t = (S.tasks || []).find(t => String(t.id) === String(st.taskId));
+          if (t && t.status !== st.status) { t.status = st.status; changed = true; }
+        });
+        if (changed && typeof renderPage === 'function' &&
+            (S.page === 'tasks' || S.page === 'dashboard')) renderPage();
+      }
       callback(tasks);
     });
   };
@@ -5248,8 +5700,26 @@ function toast(msg){
       await addDoc(collection(db, 'sharedTasks', taskId, 'messages'), {
         text, senderEmail, senderName, ts: new Date().toISOString(), read: false
       });
-      await updateDoc(doc(db, 'sharedTasks', taskId), { lastMessage: text, lastMessageAt: new Date().toISOString() });
+      // זיהוי שולח: עובד שולח → מעלה unreadCount למעסיק; מעסיק שולח → מעלה workerUnreadCount לעובד
+      const sharedRef = doc(db, 'sharedTasks', taskId);
+      const sharedSnap = await getDoc(sharedRef);
+      const sharedData = sharedSnap.exists() ? sharedSnap.data() : {};
+      const isWorkerSending = (sharedData.assigneeEmail||'').toLowerCase() === (senderEmail||'').toLowerCase();
+      const countField = isWorkerSending ? 'unreadCount' : 'workerUnreadCount';
+      await updateDoc(sharedRef, {
+        lastMessage: text,
+        lastMessageAt: new Date().toISOString(),
+        [countField]: (sharedData[countField] || 0) + 1
+      });
     } catch(e) { console.error('sendChatMessage:', e); }
+  };
+
+  window.markChatAsRead = async function(taskId) {
+    try {
+      const isWorker = (typeof S !== 'undefined') && (S.user?.role === 'worker' || S.user?.role === 'employee');
+      const field = isWorker ? 'workerUnreadCount' : 'unreadCount';
+      await updateDoc(doc(db, 'sharedTasks', taskId), { [field]: 0 });
+    } catch(e) { console.error('markChatAsRead:', e); }
   };
 
   window.listenChatMessages = function(taskId, callback) {
@@ -5262,16 +5732,33 @@ function toast(msg){
     });
   };
 
-  // ── כניסה עם Google ──
+  // ── כניסה עם Google (Popup) ──
   window.signInWithGoogle = async function() {
+    const btn = document.getElementById('btn-google');
+    const originalHTML = btn.innerHTML;
     try {
-      const btn = document.getElementById('btn-google');
       btn.innerHTML = '⏳ מתחבר...';
-      await signInWithRedirect(auth, provider);
+      btn.style.pointerEvents = 'none';
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const email = (user.email || '').toLowerCase();
+      if (!await isAuthorized(email)) {
+        await signOut(auth);
+        btn.innerHTML = originalHTML;
+        btn.style.pointerEvents = '';
+        document.getElementById('aerr').textContent = 'אין לך הרשאת גישה למערכת';
+        return;
+      }
+      await handleAuthSuccess(user);
     } catch(err) {
-      console.error(err);
-      document.getElementById('btn-google').innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> כניסה עם Google';
-      document.getElementById('aerr').textContent = 'מייל או סיסמה שגויים';
+      console.error('Google sign-in error:', err);
+      btn.innerHTML = originalHTML;
+      btn.style.pointerEvents = '';
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        document.getElementById('aerr').textContent = '';
+      } else {
+        document.getElementById('aerr').textContent = 'שגיאה בכניסה עם Google — נסי שנית';
+      }
     }
   };
 </script>
