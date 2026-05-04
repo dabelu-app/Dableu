@@ -5021,34 +5021,54 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // ── הכנסה לאפליקציה אחרי אימות ──
   async function handleAuthSuccess(user) {
-    const nameParts = (user.displayName || user.email).split(' ');
-    const initials = nameParts.map(n => n[0]).join('').slice(0,2).toUpperCase();
-    const existing = await loadUserData(user.uid);
+    const email     = (user.email || '').toLowerCase();
+    const nameParts = (user.displayName || email).split(' ');
+    const initials  = nameParts.map(n => n[0]).join('').slice(0,2).toUpperCase();
+
+    // ── מצא חשבון קיים לפי אימייל (מונע כפילות Google + מייל/סיסמה) ──
+    let canonicalUid = user.uid;
+    let existing     = await loadUserData(user.uid);
+
+    if (!existing) {
+      // חפש לפי אימייל — אולי נרשם קודם עם מייל+סיסמה
+      const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+      if (!emailSnap.empty) {
+        canonicalUid = emailSnap.docs[0].id;
+        existing     = emailSnap.docs[0].data();
+      }
+    }
+
     if(typeof S !== 'undefined') {
-      S.user = { uid: user.uid, name: user.displayName || user.email.split('@')[0], email: user.email, initials, photo: user.photoURL, officeName: existing?.officeName || 'משרד ייעוץ מס' };
+      S.user = {
+        uid: canonicalUid,
+        name: user.displayName || existing?.name || email.split('@')[0],
+        email,
+        initials,
+        photo: user.photoURL || null,
+        officeName: existing?.officeName || 'משרד ייעוץ מס',
+        subscription: existing?.subscription || 'trial'
+      };
       if(existing) {
-        // טעינת שדות שנשמרו מהגדרות
-        if(existing.phone) S.user.phone = existing.phone;
-        if(existing.waPhone) S.user.waPhone = existing.waPhone;
-        if(existing.role) S.user.role = existing.role;
-        // טעינת פרטי משרד
-        if(existing.officePhone) S.office.phone = existing.officePhone;
-        if(existing.officeEmail) S.office.email = existing.officeEmail;
-        if(existing.officeAddr) S.office.addr = existing.officeAddr;
-        if(existing.officeName) S.office.name = existing.officeName;
-        // טעינת הגדרות התראות
-        if(existing.notif) S.notif = existing.notif;
-        const tasks = await window.loadTasksFromDB(user.uid);
-        const clients = await window.loadClientsFromDB(user.uid);
-        const teamData = await window.loadTeamFromDB(user.uid);
-        if(tasks.length) S.tasks = tasks;
+        if(existing.phone)       S.user.phone   = existing.phone;
+        if(existing.waPhone)     S.user.waPhone = existing.waPhone;
+        if(existing.role)        S.user.role    = existing.role;
+        if(existing.officePhone) S.office.phone  = existing.officePhone;
+        if(existing.officeEmail) S.office.email  = existing.officeEmail;
+        if(existing.officeAddr)  S.office.addr   = existing.officeAddr;
+        if(existing.officeName)  S.office.name   = existing.officeName;
+        if(existing.notif)       S.notif         = existing.notif;
+        const tasks    = await window.loadTasksFromDB(canonicalUid);
+        const clients  = await window.loadClientsFromDB(canonicalUid);
+        const teamData = await window.loadTeamFromDB(canonicalUid);
+        if(tasks.length)  S.tasks = tasks;
         if(clients.length) S.clients = clients;
-        if(teamData && teamData.team && teamData.team.length) {
+        if(teamData?.team?.length) {
           S.team = teamData.team;
           if(teamData.nextMemberId) S.nextMemberId = teamData.nextMemberId;
         }
       }
-      await saveUserData(user.uid, { name: S.user.name, email: S.user.email, officeName: S.user.officeName, lastLogin: new Date().toISOString() });
+      // שמור lastLogin תחת ה-UID הקנוני (לא UID חדש של Google)
+      await saveUserData(canonicalUid, { name: S.user.name, email, officeName: S.user.officeName, lastLogin: new Date().toISOString() });
       enterApp();
     }
   }
