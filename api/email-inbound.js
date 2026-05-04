@@ -215,8 +215,10 @@ function findWorkerMatch(text, team) {
   return null;
 }
 
-// Groq — חילוץ שם עובד מהמשימה
-async function extractAssigneeFromText(text) {
+// Groq — חילוץ שם עובד מהמשימה, בהתאמה לרשימת הצוות האמיתית
+async function extractAssigneeFromText(text, teamMembers) {
+  if (!teamMembers || !teamMembers.length) return null;
+  const namesList = teamMembers.map(m => m.name).join(', ');
   try {
     const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -225,26 +227,25 @@ async function extractAssigneeFromText(text) {
         model: 'llama-3.1-8b-instant',
         messages: [
           { role: 'system', content:
-`בהינתן משימה בעברית, חלץ את שם העובד שאליו המשימה מיועדת.
-חפש: "לרותי", "לדינה:", "עבור משה", "ל[שם] -", "[שם] צריך ל".
-אם לא מצוין עובד ברור — החזר: null
-החזר את השם בלבד, ללא הסברים.
-דוגמאות:
-"לרותי - לעדכן תיק מע"מ" → "רותי"
-"משימה לדינה: לשלוח דוח" → "דינה"
-"עבור יוסי כהן - לחתום" → "יוסי כהן"
-"לשלוח חשבונית ללקוח" → null` },
-          { role: 'user', content: text.slice(0, 300) }
+`רשימת העובדים הקיימים: ${namesList}
+
+קרא את הטקסט הבא וזהה אם המשימה מיועדת לאחד מהעובדים ברשימה.
+חפש: שמות בתחילת הכותרת (ל[שם], עבור [שם], [שם]:), שמות בגוף ההודעה, גם עם אותיות שימוש (ל, מ, ב, ש).
+אפשרי שהשם כתוב בצורה מקוצרת או נגזרת (רות↔רותי, יוסף↔יוסי).
+אם מזהה עובד — החזר את שמו המדויק מהרשימה.
+אם לא — החזר בדיוק: null` },
+          { role: 'user', content: text.slice(0, 600) }
         ],
-        max_tokens: 30,
+        max_tokens: 50,
         temperature: 0
       })
     });
     const data = await resp.json();
     const content = (data.choices?.[0]?.message?.content || '').trim();
+    console.log(`🤖 extractAssignee | names:[${namesList}] | result:"${content}"`);
     if (!content || /^null$/i.test(content)) return null;
     return content;
-  } catch(e) { return null; }
+  } catch(e) { console.error('extractAssignee error:', e.message); return null; }
 }
 
 // ניקוי שם עובד מהכותרת
@@ -275,7 +276,7 @@ async function notifyWorkerByWhatsApp(phone, taskTitle, senderName) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chatId,
-          message: `📋 *משימה חדשה שובצה אליך!*\n\n📝 ${taskTitle}\n👤 הוקצה על ידי: ${senderName}\n\nיש לפתוח את המערכת לפרטים ולאישור ✅`
+          message: `📋 *משימה חדשה שובצה אליך!*\n\n📝 *תוכן המשימה:*\n${taskTitle}\n\n👤 הוקצה על ידי: ${senderName}\n\nיש לפתוח את המערכת לפרטים ולאישור ✅`
         })
       }
     );
@@ -365,25 +366,19 @@ async function sendReplyEmail(to, taskTitle, status, workerName) {
       <div style="background:#f5f5f5;padding:12px;text-align:center;color:#999;font-size:12px">Dabelu · tasks@dabelu.pro</div>
     </div>`;
   } else if (status === 'ok') {
-    const assignLine = workerName
-      ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 16px;margin:12px 0;text-align:right">
-           <span style="font-size:13px;color:#16a34a;font-weight:700">👤 שובצה ל: ${workerName}</span>
-         </div>`
-      : `<div style="background:#f8fafc;border-radius:8px;padding:10px 16px;margin:8px 0;text-align:right">
-           <span style="font-size:13px;color:#64748b">👤 שובצה לכללי</span>
-         </div>`;
     subject = `✅ משימה נוצרה: ${taskTitle}`;
     html = `
     <div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0">
       ${header}
       <div style="padding:28px;background:#fff">
-        <p style="font-size:22px;text-align:center;margin:0 0 12px">✅</p>
-        <h2 style="color:#1e293b;margin:0 0 20px;text-align:center;font-size:18px">המשימה נוצרה בהצלחה!</h2>
-        <div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px;padding:16px;margin-bottom:12px;text-align:right">
-          <div style="color:#6366f1;font-size:12px;font-weight:600;margin-bottom:6px">📝 תוכן המשימה</div>
-          <div style="color:#1e293b;font-weight:700;font-size:15px;line-height:1.5">${taskTitle}</div>
+        <p style="font-size:20px;font-weight:700;color:#16a34a;margin:0 0 16px">✅ המשימה נוצרה בהצלחה!</p>
+        <p style="font-size:15px;color:#1e293b;margin:0 0 6px">
+          <strong>שובצה ל:</strong>
+          <span style="color:${workerName ? '#16a34a' : '#64748b'}">${workerName || 'כללי (בעל העסק)'}</span>
+        </p>
+        <div style="background:#f0f4ff;border-right:4px solid #2563eb;border-radius:6px;padding:14px 16px;margin:16px 0">
+          <div style="color:#1e293b;font-size:15px;line-height:1.6;white-space:pre-wrap">${taskTitle}</div>
         </div>
-        ${assignLine}
         <div style="text-align:center;margin-top:20px">
           <a href="${SITE_URL}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;display:inline-block">פתח את Dabelu ←</a>
         </div>
@@ -472,9 +467,9 @@ module.exports = async (req, res) => {
       console.error('getTeamMembers failed:', e.message);
     }
 
-    // עדיפות 1: Groq חולץ שם עובד → התאמה גמישה
+    // עדיפות 1: Groq חולץ שם עובד לפי רשימת הצוות → התאמה גמישה
     // עדיפות 2: regex בטקסט המלא
-    const aiAssignee  = teamMembers.length ? await extractAssigneeFromText(fullText) : null;
+    const aiAssignee  = teamMembers.length ? await extractAssigneeFromText(fullText, teamMembers) : null;
     const workerMatch = (aiAssignee ? findWorkerByName(aiAssignee, teamMembers) : null)
                      || findWorkerMatch(fullText, teamMembers)
                      || (teamMembers.length === 1 ? teamMembers[0] : null); // עובד יחיד → שיוך אוטומטי

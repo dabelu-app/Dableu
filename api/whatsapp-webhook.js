@@ -497,7 +497,7 @@ async function notifyWorkerOfTask(workerMember, taskTitle, senderName) {
       const normalized = normalizeWorkerPhone(phone);
       if (normalized) {
         await sendWhatsAppReply(normalized + '@c.us',
-          `📋 *משימה חדשה שובצה אליך!*\n\n📝 ${taskTitle}\n👤 הוקצה על ידי: ${senderName}\n\nיש לפתוח את המערכת לפרטים ולאישור ✅`
+          `📋 *משימה חדשה שובצה אליך!*\n\n📝 *תוכן המשימה:*\n${taskTitle}\n\n👤 הוקצה על ידי: ${senderName}\n\nיש לפתוח את המערכת לפרטים ולאישור ✅`
         );
         console.log('✅ worker WA sent to:', normalized);
       }
