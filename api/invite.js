@@ -29,10 +29,10 @@ module.exports = async (req, res) => {
       subject: `ברוך הבא ל${officeName || 'המשרד'} – הצטרפות למערכת ניהול המשימות`,
       html: `
         <div dir="rtl" style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;border:1px solid #e0e0e0;border-radius:14px;overflow:hidden">
-          <div style="background:linear-gradient(135deg,#1a1a2e 0%,#2563eb 100%);padding:32px 28px;text-align:center">
-            <div style="font-size:38px;margin-bottom:10px">🎉</div>
-            <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">ברוכה הבאה למשרד!</h1>
-            <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px">${officeName || 'המשרד'} מצרפת אותך למערכת ניהול המשימות</p>
+          <div style="background:linear-gradient(135deg,#1e40af 0%,#2563eb 100%);padding:28px;text-align:center">
+            <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:50px;max-width:180px;display:block;margin:0 auto 12px">
+            <h1 style="color:#fff;margin:0;font-size:20px;font-weight:700">ברוכה הבאה למשרד!</h1>
+            <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:13px">${officeName || 'המשרד'} מצרפת אותך למערכת ניהול המשימות</p>
           </div>
           <div style="padding:32px 28px;background:#fff">
             <p style="font-size:15px;color:#1a1a2e;margin:0 0 16px">שלום ${employeeName} 👋</p>

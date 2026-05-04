@@ -32,8 +32,12 @@ async function sendEmail(to, name) {
   });
 
   const html = `
-  <div dir="rtl" style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;background:#fff">
-    <h1 style="color:#2563eb;text-align:center;font-size:22px">⏰ תקופת הניסיון שלך מסתיימת מחר</h1>
+  <div dir="rtl" style="font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff">
+    <div style="background:linear-gradient(135deg,#1e40af,#2563eb);padding:28px;text-align:center">
+      <img src="https://dabelu.web.app/logo.png" alt="Dabelu" style="height:52px;max-width:180px;display:block;margin:0 auto 12px">
+      <h1 style="color:#fff;font-size:20px;margin:0">⏰ תקופת הניסיון שלך מסתיימת מחר</h1>
+    </div>
+    <div style="padding:28px">
     <p style="font-size:16px">שלום <strong>${name}</strong>,</p>
     <p style="font-size:15px;color:#374151">
       7 ימי הניסיון החינמי שלך ב-Dabelu מסתיימים <strong>מחר</strong>.<br>
@@ -56,6 +60,10 @@ async function sendEmail(to, name) {
     <p style="color:#9ca3af;font-size:12px;text-align:center">
       שאלות? כתוב/י לנו: <a href="mailto:tasks@dabelu.pro">tasks@dabelu.pro</a>
     </p>
+    </div>
+    <div style="background:#f1f5f9;padding:14px;text-align:center;color:#94a3b8;font-size:11px;border-top:1px solid #e2e8f0">
+      Dabelu · <a href="https://dabelu.web.app" style="color:#94a3b8">dabelu.web.app</a>
+    </div>
   </div>`;
 
   await transporter.sendMail({
