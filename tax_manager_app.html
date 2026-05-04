@@ -1810,12 +1810,12 @@ function taskAccordionHTML(t){
   const isInprog=t.status==='inprogress';
   return `
   <div id="tdi-${t.id}" style="margin-bottom:8px;border:1.5px solid ${t.pinned?'#f59e0b':'var(--border)'};border-radius:var(--radius-lg);overflow:hidden;background:var(--surface);transition:border-color .2s,box-shadow .2s">
-    <div onclick="toggleTaskDetail(${t.id})" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+    <div onclick="toggleTaskDetail('${t.id}')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
       <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
         ${t.pinned?'<span style="font-size:13px;flex-shrink:0">📌</span>':''}
         ${t.priority==='urgent'?'<span style="font-size:11px;flex-shrink:0">🔴</span>':''}
         <span id="ttl-${t.id}" style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${t.title}</span>
-        <button onclick="event.stopPropagation();startEditTaskTitle(${t.id})" title="ערוך שם משימה"
+        <button onclick="event.stopPropagation();startEditTaskTitle('\${t.id}')" title="ערוך שם משימה"
           style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:3px 5px;border-radius:6px;line-height:1;transition:background .15s;display:flex;align-items:center"
           onmouseenter="this.style.background='var(--surface2)'"
           onmouseleave="this.style.background='none'">
@@ -1853,7 +1853,7 @@ function taskAccordionHTML(t){
         ${(()=>{
           const _cn=(t.clientName||'').trim();
           const _c=(t.client||'').trim()||(_cn&&_cn!==(t.assignee||'').trim()?_cn:'');
-          return `<div onclick="event.stopPropagation();openAssignClientModal(${t.id})"
+          return `<div onclick="event.stopPropagation();openAssignClientModal('\${t.id}')"
             style="background:var(--surface);border-radius:var(--radius);padding:8px 10px;border:1.5px solid ${_c?'#c4b5fd':'var(--border)'};cursor:pointer;transition:border-color .15s,background .15s"
             onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='var(--surface)'">
             <div style="font-size:10px;color:var(--text3);margin-bottom:2px">👥 לקוח <span style="font-size:9px;color:#7c3aed;opacity:.7">✏️</span></div>
@@ -1891,13 +1891,13 @@ function taskAccordionHTML(t){
         ${!isDone?`
           <button class="tc-btn" style="background:${isInprog?'#fff7ed':'transparent'};color:${isInprog?'#d97706':'var(--text2)'};border-color:${isInprog?'#fcd34d':'var(--border)'}" onclick="event.stopPropagation();setStatus(${t.id},'${isInprog?'pending':'inprogress'}')">${isInprog?'⏸ עצור':'▶ התחל טיפול'}</button>
           <button class="tc-btn b-done" onclick="event.stopPropagation();setStatus(${t.id},'done')">✓ סמן כטופל</button>
-          <button class="tc-btn" style="color:#b45309;border-color:#fcd34d" onclick="event.stopPropagation();pinTask(${t.id})">${t.pinned?'📌 הסר הצמדה':'📌 הצמד'}</button>
-          <button class="tc-btn b-remind" onclick="event.stopPropagation();manualRemind(${t.id})">📲 תזכורת</button>
-          <button class="tc-btn b-snooze" onclick="event.stopPropagation();openSnoozeModal(${t.id})">⏰ דחה</button>
-          ${t.priority==='urgent'?`<button class="tc-btn" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;font-weight:700" onclick="event.stopPropagation();urgentWA(${t.id})">🚨 וואטסאפ דחוף</button>`:''}
+          <button class="tc-btn" style="color:#b45309;border-color:#fcd34d" onclick="event.stopPropagation();pinTask('\${t.id}')">${t.pinned?'📌 הסר הצמדה':'📌 הצמד'}</button>
+          <button class="tc-btn b-remind" onclick="event.stopPropagation();manualRemind('\${t.id}')">📲 תזכורת</button>
+          <button class="tc-btn b-snooze" onclick="event.stopPropagation();openSnoozeModal('\${t.id}')">⏰ דחה</button>
+          ${t.priority==='urgent'?`<button class="tc-btn" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;font-weight:700" onclick="event.stopPropagation();urgentWA('\${t.id}')">🚨 וואטסאפ דחוף</button>`:''}
           ${(()=>{const opts=getTeamWithOwner().filter(m=>m.name!==(t.assignee||'')||(!(t.assignee)&&!isOwnerName(m.name)));return opts.length?`<select onchange="event.stopPropagation();reassignTask(${t.id},this.value);this.value=''" onclick="event.stopPropagation()" style="font-size:11px;padding:4px 8px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'Heebo',sans-serif"><option value="">📤 העבר לעובד</option>${opts.map(m=>`<option value="${m.name}">${m.name}${m.isOwner||isOwnerName(m.name)?' 👑':''}</option>`).join('')}</select>`:'';})()}
         `:`<button class="tc-btn" style="color:var(--text2)" onclick="event.stopPropagation();setStatus(${t.id},'pending')">↩ פתח מחדש</button>`}
-        <button title="מחק משימה" onclick="event.stopPropagation();deleteTask(${t.id})" style="margin-left:auto;background:none;border:1.5px solid #fca5a5;border-radius:var(--radius);padding:4px 8px;cursor:pointer;color:#dc2626;font-size:15px;line-height:1;transition:background .15s" onmouseenter="this.style.background='#fee2e2'" onmouseleave="this.style.background='none'">🗑️</button>
+        <button title="מחק משימה" onclick="event.stopPropagation();deleteTask('\${t.id}')" style="margin-left:auto;background:none;border:1.5px solid #fca5a5;border-radius:var(--radius);padding:4px 8px;cursor:pointer;color:#dc2626;font-size:15px;line-height:1;transition:background .15s" onmouseenter="this.style.background='#fee2e2'" onmouseleave="this.style.background='none'">🗑️</button>
       </div>
     </div>
   </div>`;
@@ -1918,7 +1918,7 @@ function taskCardHTML(t){
   <div class="task-card p-${t.priority} ${overdue?'overdue-card':''} ${isDone?'done-card':''}" style="${pinnedStyle}">
     ${t.pinned?`<div style="font-size:10px;font-weight:700;color:#b45309;margin-bottom:6px;display:flex;align-items:center;gap:4px">📌 מוצמדת לראש הרשימה</div>`:''}
     <div class="tc-top">
-      <div class="tc-check ${isDone?'checked':''}" onclick="cycleStatus(${t.id})" title="לחץ לשינוי סטטוס">
+      <div class="tc-check ${isDone?'checked':''}" onclick="cycleStatus('\${t.id}')" title="לחץ לשינוי סטטוס">
         <svg width="9" height="9" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="tc-body">
@@ -1943,10 +1943,10 @@ function taskCardHTML(t){
           ${!isDone?`
             <button class="tc-btn" style="background:${isInprog?'#fff7ed':'transparent'};color:${isInprog?'#d97706':'var(--text2)'};border-color:${isInprog?'#fcd34d':'var(--border)'}" onclick="setStatus(${t.id},'${isInprog?'pending':'inprogress'}')">${isInprog?'⏸ עצור':'▶ התחל טיפול'}</button>
             <button class="tc-btn b-done" onclick="setStatus(${t.id},'done')">✓ סמן כטופל</button>
-            <button class="tc-btn" style="color:#b45309;border-color:#fcd34d" onclick="pinTask(${t.id})" title="${t.pinned?'הסר הצמדה':'הצמד לראש'}">${t.pinned?'📌 הסר הצמדה':'📌 הצמד'}</button>
-            <button class="tc-btn b-remind" onclick="manualRemind(${t.id})">📲 תזכורת</button>
-            ${t.priority==='urgent'?`<button class="tc-btn" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;font-weight:700" onclick="urgentWA(${t.id})">🚨 וואטסאפ דחוף</button>`:''}
-            <button class="tc-btn b-snooze" onclick="openSnoozeModal(${t.id})">⏰ דחה</button>
+            <button class="tc-btn" style="color:#b45309;border-color:#fcd34d" onclick="pinTask('\${t.id}')" title="${t.pinned?'הסר הצמדה':'הצמד לראש'}">${t.pinned?'📌 הסר הצמדה':'📌 הצמד'}</button>
+            <button class="tc-btn b-remind" onclick="manualRemind('\${t.id}')">📲 תזכורת</button>
+            ${t.priority==='urgent'?`<button class="tc-btn" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;font-weight:700" onclick="urgentWA('\${t.id}')">🚨 וואטסאפ דחוף</button>`:''}
+            <button class="tc-btn b-snooze" onclick="openSnoozeModal('\${t.id}')">⏰ דחה</button>
           `:`
             <button class="tc-btn" style="color:var(--text2)" onclick="setStatus(${t.id},'pending')">↩ פתח מחדש</button>
           `}
@@ -1957,7 +1957,7 @@ function taskCardHTML(t){
 }
 
 function cycleStatus(id){
-  const t=S.tasks.find(t=>t.id===id);if(!t)return;
+  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
   const cycle={pending:'inprogress',inprogress:'done',done:'pending'};
   const labels={pending:'טרם טופל',inprogress:'בביצוע',done:'טופל'};
   t.status=cycle[t.status];
@@ -1967,7 +1967,7 @@ function cycleStatus(id){
 }
 
 function setStatus(id,status){
-  const t=S.tasks.find(t=>t.id===id);if(!t)return;
+  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
   t.status=status;t.done=status==='done';
   taskTab=status;
   _saveTasks();
@@ -1977,14 +1977,14 @@ function setStatus(id,status){
 }
 
 function pinTask(id){
-  const t=S.tasks.find(t=>t.id===id);if(!t)return;
+  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
   t.pinned=!t.pinned;
   _saveTasks();
   renderPage();toast(t.pinned?'📌 המשימה הוצמדה לראש!':'📌 ההצמדה הוסרה');
 }
 
 function deleteTask(id){
-  const t=S.tasks.find(t=>t.id===id);if(!t)return;
+  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
   if(!confirm(`למחוק את המשימה "${t.title}"?`))return;
   // מחק מ-Firestore tasks collection אם זו משימת ווצאפ
   if(t.source==='whatsapp' && t.waDocId && typeof window.deleteWATaskFromDB==='function'){
@@ -1996,7 +1996,7 @@ function deleteTask(id){
 }
 
 function urgentWA(id){
-  const t=S.tasks.find(t=>t.id===id);if(!t)return;
+  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
   t.remindedAt=Date.now();
   const msg=`🚨 *הודעה דחופה*\nשלום ${t.assignee},\nהמשימה *"${t.title}"* דחופה ודורשת טיפול מיידי!\nתאריך יעד: ${fmtD(t.date)}\nאנא עדכן סטטוס בהקדם.`;
   S.waMessages.push({text:msg,time:timeStr(),converted:false,auto:false,urgent:true});
@@ -2298,7 +2298,7 @@ function renderRemindersPage(){
             <div style="font-size:12px;font-weight:600">${t.title}</div>
             <div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${t.assignee} · ⏱ ${Math.floor(hrs(t.createdAt))} שעות</div>
           </div>
-          <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind(${t.id})">📲 שלח</button>
+          <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind('\${t.id}')">📲 שלח</button>
         </div>`).join('')
       :'<div class="empty-state" style="padding:16px">אין משימות דחופות 🎉</div>'}
     </div>
@@ -2312,7 +2312,7 @@ function renderRemindersPage(){
             <div style="font-size:12px;font-weight:600">${t.title}</div>
             <div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${t.assignee} · 📅 ${fmtD(t.date)}</div>
           </div>
-          <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind(${t.id})">📲 שלח</button>
+          <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind('\${t.id}')">📲 שלח</button>
         </div>`).join('')
       :'<div class="empty-state" style="padding:16px">אין משימות שהגיע מועדן</div>'}
     </div>
@@ -2333,7 +2333,7 @@ function renderRemindersPage(){
         </div>
         <div style="text-align:left">
           <div style="font-size:10px;color:var(--text3)">יעד: ${fmtD(t.date)}</div>
-          <button class="btn sm" style="font-size:10px;margin-top:3px" onclick="manualRemind(${t.id})">📲 שלח עכשיו</button>
+          <button class="btn sm" style="font-size:10px;margin-top:3px" onclick="manualRemind('\${t.id}')">📲 שלח עכשיו</button>
         </div>
       </div>`).join('')
     :'<div class="empty-state">אין משימות חוזרות פעילות</div>'}
@@ -3079,11 +3079,11 @@ function disconnectIntegration(name){
 //  TASK LOGIC
 // ══════════════════════════════════════
 function toggleTask(id){
-  const t=S.tasks.find(t=>t.id===id);
+  const t=S.tasks.find(t=>String(t.id)===String(id));
   if(t){t.done=!t.done;renderPage();toast(t.done?'✓ משימה הושלמה!':'↩ חזר לפתוחות');}
 }
 function manualRemind(id){
-  const t=S.tasks.find(t=>t.id===id);if(!t)return;
+  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
   t.remindedAt=Date.now();
   S.waMessages.push({text:`📲 תזכורת ידנית: ${t.title} - ${t.assignee} - יעד: ${fmtD(t.date)}`,time:timeStr(),converted:false,auto:false});
   S.reminders.push({task:t.title,assignee:t.assignee,time:timeStr(),type:'ידנית',auto:false});
@@ -3200,7 +3200,7 @@ function populateAssigneeSelect(){
 
 // ── Reassign a task to a different worker (owner/manager only) ──
 function reassignTask(id,newAssignee){
-  const t=S.tasks.find(t=>t.id===id);
+  const t=S.tasks.find(t=>String(t.id)===String(id));
   if(!t||!newAssignee)return;
   const prev=t.assignee||'(ללא)';
   t.assignee=newAssignee;
@@ -3213,7 +3213,7 @@ function reassignTask(id,newAssignee){
 //  SNOOZE
 // ══════════════════════════════════════
 function openSnoozeModal(id){
-  const t=S.tasks.find(t=>t.id===id);if(!t)return;
+  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
   S.snoozeTarget=id;S.snoozeChoice='1h';
   document.getElementById('snooze-name').textContent=t.title;
   document.querySelectorAll('.snooze-opt').forEach((el,i)=>el.classList.toggle('sel',i===0));
@@ -3394,7 +3394,7 @@ function saveAddAppointment(){
 //  EDIT TASK TITLE INLINE
 // ══════════════════════════════════════
 function startEditTaskTitle(id){
-  const t=S.tasks.find(t=>t.id===id);if(!t)return;
+  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
   const span=document.getElementById('ttl-'+id);if(!span)return;
   const oldTitle=t.title;
   // replace span with input
@@ -3488,7 +3488,7 @@ async function addMember(){
   document.getElementById('nm-name').value='';document.getElementById('nm-email').value='';document.getElementById('nm-phone').value='';
 }
 function removeMember(id){
-  const m=S.team.find(t=>t.id===id);if(!m)return;
+  const m=S.team.find(t=>String(t.id)===String(id));if(!m)return;
   if(!confirm(`להסיר את ${m.name}?`))return;
   S.team=S.team.filter(t=>t.id!==id);
   _saveTeam();
@@ -3497,7 +3497,7 @@ function removeMember(id){
 
 let editMemberId=null;
 function openEditMember(id){
-  const m=S.team.find(t=>t.id===id);if(!m)return;
+  const m=S.team.find(t=>String(t.id)===String(id));if(!m)return;
   editMemberId=id;
   document.getElementById('em-name').value=m.name;
   document.getElementById('em-email').value=m.email;
