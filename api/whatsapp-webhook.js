@@ -859,7 +859,8 @@ module.exports = async (req, res) => {
   // עדיפות 2: חיפוש regex בטקסט המלא
   const aiAssignee  = classified.assignee || null;
   const workerMatch = (aiAssignee ? findWorkerByName(aiAssignee, teamMembers) : null)
-                   || findWorkerMatch(msgText, teamMembers);
+                   || findWorkerMatch(msgText, teamMembers)
+                   || (teamMembers.length === 1 ? teamMembers[0] : null); // עובד יחיד → שיוך אוטומטי
 
   console.log(`👥 assignee from AI: "${aiAssignee}" | matched: ${workerMatch?.name || 'none'}`);
 
