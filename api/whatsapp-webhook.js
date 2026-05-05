@@ -829,11 +829,15 @@ function formatDateHebrew(dateStr) {
 // ───────────────────────────────────────────
 // בניית הודעת זימון ברורה למוזמן לפגישה
 function buildInviteMessage(ownerName, date, time) {
-  const dateStr = formatDateHebrew(date || '');
-  const lines = ['📅 זימון לפגישה!', ''];
-  if (ownerName) lines.push(`👤 עם: ${ownerName}`);
-  if (dateStr)   lines.push(`📅 תאריך: ${dateStr}`);
-  if (time)      lines.push(`🕐 שעה: ${time}`);
+  const dateStr     = formatDateHebrew(date || '');
+  // displayName: שם הבעלים, או 'העסק' כ-fallback מוחלט
+  const displayName = ownerName || 'העסק';
+  const lines = [
+    `📅 ${displayName} מזמין/ת אותך לפגישה!`,
+    ''
+  ];
+  if (dateStr) lines.push(`📅 תאריך: ${dateStr}`);
+  if (time)    lines.push(`🕐 שעה: ${time}`);
   lines.push('', 'נתראה! 👋');
   return lines.join('\n');
 }
