@@ -3607,7 +3607,11 @@ function renderCalendarPage(){
   });
   // פגישות מהבוט
   if(S.appointments) S.appointments.forEach(a=>{
-    if(a.date) events.push({date:a.date,title:'🤝 '+a.title+(a.clientName?' · '+a.clientName:''),type:'appointment',priority:'normal',source:'appointment',time:a.time||''});
+    if(a.date) {
+      const _calName = (a.clientName||'').trim() || (a.title||'פגישה');
+      const _calTime = a.time ? ' · '+a.time : '';
+      events.push({date:a.date,title:'🤝 '+_calName+_calTime,type:'appointment',priority:'normal',source:'appointment',time:a.time||''});
+    }
   });
   // תזכורות
   S.reminders.forEach(r=>{
