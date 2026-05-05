@@ -47,8 +47,17 @@ async function getUserDoc(phone) {
 
 // חיפוש שם בעל עסק לפי מספר טלפון — מנסה waPhone ו-phone בנוסף ל-chatId
 async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
+  console.log(`[ownerName] phone=${phone} senderDisplayName="${senderDisplayName}"`);
+  const fields = fallbackDoc?.fields || {};
+  console.log(`[ownerName] doc fields: name="${fields.name?.stringValue}" officeName="${fields.officeName?.stringValue}" waName="${fields.waName?.stringValue}" email="${fields.email?.stringValue}"`);
+
+  // 0. שם WA שנשמר בעבר (נשמר בעת כל קבלת הודעה)
+  const cachedWaName = fields.waName?.stringValue || '';
+  if (cachedWaName && !/^\d/.test(cachedWaName)) { console.log('[ownerName] from waName:', cachedWaName); return cachedWaName; }
+
   // 1. שם ישירות מהמסמך שנמצא
-  const fromDoc = fallbackDoc?.fields?.name?.stringValue || fallbackDoc?.fields?.officeName?.stringValue || '';
+  const fromDoc = fields.name?.stringValue || fields.officeName?.stringValue || '';
+  console.log('[ownerName] step1 fromDoc:', fromDoc);
   if (fromDoc) return fromDoc;
 
   // 2. חיפוש לפי email בכל המסמכים — מוצא את מסמך ההרשמה הראשי שיש בו שם
@@ -102,6 +111,7 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
 
   // 4. שם תצוגה וואטסאפ (אם לא מספר)
   const cleanSender = (senderDisplayName || '').replace(/@.*/,'').trim();
+  console.log('[ownerName] step4 cleanSender:', cleanSender);
   if (cleanSender && !/^\d/.test(cleanSender)) return cleanSender;
 
   // 5. שאל את GreenAPI על שם פרופיל הווצאפ של השולח
@@ -115,9 +125,11 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
     );
     const info = await r.json();
     const waName = info?.name || info?.contactName || info?.displayName || '';
+    console.log('[ownerName] step5 GreenAPI waName:', waName);
     if (waName && !/^\d/.test(waName)) return waName;
-  } catch(e) {}
+  } catch(e) { console.warn('[ownerName] step5 error:', e.message); }
 
+  console.log('[ownerName] → empty string (all steps failed)');
   return '';
 }
 
@@ -250,47 +262,103 @@ async function extractPersonName(text) {
 // ───────────────────────────────────────────
 // ─────────────────────────────────────────────────────
 // זיהוי תאריך ב-JavaScript בלבד — ה-AI לא מחשב ימים!
+//
+// CRITICAL: All Hebrew matching uses t.includes(pat) where pat is
+// a JS string built from \uXXXX escapes.  A \uXXXX escape in a JS
+// string literal is resolved by the JavaScript parser to a single
+// Unicode code-point — independent of the source file's byte encoding.
+// This makes the matching 100% reliable on any server.
 // ─────────────────────────────────────────────────────
 function extractDateJS(text) {
-  // ימי שבוע עבריים → מספר יום (JavaScript: 0=ראשון/Sunday, ..., 6=שבת/Saturday)
-  const DAY_MAP = {
-    'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3,
-    'חמישי': 4, 'שישי': 5, 'שבת': 6
-  };
+  if (!text) return null;
+  // Strip Hebrew nikud/cantillation U+0591-U+05C7 — using \uXXXX in regex, no Hebrew bytes
+  const t = text.replace(/[֑-ׇ]/g, '').normalize('NFC');
 
-  // זמן ישראל UTC+3
-  const ilMs       = Date.now() + 3 * 60 * 60 * 1000;
-  const todayDay   = new Date(ilMs).getUTCDay();
+  // Israel time = UTC+3
+  const IL_OFFSET = 3 * 60 * 60 * 1000;
+  const ilNow    = Date.now() + IL_OFFSET;
+  const todayDay = new Date(ilNow).getUTCDay(); // 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
 
   function ymd(ms) {
     const d = new Date(ms);
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
   }
-  function shift(days) { return ymd(ilMs + days * 86400000); }
+  function shift(days) { return ymd(ilNow + days * 86400000); }
 
-  // היום / מחר
-  if (/היום/.test(text)) return shift(0);
-  if (/מחר/.test(text))  return shift(1);
+  const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  console.log(`[date] "${t}" todayDay=${todayDay}(${DAY_NAMES[todayDay]})`);
 
-  // ימי שבוע
-  for (const [name, dayNum] of Object.entries(DAY_MAP)) {
-    if (text.includes(name)) {
-      let diff = dayNum - todayDay;
-      if (diff <= 0) diff += 7;   // תמיד הקרוב קדימה
-      return shift(diff);
+  // ─── today / tomorrow ───
+  // Patterns built with String.fromCodePoint(hex) — zero Hebrew bytes in source.
+  //   היום  = ה(05D4) י(05D9) ו(05D5) ם(05DD)
+  const S_TODAY    = String.fromCodePoint(0x05D4,0x05D9,0x05D5,0x05DD);
+  //   מחר   = מ(05DE) ח(05D7) ר(05E8)
+  const S_TOMORROW = String.fromCodePoint(0x05DE,0x05D7,0x05E8);
+
+  if (t.includes(S_TODAY))    { console.log('[date]->today');    return shift(0); }
+  if (t.includes(S_TOMORROW)) { console.log('[date]->tomorrow'); return shift(1); }
+
+  // ─── weekday names ───
+  // JS week: 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
+  // Hebrew weekdays (all built from hex code points, no Hebrew source bytes):
+  //   ראשון = ר(05E8) א(05D0) ש(05E9) ו(05D5) ן(05DF)  → Sun=0
+  //   שני   = ש(05E9) נ(05E0) י(05D9)                  → Mon=1
+  //   שלישי = ש(05E9) ל(05DC) י(05D9) ש(05E9) י(05D9)  → Tue=2
+  //   רביעי = ר(05E8) ב(05D1) י(05D9) ע(05E2) י(05D9)  → Wed=3
+  //   חמישי = ח(05D7) מ(05DE) י(05D9) ש(05E9) י(05D9)  → Thu=4
+  //   שישי  = ש(05E9) י(05D9) ש(05E9) י(05D9)           → Fri=5
+  //   שבת   = ש(05E9) ב(05D1) ת(05EA)                   → Sat=6
+  const DAYS = [
+    { name:'rishon',  pat:String.fromCodePoint(0x05E8,0x05D0,0x05E9,0x05D5,0x05DF), num:0 },
+    { name:'sheni',   pat:String.fromCodePoint(0x05E9,0x05E0,0x05D9),               num:1 },
+    { name:'shlishi', pat:String.fromCodePoint(0x05E9,0x05DC,0x05D9,0x05E9,0x05D9), num:2 },
+    { name:'revii',   pat:String.fromCodePoint(0x05E8,0x05D1,0x05D9,0x05E2,0x05D9), num:3 },
+    { name:'hamishi', pat:String.fromCodePoint(0x05D7,0x05DE,0x05D9,0x05E9,0x05D9), num:4 },
+    { name:'shishi',  pat:String.fromCodePoint(0x05E9,0x05D9,0x05E9,0x05D9),         num:5 },
+    { name:'shabbat', pat:String.fromCodePoint(0x05E9,0x05D1,0x05EA),               num:6 },
+  ];
+
+  for (const { name, pat, num } of DAYS) {
+    if (t.includes(pat)) {
+      let diff = num - todayDay;
+      if (diff < 0) diff += 7;   // past weekday → schedule next week
+      // diff==0 means today (same weekday) → schedule today
+      const result = shift(diff);
+      console.log(`[date] matched ${name}(day=${num}) todayDay=${todayDay} diff=${diff} -> ${result}`);
+      return result;
     }
   }
 
-  // תאריך בפורמט DD/MM או DD/MM/YYYY
-  const m = text.match(/(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{4}))?/);
+  // ─── numeric date: DD/MM or DD-MM or DD.MM [/YYYY or /YY] ───
+  const m = t.match(/(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{2,4}))?/);
   if (m) {
-    const day   = m[1].padStart(2,'0');
-    const month = m[2].padStart(2,'0');
-    const year  = m[3] || String(new Date(ilMs).getUTCFullYear());
-    return `${year}-${month}-${day}`;
+    const dy = m[1].padStart(2,'0');
+    const mo = m[2].padStart(2,'0');
+    const yr = m[3] ? (m[3].length===2 ? '20'+m[3] : m[3]) : String(new Date(ilNow).getUTCFullYear());
+    const result = `${yr}-${mo}-${dy}`;
+    console.log(`[date] numeric -> ${result}`);
+    return result;
   }
 
-  return null;   // לא נמצא תאריך
+  console.log('[date] no match');
+  return null;
+}
+
+// ─────────────────────────────────────────────────────
+// זיהוי שעה מטקסט
+// ─────────────────────────────────────────────────────
+function extractTimeJS(text) {
+  if (!text) return null;
+  // HH:MM or H:MM or HH.MM
+  const m1 = text.match(/(\d{1,2})[:\.](\d{2})/);
+  if (m1) return `${m1[1].padStart(2,'0')}:${m1[2].padStart(2,'0')}`;
+  // בשעה (05D1 05E9 05E2 05D4) or שעה (05E9 05E2 05D4) followed by a number
+  const S_BESHA  = String.fromCodePoint(0x05D1,0x05E9,0x05E2,0x05D4); // בשעה
+  const S_SHA    = String.fromCodePoint(0x05E9,0x05E2,0x05D4);         // שעה
+  const m2re = new RegExp('(?:' + S_BESHA + '|' + S_SHA + ')\\s*(\\d{1,2})');
+  const m2 = text.match(m2re);
+  if (m2) return `${m2[1].padStart(2,'0')}:00`;
+  return null;
 }
 
 async function classifyMessage(text) {
@@ -804,7 +872,15 @@ module.exports = async (req, res) => {
   const clientEmail  = userDoc.fields?.email?.stringValue  || '';
   const clientName   = userDoc.fields?.name?.stringValue   || senderName;
   const senderCalId  = userDoc.fields?.googleCalendarId?.stringValue || '';
-  const ownerName    = await resolveOwnerName(phone, userDoc, senderData?.senderName || ''); // שם בעל העסק
+
+  // ── שמור שם ווצאפ של השולח לשימוש עתידי ──
+  const rawSenderName = senderData?.senderName || '';
+  if (rawSenderName && !/^\d/.test(rawSenderName) && !userDoc.fields?.waName?.stringValue) {
+    patchUserField(userDocName, 'waName', rawSenderName).catch(()=>{});
+  }
+
+  const ownerName    = await resolveOwnerName(phone, userDoc, rawSenderName); // שם בעל העסק
+  console.log(`[webhook] ownerName="${ownerName}" phone=${phone}`);
 
   // ── pending מתוך מסמך המשתמש ──
   const pendingStr = userDoc.fields?.pendingAppt?.stringValue || '';
@@ -827,9 +903,16 @@ module.exports = async (req, res) => {
 
     // ── שלב: תאריך ──
     if (pending.step === 'ask_date') {
-      // תאריך: JS קודם, אחר-כך AI
+      // תאריך ושעה: JS קודם (100% אמין), אחר-כך AI כגיבוי
       const jsDateOnly = extractDateJS(inText);
-      const parsed = jsDateOnly ? { date: jsDateOnly, time: null } : await classifyMessage(inText).catch(()=>null);
+      const jsTimeOnly = extractTimeJS(inText);
+      let parsed;
+      if (jsDateOnly) {
+        parsed = { date: jsDateOnly, time: jsTimeOnly || null };
+      } else {
+        parsed = await classifyMessage(inText).catch(()=>null);
+        if (parsed && jsTimeOnly) parsed.time = jsTimeOnly; // JS time overrides AI
+      }
       if (!parsed?.date) {
         await sendWhatsAppReply(chatId, '⚠️ לא הצלחתי לזהות תאריך.\nנסה שוב, לדוגמה: "7/5" או "יום שישי"');
         return res.status(200).send('ok');

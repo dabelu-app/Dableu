@@ -3410,12 +3410,15 @@ function saveAddAppointment(){
     notes: document.getElementById('appt-notes').value||'',
     createdAt: Date.now(),
     manual: true,
+    userId: S.user?.uid || '',
   };
   if(!S.appointments) S.appointments=[];
   S.appointments.push(appt);
   S.appointments.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   // שמור ל-Firestore אם אפשר
   if(window.saveAppointmentToDB) window.saveAppointmentToDB(appt);
+  // אם הלקוח המוזמן הוא גם משתמש Dabelu — שמור לו פגישה ביומן שלו
+  if(window.checkClientIsUser) window.checkClientIsUser(appt);
   // שמור ב-localStorage כגיבוי
   try{
     const key='dabelu_appts_'+(S.user?.uid||'guest');
@@ -5615,8 +5618,9 @@ document.addEventListener('DOMContentLoaded', function(){
         return { id: d.id, ...raw, date: dateStr, time: timeVal,
           title: titleVal, clientName: clientVal };
       });
-      // מיזוג: פגישות Firestore + פגישות שנוצרו ידנית (manual:true)
-      const manualAppts = (S.appointments||[]).filter(a=>a.manual);
+      // מיזוג: פגישות Firestore + פגישות ידניות שעוד לא שמורות בFirestore (מניעת כפולות)
+      const firestoreIds = new Set(firestoreAppts.map(a=>String(a.id)));
+      const manualAppts = (S.appointments||[]).filter(a=>a.manual && !firestoreIds.has(String(a.id)));
       const merged = [...firestoreAppts, ...manualAppts]
         .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
       S.appointments = merged;
@@ -5641,6 +5645,53 @@ document.addEventListener('DOMContentLoaded', function(){
       const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
       await setDoc(doc(db,'appointments',String(appt.id)), appt);
     }catch(e){ console.warn('saveAppointmentToDB:', e); }
+  };
+
+  // אם הלקוח המוזמן הוא גם משתמש Dabelu — שמור לו פגישה ביומן שלו
+  window.checkClientIsUser = async function(appt) {
+    try {
+      const { getDocs, query, collection, where, setDoc, doc } =
+        await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      const clientName = (appt.clientName||'').trim();
+      if (!clientName) return;
+      // חפש את הלקוח ברשימת לקוחות הווצאפ שלנו
+      const clientData = (S.waClients||[]).find(c => (c.name||'').trim() === clientName);
+      if (!clientData) return;
+      let clientUserSnap = null;
+      // חפש לפי מספר ווצאפ/טלפון
+      if (clientData.whatsapp) {
+        const digits = clientData.whatsapp.replace(/[^\d]/g,'');
+        const norm = digits.startsWith('972') ? digits : '972'+digits.replace(/^0/,'');
+        const q1 = await getDocs(query(collection(db,'users'), where('waPhone','==',norm)));
+        if (!q1.empty) clientUserSnap = q1.docs[0];
+        if (!clientUserSnap) {
+          const q2 = await getDocs(query(collection(db,'users'), where('phone','==',norm)));
+          if (!q2.empty) clientUserSnap = q2.docs[0];
+        }
+      }
+      // חפש לפי מייל
+      if (!clientUserSnap && clientData.email) {
+        const q3 = await getDocs(query(collection(db,'users'), where('email','==',(clientData.email||'').toLowerCase())));
+        if (!q3.empty) clientUserSnap = q3.docs[0];
+      }
+      if (!clientUserSnap) return; // הלקוח אינו משתמש Dabelu
+      const clientUid = clientUserSnap.id;
+      if (clientUid === (S.user?.uid||'')) return; // לא להוסיף לעצמך
+      const ownerName = S.user?.name || S.user?.officeName || '';
+      const mirroredId = String(appt.id) + '_m';
+      await setDoc(doc(db,'appointments', mirroredId), {
+        id: mirroredId,
+        clientName: ownerName,
+        title: 'פגישה עם ' + ownerName,
+        date: appt.date,
+        time: appt.time||'',
+        notes: appt.notes||'',
+        createdAt: Date.now(),
+        userId: clientUid,
+        mirroredFrom: S.user?.uid||'',
+      });
+      toast(`📅 הפגישה נוספה גם ליומן של ${clientName}`);
+    } catch(e) { console.warn('checkClientIsUser error:', e); }
   };
 
   // ── האזנה בזמן אמת ללקוחות WhatsApp ──
