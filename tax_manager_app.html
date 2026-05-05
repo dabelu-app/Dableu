@@ -4847,6 +4847,11 @@ document.addEventListener('DOMContentLoaded', function(){
         var result = await window.registerNewUser(name, email, pass, office, plan);
         if(result.error){ showErr(result.error); return; }
         var initials=(first[0]+((last&&last[0])||'')).toUpperCase();
+        // נקה כל מצב קודם לפני כניסת משתמש חדש
+        S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
+        S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
+        S.office={name:'',phone:'',email:'',addr:''};
+        try { Object.keys(localStorage).filter(k=>k.startsWith('dabelu_')).forEach(k=>localStorage.removeItem(k)); } catch(e){}
         S.user={name:name,email:email,initials:initials,officeName:office||'Dabelu',uid:result.uid};
         if(office&&S.office) S.office.name=office;
         // שליחת הודעת פתיחה (מייל + ווצאפ) — לא חוסמת
