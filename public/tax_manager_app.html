@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
 <meta charset="UTF-8"/>
@@ -361,9 +361,9 @@ textarea.form-input{resize:vertical}
   <!-- ── REGISTER PANEL ── -->
   <div id="frm-reg" style="display:none">
     <div id="reg-err" style="color:#dc2626;font-size:12px;text-align:center;margin-bottom:8px;display:none"></div>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <input id="r-firstname" type="text" placeholder="שם פרטי *" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box"/>
-      <input id="r-lastname" type="text" placeholder="שם משפחה" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box"/>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="r-firstname" type="text" placeholder="שם פרטי *" style="flex:0 0 42%;min-width:0;padding:10px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box"/>
+      <input id="r-lastname" type="text" placeholder="שם משפחה" style="flex:1;min-width:0;padding:10px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box"/>
     </div>
     <input id="r-office" type="text" placeholder="שם המשרד / החברה" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box"/>
     <input id="r-email" type="email" placeholder="אימייל *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
@@ -939,8 +939,11 @@ function checkSubscription() {
     return;
   }
 
-  // מנוי פעיל
-  if(S.user.subscription === 'active') return;
+  // מנוי פעיל (כולל basic ו-business)
+  if(['active','basic','business'].indexOf(S.user.subscription) !== -1) return;
+
+  // ניסיון שפג — הצג paywall ישירות ללא בדיקת תאריך
+  if(S.user.subscription === 'trial_expired') { showPaywall(); return; }
 
   // ניסיון
   var trialKey = 'trial_start_' + uid;
@@ -962,6 +965,11 @@ function checkSubscription() {
   }
 
   if(daysPassed >= 7) {
+    // עדכן ב-Firestore שהניסיון פג — למנוע כניסה גם אחרי ניקוי localStorage
+    if(S.user?.uid && typeof window.saveUserProfileToDB === 'function') {
+      window.saveUserProfileToDB(S.user.uid, { subscription: 'trial_expired' });
+    }
+    S.user.subscription = 'trial_expired';
     showPaywall();
     return;
   }
@@ -986,38 +994,47 @@ window.activateCoupon = function() {
   }
 };
 
-function showPaywall() {
-  // הסתר את האפליקציה
-  document.getElementById('screen-app').style.display = 'none';
+function goToPayment(plan) {
+  var uid   = (S.user && S.user.uid)   || '';
+  var email = (S.user && S.user.email) || '';
+  var url   = (typeof BAMIT_PAYMENT !== 'undefined') ? BAMIT_PAYMENT[plan] : '';
+  if (!url) { toast('⚠️ קישור תשלום אינו מוגדר'); return; }
+  localStorage.setItem('pending_payment', JSON.stringify({ uid: uid, plan: plan, email: email }));
+  window.location.href = url; // ← URL נקי — YoPay לא מקבל פרמטרים נוספים
+}
 
-  // הצג מסך תשלום
+function showPaywall() {
+  document.getElementById('screen-app').style.display = 'none';
   var existing = document.getElementById('paywall-screen');
   if(existing) { existing.style.display = 'flex'; return; }
 
   var paywall = document.createElement('div');
   paywall.id = 'paywall-screen';
-  paywall.style.cssText = 'position:fixed;inset:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:Arial,sans-serif;direction:rtl';
+  paywall.style.cssText = 'position:fixed;inset:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:Arial,sans-serif;direction:rtl;overflow-y:auto;padding:20px';
   paywall.innerHTML =
-    '<div style="background:white;border-radius:20px;padding:40px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">' +
-    '<div style="font-size:48px;margin-bottom:16px">🔒</div>' +
-    '<h2 style="font-size:22px;font-weight:900;color:#1a1a2e;margin-bottom:8px">תקופת הניסיון הסתיימה</h2>' +
-    '<p style="color:#666;font-size:14px;margin-bottom:24px;line-height:1.6">7 ימי הניסיון החינמי הסתיימו.<br/>בחרי מסלול כדי להמשיך להשתמש ב-Dabelu.</p>' +
-    '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">' +
-    '<div style="border:2px solid #e5e7eb;border-radius:12px;padding:16px;cursor:pointer">' +
-    '<div style="font-size:16px;font-weight:700">Basic</div>' +
-    '<div style="font-size:24px;font-weight:900;color:#7c5cbf">&#8362;20<span style="font-size:13px;color:#888">/&#1495;&#1493;&#1491;&#1513;</span></div>' +
-    '<div style="font-size:12px;color:#888">משתמש אחד</div></div>' +
-    '<div style="border:2px solid #7c5cbf;border-radius:12px;padding:16px;cursor:pointer;background:rgba(124,92,191,.05)">' +
-    '<div style="font-size:11px;background:#7c5cbf;color:white;padding:2px 10px;border-radius:10px;display:inline-block;margin-bottom:4px">&#11088; פופולרי</div>' +
-    '<div style="font-size:16px;font-weight:700">Business</div>' +
-    '<div style="font-size:24px;font-weight:900;color:#7c5cbf">&#8362;50<span style="font-size:13px;color:#888">/&#1495;&#1493;&#1491;&#1513;</span></div>' +
-    '<div style="font-size:12px;color:#888">עד 50 עובדים</div></div>' +
-    '<div style="border:2px solid #e5e7eb;border-radius:12px;padding:16px;cursor:pointer">' +
-    '<div style="font-size:16px;font-weight:700">Premium</div>' +
-    '<div style="font-size:24px;font-weight:900;color:#7c5cbf">&#8362;100<span style="font-size:13px;color:#888">/&#1495;&#1493;&#1491;&#1513;</span></div>' +
-    '<div style="font-size:12px;color:#888">ללא הגבלה + התאמה אישית</div></div></div>' +
-    '<a href="mailto:shanitaxes11@gmail.com" style="display:block;width:100%;padding:14px;background:#7c5cbf;color:white;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:10px;text-decoration:none;box-sizing:border-box">בחר מסלול ושלם &#8592;</a>' +
-    '<div style="font-size:12px;color:#aaa;margin-bottom:8px">shanitaxes11@gmail.com</div>' +
+    '<div style="background:white;border-radius:20px;padding:32px 24px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">' +
+    '<div style="font-size:44px;margin-bottom:12px">🔒</div>' +
+    '<h2 style="font-size:20px;font-weight:900;color:#1a1a2e;margin-bottom:8px">תקופת הניסיון הסתיימה</h2>' +
+    '<p style="color:#666;font-size:13px;margin-bottom:22px;line-height:1.65">7 ימי הניסיון החינמי הסתיימו.<br/>בחר/י מסלול כדי להמשיך להשתמש ב-Dabelu.</p>' +
+    '<div style="display:flex;gap:12px;margin-bottom:18px">' +
+      // Basic
+      '<div style="flex:1;border:2px solid #e5e7eb;border-radius:14px;padding:16px 10px;cursor:pointer;transition:border .2s" onclick="goToPayment(\'basic\')" onmouseover="this.style.borderColor=\'#7c5cbf\'" onmouseout="this.style.borderColor=\'#e5e7eb\'">' +
+        '<div style="font-size:22px;margin-bottom:4px">💼</div>' +
+        '<div style="font-size:14px;font-weight:800;margin-bottom:6px">Basic</div>' +
+        '<div style="font-size:22px;font-weight:900;color:#7c5cbf">₪20<span style="font-size:11px;color:#888">/חודש</span></div>' +
+        '<div style="font-size:11px;color:#888;margin-bottom:10px">משתמש אחד</div>' +
+        '<div style="padding:8px;background:#7c5cbf;color:white;border-radius:8px;font-size:12px;font-weight:700">בחר ←</div>' +
+      '</div>' +
+      // Business
+      '<div style="flex:1;border:2px solid #7c5cbf;border-radius:14px;padding:16px 10px;cursor:pointer;background:rgba(124,92,191,.04)" onclick="goToPayment(\'business\')">' +
+        '<div style="font-size:10px;background:#7c5cbf;color:white;padding:2px 8px;border-radius:8px;display:inline-block;margin-bottom:4px">⭐ פופולרי</div>' +
+        '<div style="font-size:22px;margin-bottom:4px">🚀</div>' +
+        '<div style="font-size:14px;font-weight:800;margin-bottom:6px">Business</div>' +
+        '<div style="font-size:22px;font-weight:900;color:#7c5cbf">₪50<span style="font-size:11px;color:#888">/חודש</span></div>' +
+        '<div style="font-size:11px;color:#888;margin-bottom:10px">עד 50 עובדים</div>' +
+        '<div style="padding:8px;background:#7c5cbf;color:white;border-radius:8px;font-size:12px;font-weight:700">בחר ←</div>' +
+      '</div>' +
+    '</div>' +
     '<div onclick="activateCoupon()" style="font-size:12px;color:#7c5cbf;cursor:pointer;text-decoration:underline">יש לך קוד קופון? לחץ כאן</div>' +
     '</div>';
   document.body.appendChild(paywall);
@@ -1116,18 +1133,10 @@ function enterApp(){
 }
 function logout(){
   if(!confirm('להתנתק?'))return;
-  // עצור את כל ה-Firestore listeners של המשתמש הנוכחי
-  if(typeof window._stopAllListeners === 'function') window._stopAllListeners();
-  // נקה localStorage של המשתמש הנוכחי
-  try {
-    const uid = S.user?.uid || S.user?.email || 'guest';
-    ['dabelu_tasks_','dabelu_team_','dabelu_settings_'].forEach(k=>localStorage.removeItem(k+uid));
-    localStorage.removeItem('dabelu_appts_'+uid);
-  } catch(e){}
-  // נקה זיכרון — הנתונים לא יעברו למשתמש הבא
   S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
   S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
   S.office={name:'',phone:'',email:'',addr:''};
+  try { Object.keys(localStorage).filter(k=>k.startsWith('dabelu_')).forEach(k=>localStorage.removeItem(k)); } catch(e){}
   S.user=null;
   document.getElementById('screen-app').style.display='none';
   document.getElementById('screen-auth').style.display='flex';
@@ -1828,12 +1837,12 @@ function taskAccordionHTML(t){
   const isInprog=t.status==='inprogress';
   return `
   <div id="tdi-${t.id}" style="margin-bottom:8px;border:1.5px solid ${t.pinned?'#f59e0b':'var(--border)'};border-radius:var(--radius-lg);overflow:hidden;background:var(--surface);transition:border-color .2s,box-shadow .2s">
-    <div onclick="toggleTaskDetail('${t.id}')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+    <div onclick="toggleTaskDetail(${t.id})" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
       <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
         ${t.pinned?'<span style="font-size:13px;flex-shrink:0">📌</span>':''}
         ${t.priority==='urgent'?'<span style="font-size:11px;flex-shrink:0">🔴</span>':''}
         <span id="ttl-${t.id}" style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${t.title}</span>
-        <button onclick="event.stopPropagation();startEditTaskTitle('\${t.id}')" title="ערוך שם משימה"
+        <button onclick="event.stopPropagation();startEditTaskTitle(${t.id})" title="ערוך שם משימה"
           style="flex-shrink:0;background:none;border:none;cursor:pointer;padding:3px 5px;border-radius:6px;line-height:1;transition:background .15s;display:flex;align-items:center"
           onmouseenter="this.style.background='var(--surface2)'"
           onmouseleave="this.style.background='none'">
@@ -1871,7 +1880,7 @@ function taskAccordionHTML(t){
         ${(()=>{
           const _cn=(t.clientName||'').trim();
           const _c=(t.client||'').trim()||(_cn&&_cn!==(t.assignee||'').trim()?_cn:'');
-          return `<div onclick="event.stopPropagation();openAssignClientModal('\${t.id}')"
+          return `<div onclick="event.stopPropagation();openAssignClientModal(${t.id})"
             style="background:var(--surface);border-radius:var(--radius);padding:8px 10px;border:1.5px solid ${_c?'#c4b5fd':'var(--border)'};cursor:pointer;transition:border-color .15s,background .15s"
             onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='var(--surface)'">
             <div style="font-size:10px;color:var(--text3);margin-bottom:2px">👥 לקוח <span style="font-size:9px;color:#7c3aed;opacity:.7">✏️</span></div>
@@ -1909,13 +1918,13 @@ function taskAccordionHTML(t){
         ${!isDone?`
           <button class="tc-btn" style="background:${isInprog?'#fff7ed':'transparent'};color:${isInprog?'#d97706':'var(--text2)'};border-color:${isInprog?'#fcd34d':'var(--border)'}" onclick="event.stopPropagation();setStatus(${t.id},'${isInprog?'pending':'inprogress'}')">${isInprog?'⏸ עצור':'▶ התחל טיפול'}</button>
           <button class="tc-btn b-done" onclick="event.stopPropagation();setStatus(${t.id},'done')">✓ סמן כטופל</button>
-          <button class="tc-btn" style="color:#b45309;border-color:#fcd34d" onclick="event.stopPropagation();pinTask('\${t.id}')">${t.pinned?'📌 הסר הצמדה':'📌 הצמד'}</button>
-          <button class="tc-btn b-remind" onclick="event.stopPropagation();manualRemind('\${t.id}')">📲 תזכורת</button>
-          <button class="tc-btn b-snooze" onclick="event.stopPropagation();openSnoozeModal('\${t.id}')">⏰ דחה</button>
-          ${t.priority==='urgent'?`<button class="tc-btn" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;font-weight:700" onclick="event.stopPropagation();urgentWA('\${t.id}')">🚨 וואטסאפ דחוף</button>`:''}
+          <button class="tc-btn" style="color:#b45309;border-color:#fcd34d" onclick="event.stopPropagation();pinTask(${t.id})">${t.pinned?'📌 הסר הצמדה':'📌 הצמד'}</button>
+          <button class="tc-btn b-remind" onclick="event.stopPropagation();manualRemind(${t.id})">📲 תזכורת</button>
+          <button class="tc-btn b-snooze" onclick="event.stopPropagation();openSnoozeModal(${t.id})">⏰ דחה</button>
+          ${t.priority==='urgent'?`<button class="tc-btn" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;font-weight:700" onclick="event.stopPropagation();urgentWA(${t.id})">🚨 וואטסאפ דחוף</button>`:''}
           ${(()=>{const opts=getTeamWithOwner().filter(m=>m.name!==(t.assignee||'')||(!(t.assignee)&&!isOwnerName(m.name)));return opts.length?`<select onchange="event.stopPropagation();reassignTask(${t.id},this.value);this.value=''" onclick="event.stopPropagation()" style="font-size:11px;padding:4px 8px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'Heebo',sans-serif"><option value="">📤 העבר לעובד</option>${opts.map(m=>`<option value="${m.name}">${m.name}${m.isOwner||isOwnerName(m.name)?' 👑':''}</option>`).join('')}</select>`:'';})()}
         `:`<button class="tc-btn" style="color:var(--text2)" onclick="event.stopPropagation();setStatus(${t.id},'pending')">↩ פתח מחדש</button>`}
-        <button title="מחק משימה" onclick="event.stopPropagation();deleteTask('\${t.id}')" style="margin-left:auto;background:none;border:1.5px solid #fca5a5;border-radius:var(--radius);padding:4px 8px;cursor:pointer;color:#dc2626;font-size:15px;line-height:1;transition:background .15s" onmouseenter="this.style.background='#fee2e2'" onmouseleave="this.style.background='none'">🗑️</button>
+        <button title="מחק משימה" onclick="event.stopPropagation();deleteTask(${t.id})" style="margin-left:auto;background:none;border:1.5px solid #fca5a5;border-radius:var(--radius);padding:4px 8px;cursor:pointer;color:#dc2626;font-size:15px;line-height:1;transition:background .15s" onmouseenter="this.style.background='#fee2e2'" onmouseleave="this.style.background='none'">🗑️</button>
       </div>
     </div>
   </div>`;
@@ -1936,7 +1945,7 @@ function taskCardHTML(t){
   <div class="task-card p-${t.priority} ${overdue?'overdue-card':''} ${isDone?'done-card':''}" style="${pinnedStyle}">
     ${t.pinned?`<div style="font-size:10px;font-weight:700;color:#b45309;margin-bottom:6px;display:flex;align-items:center;gap:4px">📌 מוצמדת לראש הרשימה</div>`:''}
     <div class="tc-top">
-      <div class="tc-check ${isDone?'checked':''}" onclick="cycleStatus('\${t.id}')" title="לחץ לשינוי סטטוס">
+      <div class="tc-check ${isDone?'checked':''}" onclick="cycleStatus(${t.id})" title="לחץ לשינוי סטטוס">
         <svg width="9" height="9" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="tc-body">
@@ -1961,10 +1970,10 @@ function taskCardHTML(t){
           ${!isDone?`
             <button class="tc-btn" style="background:${isInprog?'#fff7ed':'transparent'};color:${isInprog?'#d97706':'var(--text2)'};border-color:${isInprog?'#fcd34d':'var(--border)'}" onclick="setStatus(${t.id},'${isInprog?'pending':'inprogress'}')">${isInprog?'⏸ עצור':'▶ התחל טיפול'}</button>
             <button class="tc-btn b-done" onclick="setStatus(${t.id},'done')">✓ סמן כטופל</button>
-            <button class="tc-btn" style="color:#b45309;border-color:#fcd34d" onclick="pinTask('\${t.id}')" title="${t.pinned?'הסר הצמדה':'הצמד לראש'}">${t.pinned?'📌 הסר הצמדה':'📌 הצמד'}</button>
-            <button class="tc-btn b-remind" onclick="manualRemind('\${t.id}')">📲 תזכורת</button>
-            ${t.priority==='urgent'?`<button class="tc-btn" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;font-weight:700" onclick="urgentWA('\${t.id}')">🚨 וואטסאפ דחוף</button>`:''}
-            <button class="tc-btn b-snooze" onclick="openSnoozeModal('\${t.id}')">⏰ דחה</button>
+            <button class="tc-btn" style="color:#b45309;border-color:#fcd34d" onclick="pinTask(${t.id})" title="${t.pinned?'הסר הצמדה':'הצמד לראש'}">${t.pinned?'📌 הסר הצמדה':'📌 הצמד'}</button>
+            <button class="tc-btn b-remind" onclick="manualRemind(${t.id})">📲 תזכורת</button>
+            ${t.priority==='urgent'?`<button class="tc-btn" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;font-weight:700" onclick="urgentWA(${t.id})">🚨 וואטסאפ דחוף</button>`:''}
+            <button class="tc-btn b-snooze" onclick="openSnoozeModal(${t.id})">⏰ דחה</button>
           `:`
             <button class="tc-btn" style="color:var(--text2)" onclick="setStatus(${t.id},'pending')">↩ פתח מחדש</button>
           `}
@@ -1975,7 +1984,7 @@ function taskCardHTML(t){
 }
 
 function cycleStatus(id){
-  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
+  const t=S.tasks.find(t=>t.id===id);if(!t)return;
   const cycle={pending:'inprogress',inprogress:'done',done:'pending'};
   const labels={pending:'טרם טופל',inprogress:'בביצוע',done:'טופל'};
   t.status=cycle[t.status];
@@ -1985,7 +1994,7 @@ function cycleStatus(id){
 }
 
 function setStatus(id,status){
-  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
+  const t=S.tasks.find(t=>t.id===id);if(!t)return;
   t.status=status;t.done=status==='done';
   taskTab=status;
   _saveTasks();
@@ -1995,14 +2004,14 @@ function setStatus(id,status){
 }
 
 function pinTask(id){
-  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
+  const t=S.tasks.find(t=>t.id===id);if(!t)return;
   t.pinned=!t.pinned;
   _saveTasks();
   renderPage();toast(t.pinned?'📌 המשימה הוצמדה לראש!':'📌 ההצמדה הוסרה');
 }
 
 function deleteTask(id){
-  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
+  const t=S.tasks.find(t=>t.id===id);if(!t)return;
   if(!confirm(`למחוק את המשימה "${t.title}"?`))return;
   // מחק מ-Firestore tasks collection אם זו משימת ווצאפ
   if(t.source==='whatsapp' && t.waDocId && typeof window.deleteWATaskFromDB==='function'){
@@ -2014,7 +2023,7 @@ function deleteTask(id){
 }
 
 function urgentWA(id){
-  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
+  const t=S.tasks.find(t=>t.id===id);if(!t)return;
   t.remindedAt=Date.now();
   const msg=`🚨 *הודעה דחופה*\nשלום ${t.assignee},\nהמשימה *"${t.title}"* דחופה ודורשת טיפול מיידי!\nתאריך יעד: ${fmtD(t.date)}\nאנא עדכן סטטוס בהקדם.`;
   S.waMessages.push({text:msg,time:timeStr(),converted:false,auto:false,urgent:true});
@@ -2316,7 +2325,7 @@ function renderRemindersPage(){
             <div style="font-size:12px;font-weight:600">${t.title}</div>
             <div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${t.assignee} · ⏱ ${Math.floor(hrs(t.createdAt))} שעות</div>
           </div>
-          <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind('\${t.id}')">📲 שלח</button>
+          <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind(${t.id})">📲 שלח</button>
         </div>`).join('')
       :'<div class="empty-state" style="padding:16px">אין משימות דחופות 🎉</div>'}
     </div>
@@ -2330,7 +2339,7 @@ function renderRemindersPage(){
             <div style="font-size:12px;font-weight:600">${t.title}</div>
             <div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${t.assignee} · 📅 ${fmtD(t.date)}</div>
           </div>
-          <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind('\${t.id}')">📲 שלח</button>
+          <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind(${t.id})">📲 שלח</button>
         </div>`).join('')
       :'<div class="empty-state" style="padding:16px">אין משימות שהגיע מועדן</div>'}
     </div>
@@ -2351,7 +2360,7 @@ function renderRemindersPage(){
         </div>
         <div style="text-align:left">
           <div style="font-size:10px;color:var(--text3)">יעד: ${fmtD(t.date)}</div>
-          <button class="btn sm" style="font-size:10px;margin-top:3px" onclick="manualRemind('\${t.id}')">📲 שלח עכשיו</button>
+          <button class="btn sm" style="font-size:10px;margin-top:3px" onclick="manualRemind(${t.id})">📲 שלח עכשיו</button>
         </div>
       </div>`).join('')
     :'<div class="empty-state">אין משימות חוזרות פעילות</div>'}
@@ -2913,12 +2922,13 @@ function shareCode(code, role){
 
 
 function renderNotifSettings(){
-  if(!S.notif) S.notif={auto48:true,morning:true,deadline:true,doneConfirm:false,weekly:false,quietFrom:'22:00',quietTo:'08:00'};
+  if(!S.notif) S.notif={auto48:true,morning:true,deadline:true,doneConfirm:false,weekly:false,quietFrom:'22:00',quietTo:'08:00',reminderHours:48};
+  const rh = S.notif.reminderHours || 48;
   return `
   <div class="s-card">
     <div class="s-card-title">הגדרות התראות</div>
     ${[
-      ['notif-auto48','תזכורת אוטומטית 48 שעות','שולחת וואטסאפ אם משימה לא בוצעה','auto48'],
+      ['notif-auto48','תזכורת על משימה לא מטופלת','שולחת וואטסאפ לעובד ולמעסיק לפי הזמן שנקבע למטה','auto48'],
       ['notif-morning','סיכום בוקר יומי','משימות היום ב-08:00','morning'],
       ['notif-deadline','התראת דדליין מס','7 ימים לפני כל דדליין','deadline'],
       ['notif-done','אישור ביצוע בוואטסאפ','עובד סימן בוצע – שולחת אישור','doneConfirm'],
@@ -2928,6 +2938,20 @@ function renderNotifSettings(){
       <div class="toggle-info"><div class="tl">${l}</div><div class="ts">${s}</div></div>
       <div class="t-track ${S.notif[key]?'on':''}" id="${id}" onclick="S.notif['${key}']=!S.notif['${key}'];this.classList.toggle('on')"><div class="t-thumb"></div></div>
     </div>`).join('')}
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div class="form-row">
+        <label class="form-label">⏰ שעות עד תזכורת על משימה לא מטופלת</label>
+        <select class="form-input" id="notif-reminder-hours" style="max-width:220px">
+          <option value="12"  ${rh===12 ?'selected':''}>12 שעות</option>
+          <option value="24"  ${rh===24 ?'selected':''}>24 שעות (יום)</option>
+          <option value="48"  ${rh===48 ?'selected':''}>48 שעות (ברירת מחדל)</option>
+          <option value="72"  ${rh===72 ?'selected':''}>72 שעות (3 ימים)</option>
+          <option value="96"  ${rh===96 ?'selected':''}>96 שעות (4 ימים)</option>
+          <option value="168" ${rh===168?'selected':''}>168 שעות (שבוע)</option>
+        </select>
+        <span class="form-hint">התראה תשלח לעובד ולמעסיק אם המשימה לא טופלה תוך הזמן שנבחר</span>
+      </div>
+    </div>
     <div class="save-row"><span class="saved-ok" id="sv-notifications">✓ נשמר</span><button class="btn primary" onclick="saveSection('notifications')">שמור התראות</button></div>
   </div>
   <div class="s-card">
@@ -3097,11 +3121,11 @@ function disconnectIntegration(name){
 //  TASK LOGIC
 // ══════════════════════════════════════
 function toggleTask(id){
-  const t=S.tasks.find(t=>String(t.id)===String(id));
+  const t=S.tasks.find(t=>t.id===id);
   if(t){t.done=!t.done;renderPage();toast(t.done?'✓ משימה הושלמה!':'↩ חזר לפתוחות');}
 }
 function manualRemind(id){
-  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
+  const t=S.tasks.find(t=>t.id===id);if(!t)return;
   t.remindedAt=Date.now();
   S.waMessages.push({text:`📲 תזכורת ידנית: ${t.title} - ${t.assignee} - יעד: ${fmtD(t.date)}`,time:timeStr(),converted:false,auto:false});
   S.reminders.push({task:t.title,assignee:t.assignee,time:timeStr(),type:'ידנית',auto:false});
@@ -3218,7 +3242,7 @@ function populateAssigneeSelect(){
 
 // ── Reassign a task to a different worker (owner/manager only) ──
 function reassignTask(id,newAssignee){
-  const t=S.tasks.find(t=>String(t.id)===String(id));
+  const t=S.tasks.find(t=>t.id===id);
   if(!t||!newAssignee)return;
   const prev=t.assignee||'(ללא)';
   t.assignee=newAssignee;
@@ -3231,7 +3255,7 @@ function reassignTask(id,newAssignee){
 //  SNOOZE
 // ══════════════════════════════════════
 function openSnoozeModal(id){
-  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
+  const t=S.tasks.find(t=>t.id===id);if(!t)return;
   S.snoozeTarget=id;S.snoozeChoice='1h';
   document.getElementById('snooze-name').textContent=t.title;
   document.querySelectorAll('.snooze-opt').forEach((el,i)=>el.classList.toggle('sel',i===0));
@@ -3412,7 +3436,7 @@ function saveAddAppointment(){
 //  EDIT TASK TITLE INLINE
 // ══════════════════════════════════════
 function startEditTaskTitle(id){
-  const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
+  const t=S.tasks.find(t=>t.id===id);if(!t)return;
   const span=document.getElementById('ttl-'+id);if(!span)return;
   const oldTitle=t.title;
   // replace span with input
@@ -3506,7 +3530,7 @@ async function addMember(){
   document.getElementById('nm-name').value='';document.getElementById('nm-email').value='';document.getElementById('nm-phone').value='';
 }
 function removeMember(id){
-  const m=S.team.find(t=>String(t.id)===String(id));if(!m)return;
+  const m=S.team.find(t=>t.id===id);if(!m)return;
   if(!confirm(`להסיר את ${m.name}?`))return;
   S.team=S.team.filter(t=>t.id!==id);
   _saveTeam();
@@ -3515,7 +3539,7 @@ function removeMember(id){
 
 let editMemberId=null;
 function openEditMember(id){
-  const m=S.team.find(t=>String(t.id)===String(id));if(!m)return;
+  const m=S.team.find(t=>t.id===id);if(!m)return;
   editMemberId=id;
   document.getElementById('em-name').value=m.name;
   document.getElementById('em-email').value=m.email;
@@ -4184,9 +4208,10 @@ async function saveSection(id){
       }
     }
     if(id==='notifications'){
-      if(!S.notif) S.notif={auto48:true,morning:true,deadline:true,doneConfirm:false,weekly:false,quietFrom:'22:00',quietTo:'08:00'};
+      if(!S.notif) S.notif={auto48:true,morning:true,deadline:true,doneConfirm:false,weekly:false,quietFrom:'22:00',quietTo:'08:00',reminderHours:48};
       S.notif.quietFrom=document.getElementById('notif-quiet-from')?.value||'22:00';
       S.notif.quietTo=document.getElementById('notif-quiet-to')?.value||'08:00';
+      S.notif.reminderHours=parseInt(document.getElementById('notif-reminder-hours')?.value||'48')||48;
       _saveToLocalStorage();
       if(S.user?.uid && window.saveUserProfileToDB){
         await window.saveUserProfileToDB(S.user.uid,{notif:S.notif});
@@ -4228,6 +4253,7 @@ async function changePassword(){
 // ══════════════════════════════════════
 function renderAdminPage(){
   return `
+<!-- v2.1 hierarchy -->
 <style>
 .adm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
 .adm-stat{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px}
@@ -4272,21 +4298,34 @@ function renderAdminPage(){
 .adm-toggle-btn{background:none;border:1.5px solid var(--border);border-radius:6px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;flex-shrink:0;color:var(--text2);padding:0;transition:background .15s}
 .adm-toggle-btn:hover{background:var(--surface2)}
 .adm-orphan-sep td{background:#fffbeb;font-size:12px;color:#92400e;font-weight:600;padding:8px 14px}
+.adm-tab-btn{background:var(--surface2);color:var(--text2);border:1.5px solid var(--border);font-weight:500}
+.adm-tab-btn:hover{background:#e2e8f0}
+.adm-tab-active{background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important}
+.adm-badge.basic{background:#eff6ff;color:#2563eb}
+.adm-badge.business{background:#f0fdf4;color:#16a34a}
+.adm-badge.pending{background:#fff7ed;color:#ea580c}
+.adm-badge.trial_expired{background:#fef2f2;color:#dc2626}
 </style>
 
 <div class="adm-stats" id="adm-stats"><div class="adm-stat"><div class="adm-stat-num">...</div><div class="adm-stat-lbl">טוען...</div></div></div>
 
 <div class="adm-toolbar">
   <input class="adm-search" id="adm-search" placeholder="🔍 חיפוש לפי שם / מייל..." oninput="admFilter(this.value)">
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="adm-btn adm-tab-btn adm-tab-active" id="adm-tab-all" onclick="admSetTab('all')">הכל</button>
+    <button class="adm-btn adm-tab-btn" id="adm-tab-paying" onclick="admSetTab('paying')">💳 מנויים משלמים</button>
+    <button class="adm-btn adm-tab-btn" id="adm-tab-trial" onclick="admSetTab('trial')">⏳ ניסיון</button>
+    <button class="adm-btn adm-tab-btn" id="adm-tab-blocked" onclick="admSetTab('blocked')">🚫 חסומים</button>
+  </div>
   <button class="adm-btn adm-btn-primary" onclick="admOpenAdd()">➕ הוסף משתמש</button>
 </div>
 
 <div class="adm-table-wrap">
   <table class="adm-table">
     <thead><tr>
-      <th>משתמש</th><th>מייל</th><th>משרד</th><th>סטטוס</th><th>כניסה אחרונה</th><th>פעולות</th>
+      <th>משתמש</th><th>מייל</th><th>משרד</th><th>סטטוס</th><th>תאריך תשלום</th><th>תאריך הרשמה</th><th>כניסה אחרונה</th><th>פעולות</th>
     </tr></thead>
-    <tbody id="adm-tbody"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text3)">⏳ טוען משתמשים...</td></tr></tbody>
+    <tbody id="adm-tbody"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">⏳ טוען משתמשים...</td></tr></tbody>
   </table>
 </div>
 
@@ -4302,7 +4341,11 @@ function renderAdminPage(){
       <select id="adm-f-status">
         <option value="trial">ניסיון (7 ימים)</option>
         <option value="free">חינמי (ללא הגבלה)</option>
-        <option value="active">מנוי פעיל</option>
+        <option value="basic">Basic (20₪/חודש)</option>
+        <option value="business">Business (50₪/חודש)</option>
+        <option value="active">מנוי פעיל (ישן)</option>
+        <option value="pending">ממתין לתשלום</option>
+        <option value="trial_expired">ניסיון פג</option>
         <option value="blocked">חסום</option>
       </select>
     </div>
@@ -4327,6 +4370,21 @@ function renderAdminPage(){
 let _admAllUsers=[];
 let _admHierarchy=[];
 let _admOrphans=[];
+let _admCurrentTab='all';
+
+function admSetTab(tab){
+  _admCurrentTab=tab;
+  // update button styles
+  ['all','paying','trial','blocked'].forEach(t=>{
+    const btn=document.getElementById('adm-tab-'+t);
+    if(btn) btn.classList.toggle('adm-tab-active', t===tab);
+  });
+  admRenderHierarchyRows(document.getElementById('adm-search')?.value||'');
+}
+
+function admFilter(q){
+  admRenderHierarchyRows(q);
+}
 
 function admRenderTable(users, hierarchy, orphans){
   const tbody=document.getElementById('adm-tbody');
@@ -4336,12 +4394,14 @@ function admRenderTable(users, hierarchy, orphans){
   if(hierarchy!==undefined){_admHierarchy=hierarchy;_admOrphans=orphans||[];}
   // stats (always based on all users)
   const total=users.length;
-  const active=users.filter(u=>u.subscription==='active'||u.subscription==='free').length;
+  const paying=users.filter(u=>['basic','business'].includes(u.subscription)).length;
+  const active=users.filter(u=>['active','free','basic','business'].includes(u.subscription)).length;
   const trial=users.filter(u=>u.subscription==='trial'||!u.subscription).length;
   const blocked=users.filter(u=>u.subscription==='blocked').length;
   if(stats) stats.innerHTML=`
     <div class="adm-stat"><div class="adm-stat-num">${total}</div><div class="adm-stat-lbl">סה"כ משתמשים</div></div>
-    <div class="adm-stat"><div class="adm-stat-num" style="color:#16a34a">${active}</div><div class="adm-stat-lbl">פעילים / חינמי</div></div>
+    <div class="adm-stat" style="cursor:pointer;border-color:#16a34a" onclick="admSetTab('paying')"><div class="adm-stat-num" style="color:#16a34a">${paying}</div><div class="adm-stat-lbl">💳 מנויים משלמים</div></div>
+    <div class="adm-stat"><div class="adm-stat-num" style="color:#2563eb">${active}</div><div class="adm-stat-lbl">פעילים / חינמי</div></div>
     <div class="adm-stat"><div class="adm-stat-num" style="color:#d97706">${trial}</div><div class="adm-stat-lbl">בניסיון</div></div>
     <div class="adm-stat"><div class="adm-stat-num" style="color:#dc2626">${blocked}</div><div class="adm-stat-lbl">חסומים</div></div>
   `;
@@ -4350,11 +4410,12 @@ function admRenderTable(users, hierarchy, orphans){
 }
 
 const _BADGE_CLS={trial:'trial',free:'free',active:'active',blocked:'blocked'};
-const _BADGE_LBL={trial:'ניסיון',free:'חינמי',active:'מנוי פעיל',blocked:'חסום'};
+const _BADGE_LBL={trial:'ניסיון',free:'חינמי',active:'מנוי פעיל',basic:'Basic',business:'Business',pending:'ממתין תשלום',trial_expired:'ניסיון פג',blocked:'חסום'};
 
 function _admWorkerSubRow(w, uid){
   const sub=w.subscription||'trial';
   const lastLogin=w.lastLogin?new Date(w.lastLogin).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+  const createdAt=w.createdAt?new Date(w.createdAt).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
   const initials=(w.name||w.email||'?').slice(0,2).toUpperCase();
   const wUid=(w.uid||'').replace(/'/g,'');
   const wName=(w.name||w.email||'').replace(/'/g,'');
@@ -4368,6 +4429,8 @@ function _admWorkerSubRow(w, uid){
     <td style="color:var(--text2);font-size:13px">${w.email||'—'}</td>
     <td style="color:var(--text2);font-size:13px">${w.officeName||'—'}</td>
     <td>${teamOnly?'<span class="adm-badge" style="background:#f1f5f9;color:#64748b">צוות בלבד</span>':'<span class="adm-badge '+(_BADGE_CLS[sub]||'trial')+'">'+(_BADGE_LBL[sub]||sub)+'</span>'}</td>
+    <td style="color:var(--text3);font-size:12px">—</td>
+    <td style="color:var(--text3);font-size:12px">${createdAt}</td>
     <td style="color:var(--text3);font-size:12px">${lastLogin}</td>
     <td>${teamOnly?'':'<button class="adm-action adm-edit" onclick="admOpenEdit(\''+wUid+'\')">✏️ עריכה</button><button class="adm-action adm-del" onclick="admDelete(\''+wUid+'\',\''+wName+'\')">🗑️</button>'}</td>
   </tr>`;
@@ -4388,11 +4451,17 @@ function admRenderHierarchyRows(filterQ){
 
     const status=emp.subscription||'trial';
     const lastLogin=emp.lastLogin?new Date(emp.lastLogin).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+    const createdAt=emp.createdAt?new Date(emp.createdAt).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+    const paidAt=emp.paidAt?new Date(emp.paidAt).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
     const initials=(emp.name||emp.email||'?').slice(0,2).toUpperCase();
     const notes=emp.notes?`<span title="${emp.notes}" style="color:var(--text3);font-size:11px"> 📝</span>`:'';
     const uid=emp.uid||'';
     const safeName=(emp.name||emp.email||'').replace(/'/g,'');
     const wCount=workers.length;
+    // tab filter
+    if(_admCurrentTab==='paying' && !['basic','business'].includes(status)) return;
+    if(_admCurrentTab==='trial' && status!=='trial') return;
+    if(_admCurrentTab==='blocked' && status!=='blocked') return;
     // auto-expand when search matches a worker
     const autoExpand=lq&&filteredWorkers.length>0;
 
@@ -4408,6 +4477,8 @@ function admRenderHierarchyRows(filterQ){
       <td style="color:var(--text2)">${emp.email||'—'}</td>
       <td style="color:var(--text2)">${emp.officeName||'—'}</td>
       <td><span class="adm-badge ${_BADGE_CLS[status]||'trial'}">${_BADGE_LBL[status]||status}</span></td>
+      <td style="color:${emp.paidAt?'#16a34a':'var(--text3)'};font-size:12px;font-weight:${emp.paidAt?'600':'400'}">${emp.paidAt?'✅ '+paidAt:'—'}</td>
+      <td style="color:var(--text3);font-size:12px">${createdAt}</td>
       <td style="color:var(--text3);font-size:12px">${lastLogin}</td>
       <td onclick="event.stopPropagation()">
         <button class="adm-action adm-edit" onclick="admOpenEdit('${uid}')">✏️ עריכה</button>
@@ -4425,12 +4496,14 @@ function admRenderHierarchyRows(filterQ){
   });
 
   // orphan workers (workers not linked to any employer)
+  if(_admCurrentTab!=='paying'&&_admCurrentTab!=='blocked'){
   const filteredOrphans=lq?_admOrphans.filter(w=>(w.name||'').toLowerCase().includes(lq)||(w.email||'').toLowerCase().includes(lq)||(w.officeName||'').toLowerCase().includes(lq)):_admOrphans;
   if(filteredOrphans.length>0){
-    html+=`<tr class="adm-orphan-sep"><td colspan="6">👤 עובדים ללא מעסיק מוגדר</td></tr>`;
+    html+=`<tr class="adm-orphan-sep"><td colspan="8">👤 עובדים ללא מעסיק מוגדר</td></tr>`;
     filteredOrphans.forEach(w=>{
       const sub=w.subscription||'trial';
       const lastLogin=w.lastLogin?new Date(w.lastLogin).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+      const createdAt=w.createdAt?new Date(w.createdAt).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
       const initials=(w.name||w.email||'?').slice(0,2).toUpperCase();
       const wUid=(w.uid||'').replace(/'/g,'');
       const wName=(w.name||w.email||'').replace(/'/g,'');
@@ -4444,6 +4517,8 @@ function admRenderHierarchyRows(filterQ){
         <td style="color:var(--text2)">${w.email||'—'}</td>
         <td style="color:var(--text2)">${w.officeName||'—'}</td>
         <td><span class="adm-badge ${_BADGE_CLS[sub]||'trial'}">${_BADGE_LBL[sub]||sub}</span></td>
+        <td style="color:var(--text3);font-size:12px">—</td>
+        <td style="color:var(--text3);font-size:12px">${createdAt}</td>
         <td style="color:var(--text3);font-size:12px">${lastLogin}</td>
         <td>
           <button class="adm-action adm-edit" onclick="admOpenEdit('${wUid}')">✏️ עריכה</button>
@@ -4452,8 +4527,9 @@ function admRenderHierarchyRows(filterQ){
       </tr>`;
     });
   }
+  }
 
-  if(!html) html='<tr><td colspan="6" class="adm-empty">לא נמצאו תוצאות</td></tr>';
+  if(!html) html='<tr><td colspan="8" class="adm-empty">לא נמצאו תוצאות</td></tr>';
   tbody.innerHTML=html;
 }
 
@@ -4465,9 +4541,6 @@ function admToggleWorkers(uid){
   if(btn) btn.textContent=isOpen?'▶':'▼';
 }
 
-function admFilter(q){
-  admRenderHierarchyRows(q);
-}
 function admOpenAdd(){
   document.getElementById('adm-modal-title').textContent='➕ הוסף משתמש';
   document.getElementById('adm-edit-uid').value='';
@@ -4810,29 +4883,43 @@ function authShowTab(tab) {
   }
 }
 
+// ── פתיחה ישירה בלשונית הרשמה אם ?reg=1 בURL ──
+(function(){
+  if(new URLSearchParams(location.search).get('reg') === '1') {
+    authShowTab('reg');
+  }
+})();
+
+// ── Bamit / YoPay payment page URLs ──
+// Replace these URLs with your actual YoPay payment page links
+var BAMIT_PAYMENT = {
+  basic:    'https://app.upay.co.il/API6/clientsecure/redirectpage.php?msg=cDRtRlFFS2FDMGRsSm5tT3R3ZWJ2SlpaSW1qNWdSK3dnT3ZSa2lNV0VsUHJYSHN2MUhIdzdiZi9Ed3NvODVXb0hkTU53eXlSdjlyeGxJSU93MWc2cE5kdHE5NXA2MzRKamFqZUszV0k0Y0J2K1hBU0o5ejBMSkdYOE5yZFNiN2t2Z2REcjFDK2hDcVBoREFpelgyaDM4ZnUrcTgvUTVjWGF6eTYyRExsck5aYkdPenBIWit0K2p3V0FJb09oeXc2YnB2WCtUZ2RtalphK2J5dDZrMmlPK2xOd0xhcDhUSmEyQTF0U1ZRTE9MbWFXUEc5TXBXUlR0anFQSHZiVW1yekxtRytNOFBGWE0rM2J3VFpyQWpxWWwrZFpMRVdqUCtKa2RGNnc0TUwwUTBoYnZkdlVIcE5JZnNObVNHWmpyNHhjdlBRZUVSQjMzb2VhVDh6dnRhSUJnPT0==',
+  business: 'https://app.upay.co.il/API6/clientsecure/redirectpage.php?msg=cDRtRlFFS2FDMGRsSm5tT3R3ZWJ2RjB3RWwrWkM5Tjc4SnI4QmlXQjdYWndkdDdMTWhMa2FKT1RCamY1Ris0Q0l5Q3RBUEdaendONFp4d1hJOUVKZlB2ZURSdW96MnA0aFJHbCtvZmU0ZTZlS1daUG0yZjduMHVSSGlpcldURHRjQlcxd1FEcEE2SnovU2hPbExETUdDanNvMnV5UThsL1JlQmc4ZkU3THJ4RUFBRHd6ZWV2d3BlSm1hZ0NFejJONi9wcW1JcVRIWXNSZm43dm01Mk5FK3E3L0dWK1dVQitoSGw3WGlFUno0aWdRZzU4RHRLLzZiR0RteXhvL1ptK0RuU3UzWW80NlVoNVdhNmhtZkhHYUZsWlhPT0lMMXRoZFM5VWVZcS9oN2V6RDB3c3NIOTIyNUd6RHNnV1RSKzNFM005QWZOSnNBYmYxWEtIb3Q5dzZBPT0=='
+};
+
 // ── Plan selection highlight ──
 document.addEventListener('DOMContentLoaded', function(){
-  var planFree     = document.getElementById('r-plan-free');
-  var planBasic    = document.getElementById('r-plan-basic');
-  var planBusiness = document.getElementById('r-plan-business');
-  var lblFree      = document.getElementById('plan-free-lbl');
-  var lblBasic     = document.getElementById('plan-basic-lbl');
-  var lblBusiness  = document.getElementById('plan-business-lbl');
-  var premNote     = document.getElementById('premium-note');
-  var planPriceNote= document.getElementById('plan-price-note');
+  var PLAN_KEYS = ['free','basic','business'];
+  var premNote  = document.getElementById('premium-note');
+  var planPriceNote = document.getElementById('plan-price-note');
 
   function updatePlanUI(){
-    var val = document.querySelector('input[name="r-plan"]:checked')?.value || 'free';
-    var isPaid = val === 'basic' || val === 'business';
-    if(lblFree)     { lblFree.style.border     = val==='free'    ?'2px solid #2563eb':'2px solid #e2e8f0'; lblFree.style.background     = val==='free'    ?'#eff6ff':'#f8fafc'; }
-    if(lblBasic)    { lblBasic.style.border    = val==='basic'   ?'2px solid #2563eb':'2px solid #e2e8f0'; lblBasic.style.background    = val==='basic'   ?'#eff6ff':'#f8fafc'; }
-    if(lblBusiness) { lblBusiness.style.border = val==='business'?'2px solid #2563eb':'2px solid #e2e8f0'; lblBusiness.style.background = val==='business'?'#eff6ff':'#f8fafc'; }
-    if(premNote)    premNote.style.display = isPaid?'block':'none';
-    if(planPriceNote) planPriceNote.textContent = val==='basic'?'תשלום: 20₪/חודש':val==='business'?'תשלום: 50₪/חודש':'';
+    var selected = document.querySelector('input[name="r-plan"]:checked')?.value || 'free';
+    var isPaid   = selected === 'basic' || selected === 'business';
+    PLAN_KEYS.forEach(function(p){
+      var lbl = document.getElementById('plan-'+p+'-lbl');
+      if(!lbl) return;
+      var active = selected === p;
+      lbl.style.border     = active ? '2px solid #2563eb' : '2px solid #e2e8f0';
+      lbl.style.background = active ? '#eff6ff' : '#f8fafc';
+    });
+    if(premNote) premNote.style.display = isPaid ? 'block' : 'none';
+    if(planPriceNote) planPriceNote.textContent = selected==='basic' ? 'Basic — 20₪/חודש' : selected==='business' ? 'Business — 50₪/חודש' : '';
   }
-  if(planFree)     planFree.addEventListener('change', updatePlanUI);
-  if(planBasic)    planBasic.addEventListener('change', updatePlanUI);
-  if(planBusiness) planBusiness.addEventListener('change', updatePlanUI);
+  PLAN_KEYS.forEach(function(p){
+    var el = document.getElementById('r-plan-'+p);
+    if(el) el.addEventListener('change', updatePlanUI);
+  });
 
   // ── Register button ──
   var btnReg = document.getElementById('reg-btn');
@@ -4862,19 +4949,22 @@ document.addEventListener('DOMContentLoaded', function(){
         var result = await window.registerNewUser(name, email, pass, office, plan);
         if(result.error){ showErr(result.error); return; }
         var initials=(first[0]+((last&&last[0])||'')).toUpperCase();
-        // עצור listeners ישנים + נקה כל מצב קודם לפני כניסת משתמש חדש
-        if(typeof window._stopAllListeners === 'function') window._stopAllListeners();
-        S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
-        S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
-        S.office={name:'',phone:'',email:'',addr:''};
-        try { Object.keys(localStorage).filter(k=>k.startsWith('dabelu_')).forEach(k=>localStorage.removeItem(k)); } catch(e){}
-        S.user={name:name,email:email,initials:initials,officeName:office||'Dabelu',uid:result.uid};
+        S.user={name:name,email:email,initials:initials,officeName:office||'Dabelu',uid:result.uid,subscription:result.subscription};
         if(office&&S.office) S.office.name=office;
+        // משתמש חדש — אפס לחלוטין למניעת דליפת נתונים מסשן קודם
+        S.tasks=[]; S.clients=[]; S.team=[]; S.appointments=[];
         // שליחת הודעת פתיחה (מייל + ווצאפ) — לא חוסמת
         fetch('https://dabelu.vercel.app/api/send-onboarding',{
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ name, email, phone: phone||'', plan })
         }).catch(()=>{});
+        // תכנית בתשלום — הפניה לדף תשלום Bamit/YoPay
+        if((plan==='basic'||plan==='business') && BAMIT_PAYMENT[plan]) {
+          // שמור uid ותוכנית ב-localStorage לפני המעבר
+          localStorage.setItem('pending_payment', JSON.stringify({uid: result.uid, plan: plan, email: email}));
+          window.location.href = BAMIT_PAYMENT[plan]; // ← URL נקי בלי פרמטרים נוספים
+          return;
+        }
         enterApp();
       } else {
         showErr('טעינה עדיין בתהליך — נסו שנית עוד שנייה');
@@ -4886,6 +4976,40 @@ document.addEventListener('DOMContentLoaded', function(){
       btnReg.style.pointerEvents='';
     }
   });
+
+  // ── חזרה מדף תשלום מוצלח ──
+  (async function checkPaymentReturn(){
+    var params = new URLSearchParams(location.search);
+    if(params.get('pay_ok') !== '1') return;
+    history.replaceState({}, '', location.pathname);
+    // שחזר uid ותוכנית מ-localStorage
+    var pending = null;
+    try { pending = JSON.parse(localStorage.getItem('pending_payment') || 'null'); } catch(e){}
+    if(!pending || !pending.uid || !pending.plan) return;
+    localStorage.removeItem('pending_payment');
+    // עדכן subscription ב-Firestore דרך REST API ישיר (saveUserProfileToDB טוען async)
+    try {
+      await fetch(
+        'https://firestore.googleapis.com/v1/projects/dabelu/databases/(default)/documents/users/'
+        + pending.uid
+        + '?updateMask.fieldPaths=subscription&updateMask.fieldPaths=plan&updateMask.fieldPaths=paidAt'
+        + '&key=AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0',
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: {
+            subscription: { stringValue: pending.plan },
+            plan:         { stringValue: pending.plan },
+            paidAt:       { stringValue: new Date().toISOString() }
+          }})
+        }
+      );
+    } catch(e) { console.error('payment return update failed:', e); }
+    if(S.user) S.user.subscription = pending.plan;
+    setTimeout(function(){
+      toast('✅ התשלום התקבל! מנוי ' + (pending.plan==='basic'?'Basic':'Business') + ' פעיל — התחבר/י לאפליקציה');
+    }, 800);
+  })();
 });
 </script>
 <script>
@@ -4956,39 +5080,58 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // ── הכנסה לאפליקציה אחרי אימות ──
   async function handleAuthSuccess(user) {
-    // עצור listeners ישנים + נקה נתונים ישנים מהזיכרון לפני טעינת המשתמש החדש
-    if(typeof window._stopAllListeners === 'function') window._stopAllListeners();
-    S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
-    S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
-    S.office={name:'',phone:'',email:'',addr:''};
-    const nameParts = (user.displayName || user.email).split(' ');
-    const initials = nameParts.map(n => n[0]).join('').slice(0,2).toUpperCase();
-    const existing = await loadUserData(user.uid);
-    if(typeof S !== 'undefined') {
-      S.user = { uid: user.uid, name: user.displayName || user.email.split('@')[0], email: user.email, initials, photo: user.photoURL, officeName: existing?.officeName || 'משרד ייעוץ מס' };
-      if(existing) {
-        // טעינת שדות שנשמרו מהגדרות
-        if(existing.phone) S.user.phone = existing.phone;
-        if(existing.waPhone) S.user.waPhone = existing.waPhone;
-        if(existing.role) S.user.role = existing.role;
-        // טעינת פרטי משרד
-        if(existing.officePhone) S.office.phone = existing.officePhone;
-        if(existing.officeEmail) S.office.email = existing.officeEmail;
-        if(existing.officeAddr) S.office.addr = existing.officeAddr;
-        if(existing.officeName) S.office.name = existing.officeName;
-        // טעינת הגדרות התראות
-        if(existing.notif) S.notif = existing.notif;
-        const tasks = await window.loadTasksFromDB(user.uid);
-        const clients = await window.loadClientsFromDB(user.uid);
-        const teamData = await window.loadTeamFromDB(user.uid);
-        if(tasks.length) S.tasks = tasks;
-        if(clients.length) S.clients = clients;
-        if(teamData && teamData.team && teamData.team.length) {
-          S.team = teamData.team;
-          if(teamData.nextMemberId) S.nextMemberId = teamData.nextMemberId;
-        }
+    const email     = (user.email || '').toLowerCase();
+    const nameParts = (user.displayName || email).split(' ');
+    const initials  = nameParts.map(n => n[0]).join('').slice(0,2).toUpperCase();
+
+    // ── מצא חשבון קיים לפי אימייל (מונע כפילות Google + מייל/סיסמה) ──
+    let canonicalUid = user.uid;
+    let existing     = await loadUserData(user.uid);
+
+    if (!existing) {
+      // חפש לפי אימייל — אולי נרשם קודם עם מייל+סיסמה
+      const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+      if (!emailSnap.empty) {
+        canonicalUid = emailSnap.docs[0].id;
+        existing     = emailSnap.docs[0].data();
       }
-      await saveUserData(user.uid, { name: S.user.name, email: S.user.email, officeName: S.user.officeName, lastLogin: new Date().toISOString() });
+    }
+
+    if(typeof S !== 'undefined') {
+      S.user = {
+        uid: canonicalUid,
+        name: user.displayName || existing?.name || email.split('@')[0],
+        email,
+        initials,
+        photo: user.photoURL || null,
+        officeName: existing?.officeName || 'משרד ייעוץ מס',
+        subscription: existing?.subscription || 'trial'
+      };
+      if(existing) {
+        if(existing.phone)       S.user.phone   = existing.phone;
+        if(existing.waPhone)     S.user.waPhone = existing.waPhone;
+        if(existing.role)        S.user.role    = existing.role;
+        if(existing.officePhone) S.office.phone  = existing.officePhone;
+        if(existing.officeEmail) S.office.email  = existing.officeEmail;
+        if(existing.officeAddr)  S.office.addr   = existing.officeAddr;
+        if(existing.officeName)  S.office.name   = existing.officeName;
+        if(existing.notif)       S.notif         = existing.notif;
+        const tasks    = await window.loadTasksFromDB(canonicalUid);
+        const clients  = await window.loadClientsFromDB(canonicalUid);
+        const teamData = await window.loadTeamFromDB(canonicalUid);
+        // תמיד אפס — מונע דליפת נתונים מסשן קודם
+        S.tasks   = tasks   || [];
+        S.clients = clients || [];
+        S.team    = teamData?.team || [];
+        if(teamData?.nextMemberId) S.nextMemberId = teamData.nextMemberId;
+      } else {
+        // משתמש חדש לחלוטין — וודא שהסטייט נקי
+        S.tasks   = [];
+        S.clients = [];
+        S.team    = [];
+      }
+      // שמור lastLogin תחת ה-UID הקנוני (לא UID חדש של Google)
+      await saveUserData(canonicalUid, { name: S.user.name, email, officeName: S.user.officeName, lastLogin: new Date().toISOString() });
       enterApp();
     }
   }
@@ -5002,13 +5145,6 @@ document.addEventListener('DOMContentLoaded', function(){
   // ── כניסה עם אימייל + סיסמה (בדיקה מול Firestore) ──
   window.doEmailPasswordLogin = async function(email, pass) {
     const errEl = document.getElementById('aerr');
-    // עצור listeners ישנים + נקה נתונים ישנים מהזיכרון לפני כניסת משתמש חדש
-    if(typeof window._stopAllListeners === 'function') window._stopAllListeners();
-    S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
-    S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
-    S.office={name:'',phone:'',email:'',addr:''};
-    // נקה localStorage שעלול להכיל נתונים של משתמש קודם
-    try { Object.keys(localStorage).filter(k=>k.startsWith('dabelu_')).forEach(k=>localStorage.removeItem(k)); } catch(e){}
     try {
       const em = email.toLowerCase();
       const passHash = await hashPass(pass);
@@ -5116,16 +5252,14 @@ document.addEventListener('DOMContentLoaded', function(){
         if(uData.officeName) S.office.name = uData.officeName;
         // טעינת הגדרות התראות
         if(uData.notif) S.notif = uData.notif;
-        // טעינת צוות, משימות ולקוחות
+        // טעינת צוות, משימות ולקוחות — תמיד אפס קודם למניעת דליפת נתונים
         const tasks   = await window.loadTasksFromDB(uDoc.id);
         const clients = await window.loadClientsFromDB(uDoc.id);
         const teamData= await window.loadTeamFromDB(uDoc.id);
-        if(tasks.length)   S.tasks   = tasks;
-        if(clients.length) S.clients = clients;
-        if(teamData && teamData.team && teamData.team.length) {
-          S.team = teamData.team;
-          if(teamData.nextMemberId) S.nextMemberId = teamData.nextMemberId;
-        }
+        S.tasks   = tasks   || [];
+        S.clients = clients || [];
+        S.team    = teamData?.team || [];
+        if(teamData?.nextMemberId) S.nextMemberId = teamData.nextMemberId;
         enterApp();
       }
     } catch(e) {
@@ -5276,22 +5410,32 @@ document.addEventListener('DOMContentLoaded', function(){
     const em = email.toLowerCase();
     // בדיקה שהמייל לא קיים כבר
     const existing = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
-    if (!existing.empty) return { error: 'אימייל זה כבר רשום במערכת' };
+    if (!existing.empty) {
+      const existSub = existing.docs[0]?.data()?.subscription || '';
+      if(plan === 'free' && existSub === 'free')
+        return { error: 'כבר קיים חשבון חינמי לאימייל זה. ניתן להתחבר או לשדרג למנוי.' };
+      return { error: 'אימייל זה כבר רשום במערכת — ניתן להתחבר בלשונית "כניסה"' };
+    }
     const passHash = await hashPass(pass);
     const uid = 'reg_' + Date.now();
-    // free = חינמי, active = פרימיום (ממתין לאישור תשלום), trial = ניסיון
-    const subscription = (plan === 'free' || plan === 'active') ? plan : 'trial';
+    // free=חינמי, basic/business=ממתין לתשלום, אחר=ניסיון
+    const subscription = plan === 'free' ? 'free'
+                       : plan === 'basic' ? 'pending'
+                       : plan === 'business' ? 'pending'
+                       : plan === 'active'   ? 'active'
+                       : 'trial';
     await setDoc(doc(db, 'users', uid), {
       name: name,
       email: em,
       passwordHash: passHash,
       officeName: officeName || 'Dabelu',
       subscription: subscription,
+      plan: plan,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
       source: 'self-register'
     });
-    return { uid, name, email: em, officeName, subscription };
+    return { uid, name, email: em, officeName, subscription, plan };
   };
   document.getElementById('btn-google').addEventListener('click', function(){ if(typeof window.signInWithGoogle==='function') window.signInWithGoogle(); });
 
@@ -5383,20 +5527,13 @@ document.addEventListener('DOMContentLoaded', function(){
     for(let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) & 0x7fffffff;
     return h + 10000;
   }
-  // ── ניהול listeners: unsubscribe הכל לפני login חדש ──
-  window._fsUnsubs = window._fsUnsubs || [];
-  window._stopAllListeners = function() {
-    (window._fsUnsubs || []).forEach(fn => { try { fn(); } catch(e) {} });
-    window._fsUnsubs = [];
-  };
-
   window.listenWhatsAppTasks = function() {
-    const pMap = {high:'urgent', urgent:'urgent', medium:'normal', low:'normal'};
     const uid = S.user?.uid || '';
     if (!uid) return;
-    const unsub = onSnapshot(query(collection(db, 'tasks'), where('userId', '==', uid)), (snap) => {
+    const pMap = {high:'urgent', urgent:'urgent', medium:'normal', low:'normal'};
+    onSnapshot(query(collection(db, 'tasks'), where('userId', '==', uid)), (snap) => {
       if(typeof S === 'undefined') return;
-      if(S.user?.uid !== uid) return; // guard: user changed, ignore stale listener
+      if(S.user?.uid !== uid) return;
       const ownerName = (S.user?.name || '').trim();
       // טען overrides (שינויים ידניים שנשמרו) — עובד גם אם S.tasks ריק
       const ov = (typeof _loadTaskOverrides === 'function') ? _loadTaskOverrides() : {};
@@ -5457,23 +5594,21 @@ document.addEventListener('DOMContentLoaded', function(){
       if(typeof _saveTasks === 'function') _saveTasks();
       if(typeof renderPage === 'function') renderPage();
     });
-    window._fsUnsubs = window._fsUnsubs || [];
-    window._fsUnsubs.push(unsub);
   };
 
   // ── האזנה בזמן אמת לפגישות ──
   window.listenAppointments = function() {
+    const apptUid = S.user?.uid || '';
+    if (!apptUid) return;
     // טען קודם מ-localStorage (מהיר)
     try{
-      const key='dabelu_appts_'+(S.user?.uid||'guest');
+      const key='dabelu_appts_'+apptUid;
       const saved=localStorage.getItem(key);
       if(saved){ S.appointments=JSON.parse(saved); }
     }catch(e){}
 
-    const apptUid = S.user?.uid || '';
-    if (!apptUid) return;
-    const unsub2 = onSnapshot(query(collection(db, 'appointments'), where('userId', '==', apptUid)), (snap) => {
-      if(S.user?.uid !== apptUid) return; // guard: user changed, ignore stale listener
+    onSnapshot(query(collection(db, 'appointments'), where('userId', '==', apptUid)), (snap) => {
+      if(S.user?.uid !== apptUid) return;
       const ds = window.toDateStr || (v=>typeof v==='string'?v.slice(0,10):'');
       const firestoreAppts = snap.docs.map(d => {
         const raw = d.data();
@@ -5497,8 +5632,6 @@ document.addEventListener('DOMContentLoaded', function(){
       if(nb){ nb.textContent = upcoming; nb.style.display = upcoming > 0 ? '' : 'none'; }
       if(S.page === 'appointments' || S.page === 'calendar' || S.page === 'dashboard') renderPage();
     }, (err)=>{ console.warn('listenAppointments error:', err); });
-    window._fsUnsubs = window._fsUnsubs || [];
-    window._fsUnsubs.push(unsub2);
   };
 
   // מחיקת פגישה מ-Firestore
@@ -5512,7 +5645,7 @@ document.addEventListener('DOMContentLoaded', function(){
   window.saveAppointmentToDB = async function(appt){
     try{
       const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-      await setDoc(doc(db,'appointments',String(appt.id)), { ...appt, userId: S.user?.uid || '' });
+      await setDoc(doc(db,'appointments',String(appt.id)), appt);
     }catch(e){ console.warn('saveAppointmentToDB:', e); }
   };
 
@@ -5520,21 +5653,19 @@ document.addEventListener('DOMContentLoaded', function(){
   window.listenWAClients = function() {
     const clientUid = S.user?.uid || '';
     if (!clientUid) return;
-    const unsub3 = onSnapshot(query(collection(db, 'clients'), where('userId', '==', clientUid)), (snap) => {
-      if(S.user?.uid !== clientUid) return; // guard: user changed, ignore stale listener
+    onSnapshot(query(collection(db, 'clients'), where('userId', '==', clientUid)), (snap) => {
+      if(S.user?.uid !== clientUid) return;
       S.waClients = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .sort((a,b) => (a.name||'').localeCompare(b.name||''));
       if(S.page === 'clients') renderPage();
     });
-    window._fsUnsubs = window._fsUnsubs || [];
-    window._fsUnsubs.push(unsub3);
   };
 
   // ── שמירת לקוח WhatsApp ──
   window.saveWAClient = async function(id, data) {
     try {
       if(id) await updateDoc(doc(db,'clients',id), data);
-      else    await addDoc(collection(db,'clients'), { ...data, userId: S.user?.uid || '', createdAt: new Date().toISOString() });
+      else    await addDoc(collection(db,'clients'), { ...data, createdAt: new Date().toISOString() });
       if(typeof toast === 'function') toast('✅ לקוח נשמר');
     } catch(e) { console.error('saveWAClient:', e); }
   };
@@ -5726,9 +5857,7 @@ document.addEventListener('DOMContentLoaded', function(){
   };
 
   window.listenAllSharedTasks = function(callback) {
-    const uid4 = (typeof S !== 'undefined') ? (S.user?.uid || '') : '';
-    const unsub4 = onSnapshot(collection(db, 'sharedTasks'), snap => {
-      if(uid4 && (typeof S !== 'undefined') && S.user?.uid !== uid4) return; // guard: user changed
+    return onSnapshot(collection(db, 'sharedTasks'), snap => {
       const tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       // סנכרון סטטוסים בזמן אמת ל-S.tasks אצל המעסיק
       if (typeof S !== 'undefined' && S.tasks) {
@@ -5743,9 +5872,6 @@ document.addEventListener('DOMContentLoaded', function(){
       }
       callback(tasks);
     });
-    window._fsUnsubs = window._fsUnsubs || [];
-    window._fsUnsubs.push(unsub4);
-    return unsub4;
   };
 
   window.sendChatMessage = async function(taskId, text, senderEmail, senderName) {
@@ -5793,20 +5919,65 @@ document.addEventListener('DOMContentLoaded', function(){
       btn.innerHTML = '⏳ מתחבר...';
       btn.style.pointerEvents = 'none';
       const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      const email = (user.email || '').toLowerCase();
-      if (!await isAuthorized(email)) {
+      const user   = result.user;
+      const email  = (user.email || '').toLowerCase();
+
+      // בדוק אם המשתמש קיים ב-Firestore
+      const snap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+
+      // ── לא רשום — שלח להרשמה עם פרטים ממולאים ──
+      if (snap.empty) {
         await signOut(auth);
         btn.innerHTML = originalHTML;
         btn.style.pointerEvents = '';
-        document.getElementById('aerr').textContent = 'אין לך הרשאת גישה למערכת';
+        authShowTab('reg');
+        const nameParts = (user.displayName || '').split(' ');
+        const firstEl = document.getElementById('r-firstname');
+        const lastEl  = document.getElementById('r-lastname');
+        const emailEl = document.getElementById('r-email');
+        if(firstEl) firstEl.value = nameParts[0] || '';
+        if(lastEl)  lastEl.value  = nameParts.slice(1).join(' ') || '';
+        if(emailEl) emailEl.value = email;
+        const regErr = document.getElementById('reg-err');
+        if(regErr){ regErr.textContent='👋 ברוכ/ה הבא/ה! בחר/י תוכנית כדי להמשיך'; regErr.style.color='#2563eb'; regErr.style.display='block'; }
         return;
       }
+
+      const userData = snap.docs[0].data();
+      const sub      = userData.subscription || 'trial';
+      const uid      = snap.docs[0].id;
+
+      // ── חסום ──
+      if (sub === 'blocked') {
+        await signOut(auth);
+        btn.innerHTML = originalHTML;
+        btn.style.pointerEvents = '';
+        document.getElementById('aerr').textContent = 'החשבון חסום — צור קשר עם התמיכה';
+        return;
+      }
+
+      // ── ממתין לתשלום — הפנה לסליקה ──
+      if (sub === 'pending') {
+        await signOut(auth);
+        btn.innerHTML = originalHTML;
+        btn.style.pointerEvents = '';
+        const plan = userData.plan || 'basic';
+        if (BAMIT_PAYMENT[plan]) {
+          localStorage.setItem('pending_payment', JSON.stringify({ uid, plan, email }));
+          window.location.href = BAMIT_PAYMENT[plan]; // ← URL נקי
+          return;
+        }
+        document.getElementById('aerr').textContent = 'החשבון ממתין לאישור תשלום — צור קשר עמנו';
+        return;
+      }
+
+      // ── רשום ומאושר — כנס לאפליקציה ──
       await handleAuthSuccess(user);
+
     } catch(err) {
       console.error('Google sign-in error:', err);
-      btn.innerHTML = originalHTML;
-      btn.style.pointerEvents = '';
+      const btn2 = document.getElementById('btn-google');
+      if(btn2){ btn2.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> כניסה עם Google'; btn2.style.pointerEvents=''; }
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
         document.getElementById('aerr').textContent = '';
       } else {
