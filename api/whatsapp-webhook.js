@@ -209,8 +209,32 @@ async function extractPersonName(text) {
 // ───────────────────────────────────────────
 // סיווג הודעה (Groq)
 // ───────────────────────────────────────────
+// חישוב מיפוי ימי שבוע עבריים → תאריכים (כך הAI לא צריך לחשב בעצמו)
+function buildHebrewDatesMap() {
+  const hebrewDays = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const now = new Date();
+  // Israel timezone offset (UTC+3)
+  const israelNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const lines = [];
+  for (let i = 1; i <= 8; i++) {
+    const d = new Date(israelNow);
+    d.setDate(israelNow.getDate() + i);
+    const dayName = hebrewDays[d.getDay()];
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    lines.push(`יום ${dayName} = ${yyyy}-${mm}-${dd}`);
+  }
+  // מחר והיום
+  const tom = new Date(israelNow); tom.setDate(israelNow.getDate()+1);
+  const todayStr = `${israelNow.getFullYear()}-${String(israelNow.getMonth()+1).padStart(2,'0')}-${String(israelNow.getDate()).padStart(2,'0')}`;
+  const tomStr   = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
+  return { datesMap: lines.join(', '), todayStr, tomStr, dayName: hebrewDays[israelNow.getDay()] };
+}
+
 async function classifyMessage(text) {
-  const today = new Date().toLocaleDateString('he-IL', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const { datesMap, todayStr, tomStr, dayName } = buildHebrewDatesMap();
+  const todayDisplay = new Date().toLocaleDateString('he-IL', { weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone:'Asia/Jerusalem' });
   try {
     const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST',
@@ -219,7 +243,11 @@ async function classifyMessage(text) {
         model:'llama-3.1-8b-instant',
         messages:[
           { role:'system', content:
-`היום הוא ${today}. אתה מסווג הודעות בעברית למשרד יעוץ מס.
+`היום הוא ${todayDisplay} (${todayStr}). מחר = ${tomStr}.
+מיפוי ימי שבוע מדויק לשבוע הקרוב: ${datesMap}.
+השתמש רק בתאריכים מהמיפוי הזה — אל תחשב בעצמך!
+
+אתה מסווג הודעות בעברית למשרד יעוץ מס.
 
 קטגוריות:
 - "appointment" - בקשה לפגישה / תור / להיפגש / קביעה
@@ -240,7 +268,7 @@ async function classifyMessage(text) {
   "title": "תוכן ההודעה המלא בדיוק — ללא שם עובד בלבד מהתחלה"
 }
 
-לפגישות: חלץ תאריך, שעה, שם הלקוח (אחרי "עם"). "מחר"=מחר, "שלישי"=שלישי הקרוב. null אם לא צוין.
+לפגישות: חלץ תאריך לפי המיפוי למעלה, שעה, שם הלקוח (אחרי "עם"). null אם לא צוין.
 למשימות: אם ההודעה כוללת שם של אדם שאליו המשימה מיועדת (לפלוני / עבור / ל[שם] / [שם] צריך) — שמו → assignee. ב-title: שמור את כל המלל המקורי, הסר רק את שם העובד מהתחלה.
 אם לא מצוין עובד ברור — assignee: null`
           },
@@ -653,16 +681,23 @@ function formatDateHebrew(dateStr) {
 // עזר: אחרי שיש תאריך+שעה+שם — בדוק אם יש מייל
 // אם כן → קבע. אם לא → שאל פרטי קשר.
 // ───────────────────────────────────────────
+// בניית הודעת זימון ברורה למוזמן לפגישה
+function buildInviteMessage(ownerName, date, time) {
+  const dateStr = formatDateHebrew(date || '');
+  const lines = ['📅 זימון לפגישה!', ''];
+  if (ownerName) lines.push(`👤 עם: ${ownerName}`);
+  if (dateStr)   lines.push(`📅 תאריך: ${dateStr}`);
+  if (time)      lines.push(`🕐 שעה: ${time}`);
+  lines.push('', 'נתראה! 👋');
+  return lines.join('\n');
+}
+
 async function tryFinalize(chatId, userDocName, pending, senderCalId, res, userId, ownerName) {
   if (pending.withEmail || pending.withWhatsapp) {
     if (pending.withWhatsapp && !pending.withEmail) {
       const phoneClean = pending.withWhatsapp.replace(/[-\s+]/g, '');
       const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
-      const dateStr = formatDateHebrew(pending.date || '');
-      const timeStr = pending.time ? ` בשעה ${pending.time}` : '';
-      await sendWhatsAppReply(waId,
-        `📅 זימון לפגישה!\n\nנקבעה לך פגישה${ownerName ? ' עם '+ownerName : ''}${timeStr}\n${dateStr}\n\nנתראה! 👋`
-      ).catch(()=>{});
+      await sendWhatsAppReply(waId, buildInviteMessage(ownerName, pending.date, pending.time)).catch(()=>{});
     }
     await finalizeAppointment(chatId, userDocName, pending, senderCalId, userId);
   } else {
@@ -805,11 +840,7 @@ module.exports = async (req, res) => {
         if (matched.whatsapp && !matched.email) {
           const phoneClean = matched.whatsapp.replace(/[-\s+]/g, '');
           const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
-          const dateStr = formatDateHebrew(upd.date || '');
-          const timeStr = upd.time ? ` בשעה ${upd.time}` : '';
-          await sendWhatsAppReply(waId,
-            `📅 זימון לפגישה!\n\nנקבעה לך פגישה${ownerName ? ' עם '+ownerName : ''}${timeStr}\n${dateStr}\n\nנתראה! 👋`
-          ).catch(()=>{});
+          await sendWhatsAppReply(waId, buildInviteMessage(ownerName, upd.date, upd.time)).catch(()=>{});
         }
         await finalizeAppointment(chatId, userDocName, upd, senderCalId, userDocId);
       } else {
@@ -845,11 +876,7 @@ module.exports = async (req, res) => {
       if (/^\d{9,12}$/.test(phoneClean)) {
         await upsertClient(pending.withName, '', phoneClean, userDocId);
         const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
-        const dateStr = formatDateHebrew(pending.date);
-        const timeStr = pending.time ? ` בשעה ${pending.time}` : '';
-        await sendWhatsAppReply(waId,
-          `📅 זימון לפגישה!\n\nנקבעה לך פגישה${ownerName ? ' עם '+ownerName : ''}${timeStr}\n${dateStr}\n\nנתראה! 👋`
-        );
+        await sendWhatsAppReply(waId, buildInviteMessage(ownerName, pending.date, pending.time));
         await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
         return res.status(200).send('ok');
       }
