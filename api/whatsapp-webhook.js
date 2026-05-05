@@ -849,14 +849,49 @@ function buildInviteMessage(ownerName, date, time) {
   return lines.join('\n');
 }
 
+// שליחת זימון עם RSVP אם המוזמן הוא משתמש מערכת, אחרת זימון רגיל
+async function sendInviteWithConfirmation(clientPhoneClean, effectiveOwner, date, time, ownerChatId, ownerDocName, clientDisplayName) {
+  const digits     = clientPhoneClean.replace(/[^\d]/g, '');
+  const normalized = digits.startsWith('972') ? digits : '972' + digits.replace(/^0/, '');
+  const waId       = normalized + '@c.us';
+
+  let clientUserDoc = null;
+  try { clientUserDoc = await getUserDoc(digits); } catch(e) {}
+
+  if (clientUserDoc) {
+    // משתמש רשום — שלח זימון עם אפשרות אישור/ביטול
+    const clientDocName   = clientUserDoc.name;
+    const clientSavedName = (clientUserDoc.fields?.name?.stringValue || clientDisplayName || '').trim();
+    const dateStr         = formatDateHebrew(date || '');
+    const displayName     = effectiveOwner || 'העסק';
+    const lines = [`📅 *${displayName}* מזמין/ה אותך לפגישה!`, ''];
+    if (dateStr) lines.push(`🗓 ${dateStr}`);
+    if (time)    lines.push(`🕐 בשעה ${time}`);
+    lines.push('', '───────────────', '✅ לאישור שלח: *אשר*', '❌ לביטול שלח: *בטל*');
+
+    await setPending(clientDocName, {
+      step:        'confirm_appointment',
+      date,
+      time,
+      ownerName:   effectiveOwner,
+      ownerChatId,
+      ownerDocName,
+      clientName:  clientDisplayName || clientSavedName
+    });
+    await sendWhatsAppReply(waId, lines.join('\n'));
+  } else {
+    // לא משתמש מערכת — שלח זימון רגיל
+    await sendWhatsAppReply(waId, buildInviteMessage(effectiveOwner, date, time));
+  }
+}
+
 async function tryFinalize(chatId, userDocName, pending, senderCalId, res, userId, ownerName) {
   // Use stored ownerName from pending (persisted across messages) as primary source
   const effectiveOwner = pending.ownerName || ownerName || '';
   if (pending.withEmail || pending.withWhatsapp) {
     if (pending.withWhatsapp && !pending.withEmail) {
       const phoneClean = pending.withWhatsapp.replace(/[-\s+]/g, '');
-      const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
-      await sendWhatsAppReply(waId, buildInviteMessage(effectiveOwner, pending.date, pending.time)).catch(()=>{});
+      await sendInviteWithConfirmation(phoneClean, effectiveOwner, pending.date, pending.time, chatId, userDocName, pending.withName || '').catch(()=>{});
     }
     await finalizeAppointment(chatId, userDocName, pending, senderCalId, userId);
   } else {
@@ -943,6 +978,70 @@ module.exports = async (req, res) => {
   // עיבוד שלבי קביעת פגישה
   // ══════════════════════════════════════════
   if (pending && inText) {
+
+    // ── שלב: אישור/ביטול פגישה (כאשר המוזמן הוא משתמש מערכת) ──
+    if (pending.step === 'confirm_appointment') {
+      const txtNorm = inText.trim();
+
+      if (/^אשר$/.test(txtNorm)) {
+        await clearPending(userDocName);
+        const ownerDisplayName = pending.ownerName || 'העסק';
+        const dateStr          = formatDateHebrew(pending.date);
+        const timeStr          = pending.time ? ` בשעה ${pending.time}` : '';
+        const cleanApptTitle   = `פגישה עם ${ownerDisplayName}`;
+
+        // שמור פגישה ביומן הלקוח (Firestore)
+        await saveAppointment(cleanApptTitle, pending.date, pending.time || '', ownerDisplayName, chatId, null, userDocId);
+
+        // הוסף ליומן גוגל של הלקוח אם מחובר
+        if (senderCalId) {
+          try { await createCalendarEvent(cleanApptTitle, pending.date, pending.time || null, ownerDisplayName, senderCalId, ''); } catch(e) {}
+        }
+
+        // הודע ללקוח
+        await sendWhatsAppReply(chatId,
+          `✅ *אישרת את הפגישה!*\n📅 ${dateStr}${timeStr}\n\nהפגישה נוספה ליומן שלך 📆`
+        );
+
+        // הודע לבעל העסק
+        if (pending.ownerChatId) {
+          const clientOwnName = pending.clientName || clientName || '';
+          await sendWhatsAppReply(pending.ownerChatId,
+            `✅ *${clientOwnName}* אישר/ה את הפגישה!\n📅 ${dateStr}${timeStr}`
+          );
+        }
+        return res.status(200).send('ok');
+      }
+
+      if (/^בטל$/.test(txtNorm)) {
+        await clearPending(userDocName);
+        const ownerDisplayName = pending.ownerName || 'העסק';
+        const dateStr          = formatDateHebrew(pending.date);
+        const timeStr          = pending.time ? ` בשעה ${pending.time}` : '';
+        const clientOwnName    = pending.clientName || clientName || '';
+
+        // הודע ללקוח על הביטול
+        await sendWhatsAppReply(chatId,
+          `❌ ביטלת את הפגישה.\n📅 ${dateStr}${timeStr}\n\nניתן לפנות ל${ownerDisplayName} לקביעה מחדש.`
+        );
+
+        // הודע לבעל העסק על הביטול
+        if (pending.ownerChatId) {
+          await sendWhatsAppReply(pending.ownerChatId,
+            `❌ *${clientOwnName}* ביטל/ה את הפגישה.\n📅 ${dateStr}${timeStr}`
+          );
+        }
+        return res.status(200).send('ok');
+      }
+
+      // לא אשר ולא בטל — שלח תזכורת
+      const dateStr = formatDateHebrew(pending.date);
+      const timeStr = pending.time ? ` בשעה ${pending.time}` : '';
+      await sendWhatsAppReply(chatId,
+        `📅 *${pending.ownerName || 'העסק'}* הזמין/ה אותך לפגישה\n🗓 ${dateStr}${timeStr}\n\n✅ לאישור שלח: *אשר*\n❌ לביטול שלח: *בטל*`
+      );
+      return res.status(200).send('ok');
+    }
 
     // ── שלב: תאריך ──
     if (pending.step === 'ask_date') {
@@ -1031,8 +1130,7 @@ module.exports = async (req, res) => {
         // יש פרטי קשר שמורים — שלח זימון ישירות ללא שאלה
         if (matched.whatsapp && !matched.email) {
           const phoneClean = matched.whatsapp.replace(/[-\s+]/g, '');
-          const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
-          await sendWhatsAppReply(waId, buildInviteMessage(upd.ownerName || ownerName, upd.date, upd.time)).catch(()=>{});
+          await sendInviteWithConfirmation(phoneClean, upd.ownerName || ownerName, upd.date, upd.time, chatId, userDocName, matched.name).catch(()=>{});
         }
         await finalizeAppointment(chatId, userDocName, upd, senderCalId, userDocId);
       } else {
@@ -1067,8 +1165,7 @@ module.exports = async (req, res) => {
       const phoneClean = txt.replace(/[-\s+]/g, '');
       if (/^\d{9,12}$/.test(phoneClean)) {
         await upsertClient(pending.withName, '', phoneClean, userDocId);
-        const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
-        await sendWhatsAppReply(waId, buildInviteMessage(pending.ownerName || ownerName, pending.date, pending.time));
+        await sendInviteWithConfirmation(phoneClean, pending.ownerName || ownerName, pending.date, pending.time, chatId, userDocName, pending.withName || '');
         await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
         return res.status(200).send('ok');
       }
