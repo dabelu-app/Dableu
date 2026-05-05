@@ -832,11 +832,13 @@ function buildInviteMessage(ownerName, date, time) {
 }
 
 async function tryFinalize(chatId, userDocName, pending, senderCalId, res, userId, ownerName) {
+  // Use stored ownerName from pending (persisted across messages) as primary source
+  const effectiveOwner = pending.ownerName || ownerName || '';
   if (pending.withEmail || pending.withWhatsapp) {
     if (pending.withWhatsapp && !pending.withEmail) {
       const phoneClean = pending.withWhatsapp.replace(/[-\s+]/g, '');
       const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
-      await sendWhatsAppReply(waId, buildInviteMessage(ownerName, pending.date, pending.time)).catch(()=>{});
+      await sendWhatsAppReply(waId, buildInviteMessage(effectiveOwner, pending.date, pending.time)).catch(()=>{});
     }
     await finalizeAppointment(chatId, userDocName, pending, senderCalId, userId);
   } else {
@@ -1004,7 +1006,7 @@ module.exports = async (req, res) => {
         if (matched.whatsapp && !matched.email) {
           const phoneClean = matched.whatsapp.replace(/[-\s+]/g, '');
           const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
-          await sendWhatsAppReply(waId, buildInviteMessage(ownerName, upd.date, upd.time)).catch(()=>{});
+          await sendWhatsAppReply(waId, buildInviteMessage(upd.ownerName || ownerName, upd.date, upd.time)).catch(()=>{});
         }
         await finalizeAppointment(chatId, userDocName, upd, senderCalId, userDocId);
       } else {
@@ -1040,7 +1042,7 @@ module.exports = async (req, res) => {
       if (/^\d{9,12}$/.test(phoneClean)) {
         await upsertClient(pending.withName, '', phoneClean, userDocId);
         const waId = (phoneClean.startsWith('972') ? phoneClean : '972'+phoneClean.replace(/^0/,'')) + '@c.us';
-        await sendWhatsAppReply(waId, buildInviteMessage(ownerName, pending.date, pending.time));
+        await sendWhatsAppReply(waId, buildInviteMessage(pending.ownerName || ownerName, pending.date, pending.time));
         await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
         return res.status(200).send('ok');
       }
@@ -1162,7 +1164,7 @@ module.exports = async (req, res) => {
 
     // ── תאריך+שעה ידועים, שם צוין אבל לא נמצא ──
     if (hasDate && hasTime && hasWith && !hasMatch) {
-      await setPending(userDocName, { step:'ask_contact', date:classified.date, time:classified.time, title:apptTitle, ...knownWith, contactAskedAt: new Date().toISOString() });
+      await setPending(userDocName, { step:'ask_contact', date:classified.date, time:classified.time, title:apptTitle, ...knownWith, ownerName, contactAskedAt: new Date().toISOString() });
       await sendWhatsAppReply(chatId,
         `לא מצאתי לקוח בשם "${classified.with}" במערכת.\n\nשלח:\n📧 מייל לזימון\n📱 ווצאפ לזימון\nאו "ללא זימון"`
       );
@@ -1170,17 +1172,17 @@ module.exports = async (req, res) => {
     }
 
     if (!hasDate) {
-      await setPending(userDocName, { step:'ask_date', title:apptTitle, ...knownWith });
+      await setPending(userDocName, { step:'ask_date', title:apptTitle, ...knownWith, ownerName });
       await sendWhatsAppReply(chatId, `📅 רוצה לקבוע פגישה!\n\nמתי? (תאריך ושעה)\nלדוגמה: "5/5 בשעה 14:00"`);
       return res.status(200).send('ok');
     }
     if (!hasTime) {
-      await setPending(userDocName, { step:'ask_time', date:classified.date, title:apptTitle, ...knownWith });
+      await setPending(userDocName, { step:'ask_time', date:classified.date, title:apptTitle, ...knownWith, ownerName });
       await sendWhatsAppReply(chatId, `📅 ${formatDateHebrew(classified.date)} ✓\n\nבאיזו שעה?`);
       return res.status(200).send('ok');
     }
     if (!hasWith) {
-      await setPending(userDocName, { step:'ask_with_whom', date:classified.date, time:classified.time, title:apptTitle, withName:'', withEmail:'' });
+      await setPending(userDocName, { step:'ask_with_whom', date:classified.date, time:classified.time, title:apptTitle, withName:'', withEmail:'', ownerName });
       const list = clients.slice(0,20).map((c,i)=>`${i+1}. ${c.name}`).join('\n');
       await sendWhatsAppReply(chatId, `📅 ${formatDateHebrew(classified.date)} בשעה ${classified.time} ✓\n\nעם מי הפגישה?\n${list||'(שם הלקוח)'}`);
       return res.status(200).send('ok');
