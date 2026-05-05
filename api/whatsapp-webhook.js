@@ -209,48 +209,56 @@ async function extractPersonName(text) {
 // ───────────────────────────────────────────
 // סיווג הודעה (Groq)
 // ───────────────────────────────────────────
-// המרת ימי שבוע עבריים לתאריכים ב-JavaScript — לפני שהטקסט נשלח לAI
-function resolveHebrewDates(text) {
-  // ימי שבוע: getDay() מחזיר 0=ראשון, 1=שני, ... 6=שבת
-  const DAY_MAP = { 'ראשון':0, 'שני':1, 'שלישי':2, 'רביעי':3, 'חמישי':4, 'שישי':5, 'שבת':6 };
+// ─────────────────────────────────────────────────────
+// זיהוי תאריך ב-JavaScript בלבד — ה-AI לא מחשב ימים!
+// ─────────────────────────────────────────────────────
+function extractDateJS(text) {
+  // ימי שבוע עבריים → מספר יום (JavaScript: 0=ראשון/Sunday, ..., 6=שבת/Saturday)
+  const DAY_MAP = {
+    'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3,
+    'חמישי': 4, 'שישי': 5, 'שבת': 6
+  };
 
-  // זמן ישראל (UTC+3 בקיץ)
-  const nowUtc = Date.now();
-  const ISRAEL_OFFSET = 3 * 60 * 60 * 1000;
-  const ilMs   = nowUtc + ISRAEL_OFFSET;
-  const ilDate = new Date(ilMs);
-  const todayDayNum      = ilDate.getUTCDay();   // 0–6
-  const todayYMD = toYMD(ilDate);
+  // זמן ישראל UTC+3
+  const ilMs       = Date.now() + 3 * 60 * 60 * 1000;
+  const todayDay   = new Date(ilMs).getUTCDay();
 
-  function toYMD(d) {
+  function ymd(ms) {
+    const d = new Date(ms);
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
   }
-  function addDays(ms, n) { return new Date(ms + n * 86400000); }
+  function shift(days) { return ymd(ilMs + days * 86400000); }
 
-  let out = text;
+  // היום / מחר
+  if (/היום/.test(text)) return shift(0);
+  if (/מחר/.test(text))  return shift(1);
 
-  // מחר / היום
-  out = out.replace(/\bמחר\b/g, toYMD(addDays(ilMs, 1)));
-  out = out.replace(/\bהיום\b/g, todayYMD);
-
-  // "יום חמישי" / "ביום חמישי" / "ליום חמישי" / "חמישי" לבד
-  for (const [hName, targetDayNum] of Object.entries(DAY_MAP)) {
-    // מחפש את שם היום, עם או בלי "יום" לפניו
-    const re = new RegExp(`(?:יום\\s+)?${hName}`, 'g');
-    out = out.replace(re, () => {
-      let diff = targetDayNum - todayDayNum;
-      if (diff <= 0) diff += 7;         // תמיד קדימה (אם היום שישי → שישי הבא)
-      return toYMD(addDays(ilMs, diff));
-    });
+  // ימי שבוע
+  for (const [name, dayNum] of Object.entries(DAY_MAP)) {
+    if (text.includes(name)) {
+      let diff = dayNum - todayDay;
+      if (diff <= 0) diff += 7;   // תמיד הקרוב קדימה
+      return shift(diff);
+    }
   }
 
-  return out;
+  // תאריך בפורמט DD/MM או DD/MM/YYYY
+  const m = text.match(/(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{4}))?/);
+  if (m) {
+    const day   = m[1].padStart(2,'0');
+    const month = m[2].padStart(2,'0');
+    const year  = m[3] || String(new Date(ilMs).getUTCFullYear());
+    return `${year}-${month}-${day}`;
+  }
+
+  return null;   // לא נמצא תאריך
 }
 
 async function classifyMessage(text) {
-  // המרה מקדימה — ה-AI רואה תאריכים מוכנים, לא שמות ימים
-  const preprocessed = resolveHebrewDates(text);
-  const todayDisplay  = new Date().toLocaleDateString('he-IL', {
+  // ── שלב 1: חלץ תאריך ב-JavaScript — אמין 100% ──
+  const jsDate = extractDateJS(text);
+
+  const todayDisplay = new Date().toLocaleDateString('he-IL', {
     weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone:'Asia/Jerusalem'
   });
   try {
@@ -262,17 +270,16 @@ async function classifyMessage(text) {
         messages:[
           { role:'system', content:
 `היום הוא ${todayDisplay}. אתה מסווג הודעות בעברית למשרד יעוץ מס.
-שים לב: תאריכים בהודעה כבר בפורמט YYYY-MM-DD — השתמש בהם בדיוק.
 
 קטגוריות:
 - "appointment" - בקשה לפגישה / תור / להיפגש / קביעה
 - "task" - כל בקשה, משימה, תזכורת, שאלה, הודעה עם תוכן כלשהו — כולל אם לא ברורה לחלוטין
 - "invalid" - רק הודעות ריקות / ברכות קצרות ללא שום תוכן עבודה ("שלום", "היי", "בוקר טוב", "תודה", "ok", "123", "test")
 
-כלל ברזל: כל ספק → "task"! עדיף משימה מיותרת מאשר לאבד מידע.
+כלל ברזל: כל ספק → "task"!
 סימני פגישה: פגישה, תור, נפגש, להיפגש, קבע, קביעת, מתי פנוי, אפשר לקבוע, נתראה
 
-החזר JSON בלבד (ללא הסברים נוספים):
+החזר JSON בלבד:
 {
   "intent": "appointment"|"task"|"invalid",
   "date": "YYYY-MM-DD"|null,
@@ -282,10 +289,10 @@ async function classifyMessage(text) {
   "title": "תוכן ההודעה המלא בדיוק — ללא שם עובד בלבד מהתחלה"
 }
 
-לפגישות: חלץ תאריך YYYY-MM-DD, שעה, שם הלקוח (אחרי "עם"). null אם לא צוין.
-למשימות: assignee = שם עובד אם מצוין, אחרת null. title = כל המלל ללא שם עובד מהתחלה.`
+לפגישות: חלץ שעה ושם לקוח (אחרי "עם"). עבור date — החזר null (מחושב בנפרד).
+למשימות: assignee = שם עובד אם מצוין, אחרת null.`
           },
-          { role:'user', content: preprocessed }
+          { role:'user', content: text }
         ],
         max_tokens:200, temperature:0
       })
@@ -293,9 +300,14 @@ async function classifyMessage(text) {
     const data = await resp.json();
     const content = (data.choices?.[0]?.message?.content || '{}').trim();
     const match = content.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
+    if (match) {
+      const result = JSON.parse(match[0]);
+      // ── שלב 2: תאריך JS תמיד מנצח את ה-AI ──
+      if (jsDate) result.date = jsDate;
+      return result;
+    }
   } catch(err) { console.error('Classify error:', err); }
-  return { intent:'task', date:null, time:null, title:text };
+  return { intent:'task', date: jsDate, time:null, title:text };
 }
 
 // ───────────────────────────────────────────
@@ -776,9 +788,11 @@ module.exports = async (req, res) => {
 
     // ── שלב: תאריך ──
     if (pending.step === 'ask_date') {
-      const parsed = await classifyMessage(inText).catch(()=>null);
+      // תאריך: JS קודם, אחר-כך AI
+      const jsDateOnly = extractDateJS(inText);
+      const parsed = jsDateOnly ? { date: jsDateOnly, time: null } : await classifyMessage(inText).catch(()=>null);
       if (!parsed?.date) {
-        await sendWhatsAppReply(chatId, '⚠️ לא הצלחתי לזהות תאריך.\nנסה שוב, לדוגמה: "5/5" או "שלישי הקרוב"');
+        await sendWhatsAppReply(chatId, '⚠️ לא הצלחתי לזהות תאריך.\nנסה שוב, לדוגמה: "7/5" או "יום שישי"');
         return res.status(200).send('ok');
       }
       const upd = { ...pending, date: parsed.date, time: parsed.time || pending.time || '' };
