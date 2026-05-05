@@ -129,6 +129,13 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
     if (waName && !/^\d/.test(waName)) return waName;
   } catch(e) { console.warn('[ownerName] step5 error:', e.message); }
 
+  // 6. email username כברירת מחדל אחרונה (למשל tasks@dabelu.pro → "tasks")
+  const emailField = fields.email?.stringValue || '';
+  if (emailField) {
+    const emailUser = emailField.split('@')[0].replace(/[._\-+]/g, ' ').trim();
+    if (emailUser) { console.log('[ownerName] step6 emailUser:', emailUser); return emailUser; }
+  }
+
   console.log('[ownerName] → empty string (all steps failed)');
   return '';
 }
@@ -883,19 +890,28 @@ module.exports = async (req, res) => {
   const senderCalId  = userDoc.fields?.googleCalendarId?.stringValue || '';
 
   // ── שמור שם ווצאפ של השולח לשימוש עתידי ──
-  const rawSenderName = senderData?.senderName || '';
+  // מנסה senderName, chatName, senderContactName בסדר עדיפות
+  const rawSenderName = senderData?.senderName || senderData?.chatName || senderData?.senderContactName || '';
   if (rawSenderName && !/^\d/.test(rawSenderName) && !userDoc.fields?.waName?.stringValue) {
     patchUserField(userDocName, 'waName', rawSenderName).catch(()=>{});
   }
 
-  // שם בעל העסק — resolveOwnerName + fallback לשדה name ישיר + שם WA
+  // שם בעל העסק — resolveOwnerName + fallbacks מרובים
   let ownerName = await resolveOwnerName(phone, userDoc, rawSenderName);
   if (!ownerName) {
-    // fallback 1: שדה name/officeName ישיר מהמסמך (זהה ל-clientName אבל ללא senderName)
+    // fallback 1: שדה name/officeName ישיר מהמסמך
     const firestoreName = userDoc.fields?.name?.stringValue || userDoc.fields?.officeName?.stringValue || '';
     // fallback 2: שם WA שלא מספר
     const safeWaName = (rawSenderName && !/^\d/.test(rawSenderName)) ? rawSenderName : '';
-    ownerName = firestoreName || safeWaName;
+    // fallback 3: חלק המשתמש מהמייל (למשל: sarah.cohen@gmail.com → "sarah cohen")
+    const emailFallback = clientEmail
+      ? clientEmail.split('@')[0].replace(/[._\-+]/g, ' ').trim()
+      : '';
+    ownerName = firestoreName || safeWaName || emailFallback;
+  }
+  // שמור את ownerName שנפתר ב-Firestore (waName) כדי שיהיה זמין בהודעות עתידיות
+  if (ownerName && !userDoc.fields?.waName?.stringValue) {
+    patchUserField(userDocName, 'waName', ownerName).catch(()=>{});
   }
   console.log(`[webhook] ownerName="${ownerName}" clientName="${clientName}" phone=${phone}`);
 
