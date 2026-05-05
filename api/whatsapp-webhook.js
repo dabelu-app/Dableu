@@ -55,16 +55,16 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
   const cachedWaName = fields.waName?.stringValue || '';
   if (cachedWaName && !/^\d/.test(cachedWaName)) { console.log('[ownerName] from waName:', cachedWaName); return cachedWaName; }
 
-  // helper: שם מובהק מתוך שדות מסמך
+  // helper: שם מובהק מתוך שדות מסמך — officeName קודם לשם המשרד
   function pickName(f) {
-    return (f?.name?.stringValue || '').trim()
-        || (f?.officeName?.stringValue || '').trim()
+    return (f?.officeName?.stringValue || '').trim()
+        || (f?.name?.stringValue || '').trim()
         || '';
   }
 
   // 1. שם ישירות מהמסמך שנמצא
   const fromDoc = pickName(fields);
-  console.log('[ownerName] step1 fromDoc:', fromDoc);
+  console.log('[ownerName] step1 fromDoc:', fromDoc, '| officeName=', fields.officeName?.stringValue, '| name=', fields.name?.stringValue);
   if (fromDoc) return fromDoc;
 
   // 2. חיפוש לפי email בכל המסמכים — מוצא כל מסמך עם name/officeName
@@ -900,31 +900,30 @@ module.exports = async (req, res) => {
   const clientName   = userDoc.fields?.name?.stringValue   || senderName;
   const senderCalId  = userDoc.fields?.googleCalendarId?.stringValue || '';
 
-  // ── שמור שם ווצאפ של השולח לשימוש עתידי ──
-  // מנסה senderName, chatName, senderContactName בסדר עדיפות
   const rawSenderName = senderData?.senderName || senderData?.chatName || senderData?.senderContactName || '';
-  if (rawSenderName && !/^\d/.test(rawSenderName) && !userDoc.fields?.waName?.stringValue) {
-    patchUserField(userDocName, 'waName', rawSenderName).catch(()=>{});
-  }
 
-  // שם בעל העסק — resolveOwnerName + fallbacks מרובים
-  let ownerName = await resolveOwnerName(phone, userDoc, rawSenderName);
+  // ── שם בעל העסק ──
+  // 1. officeName מהמסמך — הכי אמין, זה מה שהמשתמש הגדיר
+  // 2. name מהמסמך — שם פרטי כ-fallback
+  // 3. resolveOwnerName — חיפוש מורחב (email, waPhone, GreenAPI)
+  // 4. rawSenderName — שם WA אם לא מספר
+  // 5. email username
+  const _docOfficeName = (userDoc.fields?.officeName?.stringValue || '').trim();
+  const _docName       = (userDoc.fields?.name?.stringValue       || '').trim();
+  let ownerName = _docOfficeName || _docName;
+  console.log(`[webhook] doc lookup: officeName="${_docOfficeName}" name="${_docName}" → ownerName="${ownerName}" | phone=${phone}`);
+
   if (!ownerName) {
-    // fallback 1: שדה name/officeName ישיר מהמסמך
-    const firestoreName = userDoc.fields?.name?.stringValue || userDoc.fields?.officeName?.stringValue || '';
-    // fallback 2: שם WA שלא מספר
+    ownerName = await resolveOwnerName(phone, userDoc, rawSenderName);
+  }
+  if (!ownerName) {
     const safeWaName = (rawSenderName && !/^\d/.test(rawSenderName)) ? rawSenderName : '';
-    // fallback 3: חלק המשתמש מהמייל (למשל: sarah.cohen@gmail.com → "sarah cohen")
     const emailFallback = clientEmail
       ? clientEmail.split('@')[0].replace(/[._\-+]/g, ' ').trim()
       : '';
-    ownerName = firestoreName || safeWaName || emailFallback;
+    ownerName = safeWaName || emailFallback;
   }
-  // שמור את ownerName שנפתר ב-Firestore (waName) כדי שיהיה זמין בהודעות עתידיות
-  if (ownerName && !userDoc.fields?.waName?.stringValue) {
-    patchUserField(userDocName, 'waName', ownerName).catch(()=>{});
-  }
-  console.log(`[webhook] ownerName="${ownerName}" clientName="${clientName}" phone=${phone}`);
+  console.log(`[webhook] final ownerName="${ownerName}"`);
 
   // ── pending מתוך מסמך המשתמש ──
   const pendingStr = userDoc.fields?.pendingAppt?.stringValue || '';
