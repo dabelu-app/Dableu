@@ -484,6 +484,56 @@ async function saveAppointment(title, date, time, clientName, chatId, googleEven
   );
 }
 
+// מחיקת פגישה מ-Firestore לפי userId+date+clientName — מחזיר googleEventId
+async function cancelAppointmentInFirestore(ownerUserId, date, clientName) {
+  try {
+    const resp = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ structuredQuery: {
+          from: [{ collectionId: 'appointments' }],
+          where: { compositeFilter: { op: 'AND', filters: [
+            { fieldFilter: { field: { fieldPath: 'userId'     }, op: 'EQUAL', value: { stringValue: ownerUserId } } },
+            { fieldFilter: { field: { fieldPath: 'date'       }, op: 'EQUAL', value: { stringValue: date        } } },
+            { fieldFilter: { field: { fieldPath: 'clientName' }, op: 'EQUAL', value: { stringValue: clientName  } } }
+          ]}},
+          limit: 1
+        }})
+      }
+    );
+    const data = await resp.json();
+    if (!Array.isArray(data) || !data[0]?.document) {
+      console.log(`[cancelAppt] no appointment found for userId=${ownerUserId} date=${date} client=${clientName}`);
+      return null;
+    }
+    const doc           = data[0].document;
+    const docPath       = doc.name;
+    const googleEventId = doc.fields?.googleEventId?.stringValue || '';
+
+    await fetch(`https://firestore.googleapis.com/v1/${docPath}?key=${FIREBASE_API_KEY}`, { method: 'DELETE' });
+    console.log(`🗑️ appointment deleted: ${docPath} | googleEventId=${googleEventId}`);
+    return googleEventId || null;
+  } catch(e) {
+    console.error('cancelAppointmentInFirestore error:', e);
+    return null;
+  }
+}
+
+// מחיקת אירוע מגוגל קלנדר לפי eventId
+async function deleteCalendarEvent(eventId, calendarId) {
+  if (!eventId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) return;
+  try {
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    const auth     = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/calendar'] });
+    const calendar = google.calendar({ version: 'v3', auth });
+    calendarId = calendarId || process.env.GOOGLE_CALENDAR_ID || 'primary';
+    await calendar.events.delete({ calendarId, eventId });
+    console.log(`🗑️ google calendar event deleted: ${eventId}`);
+  } catch(e) {
+    console.error('deleteCalendarEvent error:', e.message);
+  }
+}
+
 // ───────────────────────────────────────────
 // צוות עובדים — שליפה מ-Firestore (מנסה מספר מיקומים)
 // ───────────────────────────────────────────
@@ -1020,6 +1070,15 @@ module.exports = async (req, res) => {
         const timeStr          = pending.time ? ` בשעה ${pending.time}` : '';
         const clientOwnName    = pending.clientName || clientName || '';
 
+        // מחק פגישה מ-Firestore ומגוגל קלנדר של הבעלים
+        if (pending.ownerDocName) {
+          const ownerUserId   = pending.ownerDocName.split('/').pop();
+          const googleEventId = await cancelAppointmentInFirestore(ownerUserId, pending.date, clientOwnName);
+          if (googleEventId) {
+            await deleteCalendarEvent(googleEventId, process.env.GOOGLE_CALENDAR_ID);
+          }
+        }
+
         // הודע ללקוח על הביטול
         await sendWhatsAppReply(chatId,
           `❌ ביטלת את הפגישה.\n📅 ${dateStr}${timeStr}\n\nניתן לפנות ל${ownerDisplayName} לקביעה מחדש.`
@@ -1028,7 +1087,7 @@ module.exports = async (req, res) => {
         // הודע לבעל העסק על הביטול
         if (pending.ownerChatId) {
           await sendWhatsAppReply(pending.ownerChatId,
-            `❌ *${clientOwnName}* ביטל/ה את הפגישה.\n📅 ${dateStr}${timeStr}`
+            `❌ *${clientOwnName}* ביטל/ה את הפגישה.\n📅 ${dateStr}${timeStr}\n🗑️ הפגישה נמחקה מהיומן.`
           );
         }
         return res.status(200).send('ok');
