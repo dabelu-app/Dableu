@@ -286,7 +286,9 @@ function extractDateJS(text) {
   function shift(days) { return ymd(ilNow + days * 86400000); }
 
   const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  console.log(`[date] "${t}" todayDay=${todayDay}(${DAY_NAMES[todayDay]})`);
+  // Log raw code-points so we can see exactly what bytes arrived
+  const hexDump = Array.from(t.slice(0,30)).map(c=>c.codePointAt(0).toString(16).padStart(4,'0')).join(' ');
+  console.log(`[date] "${t}" todayDay=${todayDay}(${DAY_NAMES[todayDay]}) hex=[${hexDump}]`);
 
   // ─── today / tomorrow ───
   // Patterns built with String.fromCodePoint(hex) — zero Hebrew bytes in source.
@@ -805,8 +807,13 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
 
 function formatDateHebrew(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr + 'T12:00:00');
-  return d.toLocaleDateString('he-IL', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  // Append T12:00:00Z (noon UTC) so the date never shifts due to server timezone.
+  // timeZone:'Asia/Jerusalem' ensures the weekday is displayed in Israel time.
+  const d = new Date(dateStr + 'T12:00:00Z');
+  return d.toLocaleDateString('he-IL', {
+    weekday:'long', day:'numeric', month:'long', year:'numeric',
+    timeZone:'Asia/Jerusalem'
+  });
 }
 
 // ───────────────────────────────────────────
@@ -879,8 +886,16 @@ module.exports = async (req, res) => {
     patchUserField(userDocName, 'waName', rawSenderName).catch(()=>{});
   }
 
-  const ownerName    = await resolveOwnerName(phone, userDoc, rawSenderName); // שם בעל העסק
-  console.log(`[webhook] ownerName="${ownerName}" phone=${phone}`);
+  // שם בעל העסק — resolveOwnerName + fallback לשדה name ישיר + שם WA
+  let ownerName = await resolveOwnerName(phone, userDoc, rawSenderName);
+  if (!ownerName) {
+    // fallback 1: שדה name/officeName ישיר מהמסמך (זהה ל-clientName אבל ללא senderName)
+    const firestoreName = userDoc.fields?.name?.stringValue || userDoc.fields?.officeName?.stringValue || '';
+    // fallback 2: שם WA שלא מספר
+    const safeWaName = (rawSenderName && !/^\d/.test(rawSenderName)) ? rawSenderName : '';
+    ownerName = firestoreName || safeWaName;
+  }
+  console.log(`[webhook] ownerName="${ownerName}" clientName="${clientName}" phone=${phone}`);
 
   // ── pending מתוך מסמך המשתמש ──
   const pendingStr = userDoc.fields?.pendingAppt?.stringValue || '';
