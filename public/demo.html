@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dabelu - הדגמה חיה</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: -apple-system, 'Segoe UI', 'Arial', sans-serif;
+    background: transparent;
+    min-height: auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  /* Decorative floating shapes - hidden when embedded */
+  body::before, body::after { content: none; }
+  
+  @keyframes float1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-30px, 30px) scale(1.1); }
+    66% { transform: translate(30px, -20px) scale(0.95); }
+  }
+  
+  @keyframes float2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(40px, -30px) scale(1.15); }
+    66% { transform: translate(-20px, 40px) scale(0.9); }
+  }
+  
+  .demo-container {
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* ============================================ */
+  /* MAIN SCENE - single stage where scenes change */
+  /* ============================================ */
+  .scene-container {
+    width: 100%;
+    max-width: 800px;
+    min-height: 700px;
+    position: relative;
+  }
+  
+  .title-top {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  
+  .title-top h2 {
+    font-size: 36px;
+    color: #1a1a2e;
+    margin-bottom: 10px;
+    font-weight: 800;
+  }
+  
+  .title-top p { font-size: 17px; color: #6b7280; }
+  .title-top .highlight { color: #6F4CFC; }
+  
+  /* Step indicator */
+  .step-tracker {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  
+  .step-dot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: white;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #9ca3af;
+    border: 2px solid #e5e7eb;
+    transition: all 0.5s ease;
+  }
+  
+  .step-dot.active {
+    background: linear-gradient(135deg, #6F4CFC, #8b6bff);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 6px 20px rgba(111, 76, 252, 0.3);
+    transform: scale(1.05);
+  }
+  
+  .step-dot.done {
+    background: #d1fae5;
+    color: #047857;
+    border-color: #a7f3d0;
+  }
+  
+  .step-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  
+  .step-dot:not(.active):not(.done) .step-num {
+    background: #e5e7eb;
+    color: #6b7280;
+  }
+  
+  .step-dot.done .step-num {
+    background: #047857;
+    color: white;
+  }
+  
+  /* Stage where scenes appear */
+  .stage {
+    position: relative;
+    min-height: 720px;
+    padding-top: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Progress dots at the bottom showing scene progression */
+  .progress-dots {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+    opacity: 0;
+    animation: fadeInProgress 0.6s ease 1s forwards;
+  }
+  
+  @keyframes fadeInProgress {
+    to { opacity: 1; }
+  }
+  
+  .progress-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d1d5db;
+    transition: all 0.4s ease;
+  }
+  
+  .progress-dot.active {
+    background: #6F4CFC;
+    width: 24px;
+    border-radius: 4px;
+    box-shadow: 0 0 12px rgba(111, 76, 252, 0.4);
+  }
+  
+  .progress-dot.done {
+    background: #8b6bff;
+  }
+  
+  .scene {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0;
+    transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+  }
+  
+  .scene.active {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+  }
+  
+  .scene.exiting {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9) translateY(-40px);
+  }
+  
+  /* Context label above each scene */
+  .context-label {
+    position: absolute;
+    top: -75px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 10px 18px 10px 14px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 
+      0 4px 12px rgba(111, 76, 252, 0.08),
+      0 10px 30px rgba(111, 76, 252, 0.12);
+    border: 1px solid rgba(111, 76, 252, 0.12);
+    white-space: nowrap;
+    z-index: 5;
+    flex-direction: row-reverse;
+    opacity: 0;
+    animation: labelFadeIn 0.6s ease 0.3s forwards;
+  }
+  
+  @keyframes labelFadeIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  
+  .context-icon {
+    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .context-text {
+    text-align: right;
+  }
+  
+  .context-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1.3;
+  }
+  
+  @keyframes labelFadeIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  
+  /* Scene titles */
+  .scene-title {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+  
+  .scene-title .emoji {
+    display: inline-block;
+    margin-left: 8px;
+  }
+  
+  /* ======= PHONE FRAME ======= */
+  .phone-frame {
+    position: relative;
+    width: 340px;
+    height: 680px;
+    margin: 0 auto;
+    background: linear-gradient(145deg, #2a2a3e 0%, #0a0a15 100%);
+    border-radius: 48px;
+    padding: 12px;
+    box-shadow: 
+      0 40px 80px rgba(0, 0, 0, 0.35),
+      0 20px 40px rgba(111, 76, 252, 0.15),
+      inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.4s ease;
+  }
+  
+  .phone-frame:hover {
+    transform: translateY(-5px);
+    box-shadow: 
+      0 50px 100px rgba(0, 0, 0, 0.4),
+      0 25px 50px rgba(111, 76, 252, 0.25),
+      inset 0 0 0 2px rgba(255, 255, 255, 0.1);
+  }
+  
+  .phone-frame::before {
+    content: '';
+    position: absolute;
+    left: -3px;
+    top: 110px;
+    width: 3px;
+    height: 35px;
+    background: #0a0a15;
+    border-radius: 2px 0 0 2px;
+    box-shadow: 0 55px 0 #0a0a15, 0 110px 0 #0a0a15;
+  }
+  
+  .phone-frame::after {
+    content: '';
+    position: absolute;
+    right: -3px;
+    top: 160px;
+    width: 3px;
+    height: 55px;
+    background: #0a0a15;
+    border-radius: 0 2px 2px 0;
+  }
+  
+  .phone-notch {
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 30px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 12px;
+  }
+  
+  .notch-camera {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #1a1a2e;
+    box-shadow: inset 0 0 0 1px rgba(111, 76, 252, 0.3);
+  }
+  
+  .phone-screen {
+    background-color: #efeae2;
+    background-image: 
+      radial-gradient(circle at 15% 20%, rgba(209, 180, 140, 0.25) 0%, transparent 8%),
+      radial-gradient(circle at 85% 15%, rgba(209, 180, 140, 0.22) 0%, transparent 8%),
+      radial-gradient(circle at 50% 35%, rgba(209, 180, 140, 0.2) 0%, transparent 10%),
+      radial-gradient(circle at 25% 55%, rgba(209, 180, 140, 0.23) 0%, transparent 9%),
+      radial-gradient(circle at 75% 65%, rgba(209, 180, 140, 0.2) 0%, transparent 8%),
+      radial-gradient(circle at 10% 85%, rgba(209, 180, 140, 0.22) 0%, transparent 9%),
+      radial-gradient(circle at 90% 90%, rgba(209, 180, 140, 0.2) 0%, transparent 8%),
+      radial-gradient(circle at 40% 75%, rgba(209, 180, 140, 0.18) 0%, transparent 10%);
+    border-radius: 36px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  
+  .status-bar {
+    background: white;
+    padding: 14px 24px 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a2e;
+    position: relative;
+    z-index: 5;
+  }
+  
+  .status-bar .time { direction: ltr; }
+  
+  .status-icons { display: flex; gap: 5px; align-items: center; font-size: 12px; }
+  
+  .signal-bars { display: flex; gap: 1.5px; align-items: flex-end; height: 10px; }
+  .signal-bars span { width: 2.5px; background: #1a1a2e; border-radius: 1px; }
+  .signal-bars span:nth-child(1) { height: 3px; }
+  .signal-bars span:nth-child(2) { height: 5px; }
+  .signal-bars span:nth-child(3) { height: 7px; }
+  .signal-bars span:nth-child(4) { height: 10px; }
+  
+  .battery-icon {
+    width: 22px;
+    height: 11px;
+    border: 1px solid #1a1a2e;
+    border-radius: 3px;
+    position: relative;
+    padding: 1px;
+  }
+  
+  .battery-icon::after {
+    content: '';
+    position: absolute;
+    right: -3px;
+    top: 3px;
+    width: 2px;
+    height: 5px;
+    background: #1a1a2e;
+    border-radius: 0 1px 1px 0;
+  }
+  
+  .battery-icon .fill { background: #1a1a2e; height: 100%; width: 80%; border-radius: 1px; }
+  
+  /* WhatsApp header */
+  .wa-header {
+    background: white;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-direction: row;
+    position: relative;
+    z-index: 3;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+  }
+  
+  .wa-header-icon { flex-shrink: 0; padding: 4px; }
+  
+  .wa-contact-info {
+    flex: 1;
+    text-align: right;
+    min-width: 0;
+    overflow: hidden;
+    direction: rtl;
+  }
+  
+  .wa-contact-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .wa-contact-subtitle {
+    font-size: 11px;
+    color: #667781;
+    margin-top: 1px;
+    font-weight: 400;
+  }
+  
+  .wa-contact-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #ede9fe;
+    border: 1.5px solid #e0d8ff;
+    flex-shrink: 0;
+  }
+  
+  .wa-contact-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  
+  .chat-messages {
+    flex: 1;
+    padding: 12px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    position: relative;
+    z-index: 2;
+  }
+  
+  .date-chip {
+    align-self: center;
+    background: rgba(225, 245, 254, 0.92);
+    color: #546e7a;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 8px;
+    margin: 4px 0;
+    font-weight: 500;
+  }
+  
+  .msg-bubble {
+    max-width: 85%;
+    padding: 7px 10px 5px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    line-height: 1.4;
+    position: relative;
+    box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
+    word-wrap: break-word;
+  }
+  
+  .msg-bubble.sent {
+    background: #d9fdd3;
+    color: #111;
+    align-self: flex-start;
+    border-top-right-radius: 2px;
+    opacity: 0;
+    transform: translateY(40px) scale(0.85);
+  }
+  
+  .msg-bubble.sent.show {
+    animation: bubbleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  
+  .msg-bubble.sent::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -6px;
+    width: 0;
+    height: 0;
+    border-top: 7px solid #d9fdd3;
+    border-right: 7px solid transparent;
+  }
+  
+  .msg-bubble.bot {
+    background: white;
+    color: #111;
+    align-self: flex-end;
+    border-top-left-radius: 2px;
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  
+  .msg-bubble.bot.show {
+    animation: bubbleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  
+  .msg-bubble.bot::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -6px;
+    width: 0;
+    height: 0;
+    border-top: 7px solid white;
+    border-left: 7px solid transparent;
+  }
+  
+  @keyframes bubbleIn {
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  
+  .msg-time {
+    font-size: 10px;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    color: #667781;
+  }
+  
+  .check-icon { color: #53bdeb; font-size: 13px; font-weight: 700; }
+  
+  .typing-bubble {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    align-self: flex-end;
+    border-top-left-radius: 2px;
+    display: none;
+    gap: 4px;
+    box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
+    width: fit-content;
+    position: relative;
+  }
+  
+  .typing-bubble.show { display: flex; }
+  
+  .typing-bubble::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -6px;
+    width: 0;
+    height: 0;
+    border-top: 7px solid white;
+    border-left: 7px solid transparent;
+  }
+  
+  .typing-bubble span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #6F4CFC;
+    animation: typingDot 1s ease-in-out infinite;
+  }
+  
+  .typing-bubble span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-bubble span:nth-child(3) { animation-delay: 0.3s; }
+  
+  @keyframes typingDot {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+  
+  .input-bar {
+    background: #f0f2f5;
+    padding: 6px 8px;
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    border-top: 1px solid rgba(0,0,0,0.05);
+  }
+  
+  .wa-input-pill {
+    flex: 1;
+    background: white;
+    border-radius: 22px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    flex-direction: row-reverse;
+  }
+  
+  .input-icon { color: #54656f; flex-shrink: 0; display: flex; align-items: center; }
+  
+  .input-area {
+    flex: 1;
+    font-size: 14px;
+    color: #111;
+    text-align: right;
+    direction: rtl;
+    display: flex;
+    align-items: center;
+    min-height: 24px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.4;
+  }
+  
+  .input-placeholder { color: #9ca3af; }
+  
+  .input-cursor {
+    display: inline-block;
+    width: 1.5px;
+    height: 16px;
+    background: #00a884;
+    margin-right: 2px;
+    animation: blink 0.6s infinite;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  
+  .input-cursor.hidden { display: none; }
+  
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+  
+  .send-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #00a884;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+  }
+  
+  .send-btn.send-mode { background: #6F4CFC; }
+  .send-btn.pressed { animation: sendPress 0.3s ease; }
+  
+  @keyframes sendPress {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.85); }
+    100% { transform: scale(1); }
+  }
+  
+  /* ======= DASHBOARD ======= */
+  .dashboard-real {
+    background: #f8f9fc;
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 20px 60px rgba(111, 76, 252, 0.2);
+    position: relative;
+    width: 700px;
+    min-height: 620px;
+    direction: rtl;
+    text-align: right;
+  }
+  
+  /* ======= SIMPLE DASHBOARD (clean version) ======= */
+  .dashboard-simple {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(111, 76, 252, 0.2);
+    position: relative;
+    width: 460px;
+    min-height: 540px;
+    direction: rtl;
+    text-align: right;
+  }
+  
+  .dashboard-simple .dash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-direction: row;
+  }
+  
+  .dashboard-simple .dash-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+  
+  .dashboard-simple .dash-badge {
+    background: linear-gradient(135deg, #6F4CFC, #8b6bff);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .dashboard-simple .dash-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    animation: badgePulse 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes badgePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  
+  .dashboard-simple .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  
+  .dashboard-simple .stat-card {
+    background: #f9f7ff;
+    border-radius: 12px;
+    padding: 16px 14px;
+    text-align: center;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+  }
+  
+  .dashboard-simple .stat-card.active {
+    border-color: #6F4CFC;
+    background: linear-gradient(135deg, #ede9fe, #f5f3ff);
+  }
+  
+  .dashboard-simple .stat-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: #6F4CFC;
+    line-height: 1;
+  }
+  
+  .dashboard-simple .stat-label {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+  
+  .dashboard-simple .tasks-label {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  
+  .tasks-list-simple {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .task-simple {
+    background: #f9f7ff;
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    border-right: 3px solid #6F4CFC;
+    flex-direction: row;
+    gap: 10px;
+  }
+  
+  .task-simple-text {
+    flex: 1;
+    text-align: right;
+    color: #1a1a2e;
+    font-weight: 500;
+  }
+  
+  .task-simple .task-status {
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .task-simple .task-status.progress { background: #fef3c7; color: #b45309; }
+  .task-simple .task-status.done { background: #d1fae5; color: #047857; }
+  .task-simple .task-status.new {
+    background: linear-gradient(135deg, #6F4CFC, #8b6bff);
+    color: white;
+  }
+  
+  .new-task-simple {
+    opacity: 0;
+    transform: translateX(30px);
+    background: linear-gradient(135deg, #ede9fe, #f5f3ff);
+    border-right: 3px solid #6F4CFC;
+    position: relative;
+  }
+  
+  .new-task-simple.show {
+    animation: newTaskInSimple 0.6s ease forwards;
+  }
+  
+  .new-task-simple.show::before {
+    content: '';
+    position: absolute;
+    top: -2px; right: -2px; bottom: -2px; left: -2px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6F4CFC, #8b6bff);
+    z-index: -1;
+    opacity: 0;
+    animation: simpleGlow 0.8s ease forwards;
+  }
+  
+  @keyframes newTaskInSimple {
+    to { opacity: 1; transform: translateX(0); }
+  }
+  
+  @keyframes simpleGlow {
+    0% { opacity: 0; }
+    50% { opacity: 0.2; }
+    100% { opacity: 0; }
+  }
+  
+  .browser-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f0ecff;
+    margin-bottom: 16px;
+  }
+  
+  .browser-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green { background: #28c840; }
+  
+  .browser-url {
+    flex: 1;
+    background: #f9f7ff;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: #6F4CFC;
+    text-align: center;
+    margin: 0 10px;
+  }
+  
+  .dash-view { transition: opacity 0.5s ease, transform 0.5s ease; }
+  .dash-view.view-1 { display: block; }
+  .dash-view.view-2 { display: none; opacity: 0; transform: translateY(10px); }
+  .dash-view.view-2.active { display: block; opacity: 1; transform: translateY(0); animation: viewIn 0.5s ease forwards; }
+  .dash-view.view-1.hidden { display: none; }
+  
+  @keyframes viewIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .dabelu-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-direction: row;
+  }
+  
+  .new-task-btn {
+    background: #5e3ef0;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  
+  .dabelu-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-direction: row;
+  }
+  
+  .page-title { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+  .menu-icon { font-size: 16px; color: #6b7280; }
+  
+  .top-right-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-direction: row;
+  }
+  
+  .active-indicator {
+    background: #d1fae5;
+    color: #047857;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  
+  .status-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-direction: row;
+    gap: 12px;
+  }
+  
+  .filter-label-right { font-size: 12px; color: #6b7280; font-weight: 500; }
+  
+  .status-tabs { display: flex; gap: 6px; flex-direction: row; }
+  
+  .status-tab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    background: white;
+    border: 1px solid #e5e7eb;
+    flex-direction: row;
+    cursor: pointer;
+  }
+  
+  .status-tab.active {
+    color: #1a1a2e;
+    box-shadow: 0 0 0 1px #1a1a2e;
+  }
+  
+  .status-badge {
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+  }
+  
+  .status-badge.red { background: #ef4444; }
+  .status-badge.orange { background: #f97316; }
+  .status-badge.green { background: #10b981; }
+  
+  .user-filter-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    flex-direction: row;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f0ecff;
+  }
+  
+  .filter-label { font-size: 11px; color: #6b7280; font-weight: 500; }
+  
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px 4px 4px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1.5px solid #e5e7eb;
+    background: white;
+    color: #1a1a2e;
+    flex-direction: row;
+    cursor: pointer;
+  }
+  
+  .user-chip.active {
+    background: #1a1a2e;
+    color: white;
+    border-color: #1a1a2e;
+    padding: 4px 14px;
+  }
+  
+  .chip-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  
+  .chip-badge {
+    background: #ef4444;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 8px;
+    min-width: 16px;
+    text-align: center;
+  }
+  
+  .purple-bg { background: #9333ea; }
+  .blue-bg { background: #3b82f6; }
+  
+  .tasks-list-real { display: flex; flex-direction: column; gap: 10px; }
+  
+  .task-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-right: 3px solid #ef4444;
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  
+  .task-row-top { display: flex; justify-content: flex-start; }
+  .task-right { flex: 1; text-align: right; }
+  
+  .task-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+  
+  .task-check {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  
+  .task-badge-red {
+    background: #fee2e2;
+    color: #dc2626;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+  }
+  
+  .task-meta {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 10px;
+    flex-direction: row;
+    justify-content: flex-start;
+    margin-bottom: 4px;
+  }
+  
+  .meta-tag { padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 500; }
+  .meta-tag.pink { background: #fce7f3; color: #be185d; }
+  .meta-tag.green { background: #d1fae5; color: #047857; }
+  .meta-date { color: #dc2626; font-weight: 500; font-size: 10px; }
+  .meta-user { color: #6b7280; font-size: 10px; }
+  
+  .voice-note {
+    background: #f3f4f6;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 10px;
+    color: #6b7280;
+    margin: 6px 0;
+  }
+  
+  .task-actions {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+  
+  .act-btn {
+    padding: 4px 10px;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  
+  .act-play { color: #10b981; border-color: #a7f3d0; }
+  .act-check { color: #10b981; background: #d1fae5; border-color: #a7f3d0; }
+  .act-pin { color: #dc2626; }
+  .act-remind { color: #d97706; background: #fef3c7; border-color: #fde68a; }
+  .act-reject { color: #dc2626; background: #fee2e2; border-color: #fecaca; }
+  
+  .user-tasks-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  
+  .user-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f0ecff;
+    flex-direction: row;
+  }
+  
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-direction: row;
+  }
+  
+  .user-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  
+  .user-details { text-align: right; }
+  
+  .user-name { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 3px; }
+  
+  .user-stats {
+    display: flex;
+    gap: 8px;
+    font-size: 10px;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .user-stat { font-weight: 500; white-space: nowrap; }
+  .red-dot { color: #ef4444; }
+  .orange-dot { color: #f97316; }
+  .green-dot { color: #10b981; }
+  
+  .user-total { font-size: 11px; color: #6b7280; font-weight: 500; }
+  
+  .user-tasks-list {
+    padding: 14px;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .empty-state { text-align: center; color: #9ca3af; font-size: 13px; padding: 16px 0; }
+  
+  .real-task {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.9);
+    background: linear-gradient(135deg, #ede9fe, #f5f3ff);
+    border: 1.5px solid #6F4CFC;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-direction: row;
+    box-shadow: 
+      0 4px 15px rgba(111, 76, 252, 0.2),
+      0 0 0 0 rgba(111, 76, 252, 0.5);
+  }
+  
+  .real-task.show { 
+    animation: 
+      realTaskIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+      realTaskGlow 2s ease-out 0.7s forwards;
+  }
+  
+  @keyframes realTaskIn {
+    0% { opacity: 0; transform: translateY(-30px) scale(0.9); }
+    60% { opacity: 1; transform: translateY(5px) scale(1.02); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  
+  @keyframes realTaskGlow {
+    0% { box-shadow: 0 4px 15px rgba(111, 76, 252, 0.2), 0 0 0 0 rgba(111, 76, 252, 0.7); }
+    50% { box-shadow: 0 4px 15px rgba(111, 76, 252, 0.2), 0 0 0 15px rgba(111, 76, 252, 0); }
+    100% { box-shadow: 0 4px 15px rgba(111, 76, 252, 0.2), 0 0 0 0 rgba(111, 76, 252, 0); }
+  }
+  
+  .real-task-badge {
+    background: #6F4CFC;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  
+  .real-task-text { flex: 1; font-size: 12px; color: #1a1a2e; font-weight: 500; text-align: right; }
+  
+  /* Mini task style (compact row inside user cards) */
+  .mini-task {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #fafbfc;
+    border-radius: 8px;
+    border-right: 2.5px solid #ef4444;
+    flex-direction: row;
+  }
+  
+  .mini-task-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ef4444;
+    flex-shrink: 0;
+  }
+  
+  .mini-task-text {
+    flex: 1;
+    font-size: 12px;
+    color: #1a1a2e;
+    font-weight: 500;
+    text-align: right;
+  }
+  
+  .mini-task-badge {
+    background: #fee2e2;
+    color: #dc2626;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+  
+  /* ======= NOTIFICATION PHONE ======= */
+  .notif-screen {
+    background: 
+      radial-gradient(ellipse at 30% 20%, rgba(255, 200, 180, 0.3) 0%, transparent 40%),
+      radial-gradient(ellipse at 70% 80%, rgba(255, 180, 220, 0.25) 0%, transparent 40%),
+      linear-gradient(180deg, #2d3561 0%, #1e2a4a 40%, #15213d 100%);
+    width: 100%;
+    height: 100%;
+    border-radius: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Soft cloud-like orbs for depth */
+  .notif-screen::before {
+    content: '';
+    position: absolute;
+    top: 15%;
+    right: -20px;
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle, rgba(255, 220, 200, 0.12) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(20px);
+    pointer-events: none;
+  }
+  
+  .notif-screen::after {
+    content: '';
+    position: absolute;
+    bottom: 25%;
+    left: -30px;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, rgba(200, 190, 255, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(25px);
+    pointer-events: none;
+  }
+  
+  .notif-status-bar {
+    padding: 14px 24px 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    z-index: 5;
+  }
+  
+  .notif-status-bar .signal-bars span { background: white; }
+  .notif-status-bar .battery-icon { border-color: white; }
+  .notif-status-bar .battery-icon::after { background: white; }
+  .notif-status-bar .battery-icon .fill { background: white; }
+  
+  .notif-time {
+    color: white;
+    text-align: center;
+    padding-top: 50px;
+    font-size: 80px;
+    font-weight: 200;
+    letter-spacing: -3px;
+    line-height: 1;
+  }
+  
+  .notif-date {
+    color: rgba(255,255,255,0.8);
+    text-align: center;
+    font-size: 15px;
+    margin-top: 4px;
+    margin-bottom: 60px;
+    font-weight: 500;
+  }
+  
+  .notification {
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(20px);
+    margin: 0 14px;
+    border-radius: 18px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    opacity: 0;
+    transform: translateY(-40px) scale(0.85);
+    flex-direction: row;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+  }
+  
+  .notification.show {
+    animation: 
+      notifIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+      notifGlow 2s ease-out 0.6s forwards;
+  }
+  
+  @keyframes notifIn {
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  
+  @keyframes notifGlow {
+    0% { box-shadow: 0 15px 40px rgba(0,0,0,0.4), 0 0 0 0 rgba(111, 76, 252, 0.8); }
+    50% { box-shadow: 0 15px 40px rgba(0,0,0,0.4), 0 0 0 12px rgba(111, 76, 252, 0); }
+    100% { box-shadow: 0 15px 40px rgba(0,0,0,0.4), 0 0 0 0 rgba(111, 76, 252, 0); }
+  }
+  
+  .notif-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    padding: 3px;
+  }
+  
+  .notif-icon img { width: 100%; height: 100%; object-fit: contain; }
+  
+  .notif-body { flex: 1; min-width: 0; text-align: right; }
+  
+  .notif-app-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .notif-app { font-weight: 700; color: #6F4CFC; font-size: 13px; letter-spacing: 0.3px; }
+  .notif-title { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 3px; letter-spacing: -0.1px; }
+  .notif-text { font-size: 12px; color: #4b5563; line-height: 1.4; }
+  
+  /* Weather widget on lock screen */
+  .lock-widget {
+    margin: 0 14px 20px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-direction: row-reverse;
+  }
+  
+  .widget-left { text-align: right; }
+  .widget-right { text-align: left; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  
+  .widget-temp {
+    color: white;
+    font-size: 32px;
+    font-weight: 300;
+    line-height: 1;
+  }
+  
+  .widget-desc {
+    color: rgba(255,255,255,0.75);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  
+  .widget-icon {
+    font-size: 26px;
+  }
+  
+  .widget-range {
+    color: rgba(255,255,255,0.75);
+    font-size: 10px;
+  }
+  
+  /* Swipe up hint */
+  .swipe-hint {
+    position: absolute;
+    bottom: 40px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: rgba(255,255,255,0.55);
+    font-size: 11px;
+    font-weight: 400;
+  }
+  
+  .lock-indicator {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 5px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 3px;
+  }
+  
+  /* Restart button - overlay play button inside the phone, like video replay */
+  .restart-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.5);
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 200;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 8px 20px rgba(0,0,0,0.5));
+  }
+  
+  .restart-btn svg {
+    display: block;
+  }
+  
+  .restart-btn circle {
+    transition: fill 0.3s ease;
+  }
+  
+  .restart-btn.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  
+  .restart-btn:hover {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  
+  .restart-btn:hover circle {
+    fill: rgba(111, 76, 252, 0.85);
+  }
+  
+  /* Darken the lock screen slightly when replay button shows (video-player feel) */
+  .replay-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 36px;
+    z-index: 150;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .replay-overlay.active {
+    opacity: 1;
+  }
+  
+  @keyframes btnIn { to { opacity: 1; } }
+</style>
+</head>
+<body>
+
+<div class="scene-container">
+  <!-- Stage: scenes appear here one after another -->
+  <div class="stage">
+    
+    <!-- SCENE 1: WhatsApp -->
+    <div class="scene active" id="scene1">
+      <div class="context-label">
+        <div class="context-icon">💬</div>
+        <div class="context-text">
+          <div class="context-title">שליחת משימה לבוט</div>
+        </div>
+      </div>
+      <div class="phone-frame">
+        <div class="phone-notch"><div class="notch-camera"></div></div>
+        <div class="phone-screen">
+          <div class="status-bar">
+            <div class="time">9:00</div>
+            <div class="status-icons">
+              <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+              <span>5G</span>
+              <div class="battery-icon"><div class="fill"></div></div>
+            </div>
+          </div>
+          
+          <div class="wa-header">
+            <div class="wa-header-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#54656f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: scaleX(-1);">
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <polyline points="10 19 3 12 10 5"/>
+              </svg>
+            </div>
+            <div class="wa-contact-info">
+              <div class="wa-contact-name">Dabelu - ניהול משרדים חכם</div>
+              <div class="wa-contact-subtitle">חשבון עסקי</div>
+            </div>
+            <div class="wa-contact-avatar">
+              <img src="data:image/png;base64,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" alt="Dabelu">
+            </div>
+          </div>
+          
+          <div class="chat-messages" id="chatMessages">
+            <div class="date-chip">היום</div>
+            <div class="typing-bubble" id="typingBubble">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+          
+          <div class="input-bar">
+            <div class="send-btn" id="sendBtn">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+            </div>
+            <div class="wa-input-pill">
+              <span class="input-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#54656f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3H8a5 5 0 0 0-5 5v8a5 5 0 0 0 5 5h8a5 5 0 0 0 5-5V9l-6-6z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/><circle cx="9" cy="13" r="0.5" fill="#54656f"/><circle cx="14" cy="13" r="0.5" fill="#54656f"/><path d="M9 16c1 1 2 1.5 3 1.5s2-0.5 3-1.5"/></svg>
+              </span>
+              <div class="input-area" id="inputArea">
+                <span id="inputText"></span><span class="input-cursor hidden" id="inputCursor"></span><span class="input-placeholder" id="inputPlaceholder">הודעה</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- SCENE 2: Dashboard - Simple & Clean -->
+    <div class="scene" id="scene2">
+      <div class="context-label">
+        <div class="context-icon">⚙️</div>
+        <div class="context-text">
+          <div class="context-title">יצירת משימה במערכת</div>
+        </div>
+      </div>
+      <div class="dashboard-simple">
+        <div class="browser-bar">
+          <div class="browser-dot dot-red"></div>
+          <div class="browser-dot dot-yellow"></div>
+          <div class="browser-dot dot-green"></div>
+          <div class="browser-url">app.dabelu.co.il/dashboard</div>
+        </div>
+        <div class="dash-header">
+          <div class="dash-title">לוח משימות - רותי</div>
+          <div class="dash-badge">חי</div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value">23</div>
+            <div class="stat-label">טופלו</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">7</div>
+            <div class="stat-label">בביצוע</div>
+          </div>
+          <div class="stat-card active">
+            <div class="stat-value" id="pendingCount">3</div>
+            <div class="stat-label">חדשות</div>
+          </div>
+        </div>
+        <div class="tasks-label">משימות פעילות</div>
+        <div class="tasks-list-simple">
+          <div class="task-simple">
+            <div class="task-simple-text">דני כהן - בדיקת מענקים</div>
+            <div class="task-status progress">בביצוע</div>
+          </div>
+          <div class="task-simple">
+            <div class="task-simple-text">אבי לוי - דיווח מקדמות</div>
+            <div class="task-status done">טופל</div>
+          </div>
+          <div class="task-simple">
+            <div class="task-simple-text">מיכל שטרן - דווח מקדמות</div>
+            <div class="task-status progress">בביצוע</div>
+          </div>
+          <div class="task-simple new-task-simple" id="newTaskSimple">
+            <div class="task-simple-text">🆕 לישראל כהן - לבדוק מהי יתרת החוב ולעדכן אותו</div>
+            <div class="task-status new">חדש</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- SCENE 3: Notification -->
+    <div class="scene" id="scene3">
+      <div class="context-label">
+        <div class="context-icon">🔔</div>
+        <div class="context-text">
+          <div class="context-title">הודעה לעובד</div>
+        </div>
+      </div>
+      <div class="phone-frame">
+        <div class="phone-notch"><div class="notch-camera"></div></div>
+        <div class="notif-screen">
+          <div class="notif-status-bar">
+            <div class="time">9:00</div>
+            <div class="status-icons">
+              <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+              <span style="color:white">5G</span>
+              <div class="battery-icon"><div class="fill"></div></div>
+            </div>
+          </div>
+          <div class="notif-time">9:00</div>
+          <div class="notif-date">יום ראשון, 24 באפריל</div>
+          
+          <!-- Weather widget for realism -->
+          <div class="lock-widget">
+            <div class="widget-left">
+              <div class="widget-temp">18°</div>
+              <div class="widget-desc">תל אביב · בהיר</div>
+            </div>
+            <div class="widget-right">
+              <div class="widget-icon">☀️</div>
+              <div class="widget-range">H:22° L:14°</div>
+            </div>
+          </div>
+          
+          <div class="notification" id="notif">
+            <div class="notif-icon">
+              <img src="data:image/png;base64,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" alt="Dabelu">
+            </div>
+            <div class="notif-body">
+              <div class="notif-app-row">
+                <span class="notif-app">Dabelu</span>
+                <span>עכשיו</span>
+              </div>
+              <div class="notif-title">משימה חדשה התקבלה</div>
+              <div class="notif-text">לישראל כהן - לבדוק מהי יתרת החוב ולעדכן אותו</div>
+            </div>
+          </div>
+          <div class="swipe-hint">החלקה כלפי מעלה לפתיחה</div>
+          <div class="lock-indicator"></div>
+          
+          <!-- Darkening overlay for replay mode -->
+          <div class="replay-overlay" id="replayOverlay"></div>
+          
+          <!-- Play button overlay for replay - appears on top of the lock screen -->
+          <button class="restart-btn" id="restartBtn" onclick="replayDemo()" aria-label="הפעל שוב">
+            <svg viewBox="0 0 64 64" width="72" height="72">
+              <circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.65)" stroke="white" stroke-width="2"/>
+              <polygon points="26,20 26,44 46,32" fill="white"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Progress dots showing current scene -->
+    <div class="progress-dots">
+      <div class="progress-dot active" id="dot1"></div>
+      <div class="progress-dot" id="dot2"></div>
+      <div class="progress-dot" id="dot3"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const message = "לרותי - לישראל כהן לבדוק מהי יתרת החוב ולעדכן אותו";
+  const inputPlaceholder = document.getElementById('inputPlaceholder');
+  const inputText = document.getElementById('inputText');
+  const inputCursor = document.getElementById('inputCursor');
+  const sendBtn = document.getElementById('sendBtn');
+  const chatMessages = document.getElementById('chatMessages');
+  const typingBubble = document.getElementById('typingBubble');
+  
+  let charIndex = 0;
+  
+  // Helper: transition between scenes
+  function showScene(sceneNum) {
+    // Deactivate all scenes
+    document.querySelectorAll('.scene').forEach(s => {
+      if (s.classList.contains('active')) {
+        s.classList.remove('active');
+        s.classList.add('exiting');
+        setTimeout(() => s.classList.remove('exiting'), 700);
+      }
+    });
+    
+    // Activate target scene
+    setTimeout(() => {
+      document.getElementById('scene' + sceneNum).classList.add('active');
+    }, 500);
+    
+    // Update progress dots
+    for (let i = 1; i <= 3; i++) {
+      const dot = document.getElementById('dot' + i);
+      if (!dot) continue;
+      dot.classList.remove('active', 'done');
+      if (i < sceneNum) dot.classList.add('done');
+      else if (i === sceneNum) dot.classList.add('active');
+    }
+  }
+  
+  // Replay the demo from the beginning - resets all state
+  function replayDemo() {
+    // Reset charIndex
+    charIndex = 0;
+    
+    // Hide restart button + clear replay mode dim
+    const restartBtn = document.getElementById('restartBtn');
+    if (restartBtn) restartBtn.classList.remove('show');
+    const overlay = document.getElementById('replayOverlay');
+    if (overlay) overlay.classList.remove('active');
+    
+    // Reset scene 1 - clear messages, reset input
+    const chatBody = document.getElementById('chatMessages') || document.querySelector('.wa-body');
+    if (chatBody) {
+      // Remove all sent and bot messages, keep only the typing bubble
+      const messages = chatBody.querySelectorAll('.msg-bubble, .wa-message');
+      messages.forEach(m => m.remove());
+    }
+    if (inputText) inputText.textContent = '';
+    if (inputCursor) inputCursor.classList.add('hidden');
+    if (inputPlaceholder) inputPlaceholder.style.display = 'inline';
+    if (sendBtn) {
+      sendBtn.classList.remove('send-mode', 'pressed');
+      sendBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>';
+    }
+    
+    // Reset scene 2 - reset counter and hide new task
+    const pendingCount = document.getElementById('pendingCount');
+    if (pendingCount) {
+      pendingCount.textContent = '3';
+      pendingCount.style.transform = '';
+      pendingCount.style.color = '';
+    }
+    
+    const newTaskSimple = document.getElementById('newTaskSimple');
+    if (newTaskSimple) {
+      newTaskSimple.classList.remove('show');
+    }
+    
+    // Reset scene 3 - hide notification
+    const notif = document.getElementById('notif');
+    if (notif) notif.classList.remove('show');
+    
+    // Show scene 1 again
+    showScene(1);
+    
+    // Start again
+    setTimeout(startTyping, 600);
+  }
+  
+  // SCENE 1: WhatsApp - typing and sending
+  function startTyping() {
+    inputPlaceholder.style.display = 'none';
+    inputCursor.classList.remove('hidden');
+    setTimeout(() => {
+      sendBtn.classList.add('send-mode');
+      sendBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+    }, 100);
+    setTimeout(typeNextChar, 250);
+  }
+  
+  function typeNextChar() {
+    if (charIndex < message.length) {
+      inputText.textContent += message.charAt(charIndex);
+      charIndex++;
+      const delay = 40 + Math.random() * 50;
+      setTimeout(typeNextChar, delay);
+    } else {
+      setTimeout(sendMessage, 500);
+    }
+  }
+  
+  function sendMessage() {
+    sendBtn.classList.add('pressed');
+    setTimeout(() => {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'msg-bubble sent show';
+      msgDiv.innerHTML = message + '<div class="msg-time"><span class="check-icon">✓✓</span><span>9:00</span></div>';
+      chatMessages.insertBefore(msgDiv, typingBubble);
+      inputText.textContent = '';
+      inputCursor.classList.add('hidden');
+      inputPlaceholder.style.display = 'inline';
+      sendBtn.classList.remove('pressed');
+      setTimeout(() => {
+        sendBtn.classList.remove('send-mode');
+        sendBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>';
+      }, 300);
+      setTimeout(showBotTyping, 600);
+    }, 150);
+  }
+  
+  function showBotTyping() {
+    typingBubble.classList.add('show');
+    setTimeout(showBotReply, 1200);
+  }
+  
+  function showBotReply() {
+    typingBubble.classList.remove('show');
+    const botMsg = document.createElement('div');
+    botMsg.className = 'msg-bubble bot show';
+    botMsg.innerHTML = 
+      '✅ המשימה נוצרה בהצלחה!<br>' +
+      '📝 לרותי - לישראל כהן לבדוק מהי יתרת החוב ולעדכן אותו' +
+      '<div class="msg-time"><span>9:00</span></div>';
+    chatMessages.insertBefore(botMsg, typingBubble);
+    
+    // After 2.5 sec, transition to scene 2 (slower - gives time to read)
+    setTimeout(() => {
+      showScene(2);
+      setTimeout(startDashboardAnimation, 1200);
+    }, 2500);
+  }
+  
+  // SCENE 2: Dashboard animation
+  function startDashboardAnimation() {
+    // Wait 2 seconds for user to see the simple dashboard with stats
+    setTimeout(() => {
+      // Animate the "חדשות" counter from 3 to 4
+      const pendingCount = document.getElementById('pendingCount');
+      if (pendingCount) {
+        pendingCount.style.transition = 'all 0.5s ease';
+        pendingCount.style.transform = 'scale(1.4)';
+        pendingCount.style.color = '#8b6bff';
+        setTimeout(() => {
+          pendingCount.textContent = '4';
+        }, 250);
+        setTimeout(() => {
+          pendingCount.style.transform = 'scale(1)';
+          pendingCount.style.color = '';
+        }, 500);
+      }
+      
+      // Show the new task with animation
+      const newTask = document.getElementById('newTaskSimple');
+      if (newTask) {
+        setTimeout(() => {
+          newTask.classList.add('show');
+        }, 300);
+      }
+      
+      // Wait 3 seconds after task appears so user can absorb it, then go to scene 3
+      setTimeout(() => {
+        showScene(3);
+        setTimeout(() => {
+          document.getElementById('notif').classList.add('show');
+          setTimeout(() => {
+            const overlay = document.getElementById('replayOverlay');
+            if (overlay) overlay.classList.add('active');
+            document.getElementById('restartBtn').classList.add('show');
+          }, 2500);
+        }, 1800);
+      }, 3500);
+    }, 2000);
+  }
+  
+  // Start the whole flow when the demo scrolls into view
+  // Only plays once per visit, but user can click "הפעל שוב" button to replay
+  let hasPlayed = false;
+  
+  function playDemo() {
+    if (hasPlayed) return;
+    hasPlayed = true;
+    setTimeout(startTyping, 400);
+  }
+  
+  // Use Intersection Observer to trigger when demo is visible on screen
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          playDemo();
+          observer.disconnect(); // Stop observing after first trigger
+        }
+      });
+    }, { threshold: 0.3 });
+    
+    const stage = document.querySelector('.stage');
+    if (stage) observer.observe(stage);
+  } else {
+    // Fallback for old browsers - just start immediately
+    playDemo();
+  }
+</script>
+
+</body>
+</html>

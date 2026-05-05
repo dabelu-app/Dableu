@@ -5,6 +5,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+    // subcollections של users (tasks, team, clients וכו')
+    match /users/{userId}/{document=**} {
+      allow read, write: if true;
+    }
     match /tasks/{taskId} {
       allow read, write: if true;
     }
@@ -12,6 +16,13 @@ service cloud.firestore {
       allow read, write: if true;
     }
     match /clients/{clientId} {
+      allow read, write: if true;
+    }
+    // משימות משותפות מעסיק↔עובד
+    match /sharedTasks/{taskId} {
+      allow read, write: if true;
+    }
+    match /sharedTasks/{taskId}/{document=**} {
       allow read, write: if true;
     }
     match /{document=**} {
