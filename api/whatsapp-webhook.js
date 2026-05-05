@@ -55,12 +55,19 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
   const cachedWaName = fields.waName?.stringValue || '';
   if (cachedWaName && !/^\d/.test(cachedWaName)) { console.log('[ownerName] from waName:', cachedWaName); return cachedWaName; }
 
+  // helper: שם מובהק מתוך שדות מסמך
+  function pickName(f) {
+    return (f?.name?.stringValue || '').trim()
+        || (f?.officeName?.stringValue || '').trim()
+        || '';
+  }
+
   // 1. שם ישירות מהמסמך שנמצא
-  const fromDoc = fields.name?.stringValue || fields.officeName?.stringValue || '';
+  const fromDoc = pickName(fields);
   console.log('[ownerName] step1 fromDoc:', fromDoc);
   if (fromDoc) return fromDoc;
 
-  // 2. חיפוש לפי email בכל המסמכים — מוצא את מסמך ההרשמה הראשי שיש בו שם
+  // 2. חיפוש לפי email בכל המסמכים — מוצא כל מסמך עם name/officeName
   const docEmail = fallbackDoc?.fields?.email?.stringValue || '';
   if (docEmail) {
     try {
@@ -77,7 +84,7 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
       const d = await r.json();
       if (Array.isArray(d)) {
         for (const item of d) {
-          const n = item?.document?.fields?.name?.stringValue;
+          const n = pickName(item?.document?.fields);
           if (n) return n;
         }
       }
@@ -103,7 +110,7 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
           }
         );
         const d = await r.json();
-        const n = Array.isArray(d) && d[0]?.document?.fields?.name?.stringValue;
+        const n = d?.[0]?.document?.fields ? pickName(d[0].document.fields) : '';
         if (n) return n;
       } catch(e) {}
     }
