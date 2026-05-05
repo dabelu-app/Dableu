@@ -47,17 +47,44 @@ async function getUserDoc(phone) {
 
 // חיפוש שם בעל עסק לפי מספר טלפון — מנסה waPhone ו-phone בנוסף ל-chatId
 async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
-  // 1. נסה מהמסמך שכבר יש
+  // 1. שם מהמסמך שנמצא (chatId lookup)
   const fromDoc = fallbackDoc?.fields?.name?.stringValue || fallbackDoc?.fields?.officeName?.stringValue || '';
+  console.log('[resolveOwnerName] phone:', phone, 'fromDoc:', fromDoc, 'senderDisplayName:', senderDisplayName);
+  console.log('[resolveOwnerName] userDoc fields:', JSON.stringify(Object.keys(fallbackDoc?.fields || {})));
   if (fromDoc) return fromDoc;
 
-  // 2. חפש לפי waPhone / phone (כך האפליקציה שומרת את מספר הטלפון)
+  // 2. אם יש email במסמך — חפש משתמש רשום לפי email (מסמך הרשמה)
+  const docEmail = fallbackDoc?.fields?.email?.stringValue || '';
+  if (docEmail) {
+    try {
+      const r = await fetch(
+        `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ structuredQuery: {
+            from: [{ collectionId: 'users' }],
+            where: { fieldFilter: { field: { fieldPath: 'email' }, op: 'EQUAL', value: { stringValue: docEmail.toLowerCase() } } },
+            limit: 5
+          }})
+        }
+      );
+      const d = await r.json();
+      console.log('[resolveOwnerName] email lookup result count:', Array.isArray(d) ? d.length : 'not array');
+      if (Array.isArray(d)) {
+        for (const item of d) {
+          const n = item?.document?.fields?.name?.stringValue;
+          if (n) { console.log('[resolveOwnerName] found by email:', n); return n; }
+        }
+      }
+    } catch(e) { console.error('[resolveOwnerName] email lookup error:', e.message); }
+  }
+
+  // 3. חפש לפי waPhone / phone בכל הפורמטים
   const variants = [phone];
-  if (phone.startsWith('972')) variants.push('0' + phone.slice(3));
-  else if (phone.startsWith('0')) variants.push('972' + phone.slice(1));
+  if (phone.startsWith('972')) { variants.push('0' + phone.slice(3)); variants.push(phone.slice(3)); }
+  else if (phone.startsWith('0')) { variants.push('972' + phone.slice(1)); variants.push(phone.slice(1)); }
 
   for (const ph of variants) {
-    for (const field of ['waPhone', 'phone']) {
+    for (const field of ['waPhone', 'phone', 'chatId']) {
       try {
         const r = await fetch(
           `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
@@ -71,14 +98,16 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
         );
         const d = await r.json();
         const n = Array.isArray(d) && d[0]?.document?.fields?.name?.stringValue;
-        if (n) return n;
+        if (n) { console.log('[resolveOwnerName] found by', field, ph, ':', n); return n; }
       } catch(e) {}
     }
   }
 
-  // 3. שם תצוגה בווצאפ — רק אם זה לא מספר טלפון
-  if (senderDisplayName && !/^\d/.test(senderDisplayName)) return senderDisplayName;
+  // 4. שם תצוגה וואטסאפ — אם לא מספר ולא chatId
+  const cleanSender = (senderDisplayName || '').replace(/@.*/, '').trim();
+  if (cleanSender && !/^\d/.test(cleanSender)) { console.log('[resolveOwnerName] using senderName:', cleanSender); return cleanSender; }
 
+  console.log('[resolveOwnerName] no name found, returning empty');
   return '';
 }
 
