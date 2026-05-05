@@ -209,32 +209,50 @@ async function extractPersonName(text) {
 // ───────────────────────────────────────────
 // סיווג הודעה (Groq)
 // ───────────────────────────────────────────
-// חישוב מיפוי ימי שבוע עבריים → תאריכים (כך הAI לא צריך לחשב בעצמו)
-function buildHebrewDatesMap() {
-  const hebrewDays = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-  const now = new Date();
-  // Israel timezone offset (UTC+3)
-  const israelNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
-  const lines = [];
-  for (let i = 1; i <= 8; i++) {
-    const d = new Date(israelNow);
-    d.setDate(israelNow.getDate() + i);
-    const dayName = hebrewDays[d.getDay()];
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const dd = String(d.getDate()).padStart(2,'0');
-    lines.push(`יום ${dayName} = ${yyyy}-${mm}-${dd}`);
+// המרת ימי שבוע עבריים לתאריכים ב-JavaScript — לפני שהטקסט נשלח לAI
+function resolveHebrewDates(text) {
+  // ימי שבוע: getDay() מחזיר 0=ראשון, 1=שני, ... 6=שבת
+  const DAY_MAP = { 'ראשון':0, 'שני':1, 'שלישי':2, 'רביעי':3, 'חמישי':4, 'שישי':5, 'שבת':6 };
+
+  // זמן ישראל (UTC+3 בקיץ)
+  const nowUtc = Date.now();
+  const ISRAEL_OFFSET = 3 * 60 * 60 * 1000;
+  const ilMs   = nowUtc + ISRAEL_OFFSET;
+  const ilDate = new Date(ilMs);
+  const todayDayNum      = ilDate.getUTCDay();   // 0–6
+  const todayYMD = toYMD(ilDate);
+
+  function toYMD(d) {
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
   }
-  // מחר והיום
-  const tom = new Date(israelNow); tom.setDate(israelNow.getDate()+1);
-  const todayStr = `${israelNow.getFullYear()}-${String(israelNow.getMonth()+1).padStart(2,'0')}-${String(israelNow.getDate()).padStart(2,'0')}`;
-  const tomStr   = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
-  return { datesMap: lines.join(', '), todayStr, tomStr, dayName: hebrewDays[israelNow.getDay()] };
+  function addDays(ms, n) { return new Date(ms + n * 86400000); }
+
+  let out = text;
+
+  // מחר / היום
+  out = out.replace(/\bמחר\b/g, toYMD(addDays(ilMs, 1)));
+  out = out.replace(/\bהיום\b/g, todayYMD);
+
+  // "יום חמישי" / "ביום חמישי" / "ליום חמישי" / "חמישי" לבד
+  for (const [hName, targetDayNum] of Object.entries(DAY_MAP)) {
+    // מחפש את שם היום, עם או בלי "יום" לפניו
+    const re = new RegExp(`(?:יום\\s+)?${hName}`, 'g');
+    out = out.replace(re, () => {
+      let diff = targetDayNum - todayDayNum;
+      if (diff <= 0) diff += 7;         // תמיד קדימה (אם היום שישי → שישי הבא)
+      return toYMD(addDays(ilMs, diff));
+    });
+  }
+
+  return out;
 }
 
 async function classifyMessage(text) {
-  const { datesMap, todayStr, tomStr, dayName } = buildHebrewDatesMap();
-  const todayDisplay = new Date().toLocaleDateString('he-IL', { weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone:'Asia/Jerusalem' });
+  // המרה מקדימה — ה-AI רואה תאריכים מוכנים, לא שמות ימים
+  const preprocessed = resolveHebrewDates(text);
+  const todayDisplay  = new Date().toLocaleDateString('he-IL', {
+    weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone:'Asia/Jerusalem'
+  });
   try {
     const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST',
@@ -243,11 +261,8 @@ async function classifyMessage(text) {
         model:'llama-3.1-8b-instant',
         messages:[
           { role:'system', content:
-`היום הוא ${todayDisplay} (${todayStr}). מחר = ${tomStr}.
-מיפוי ימי שבוע מדויק לשבוע הקרוב: ${datesMap}.
-השתמש רק בתאריכים מהמיפוי הזה — אל תחשב בעצמך!
-
-אתה מסווג הודעות בעברית למשרד יעוץ מס.
+`היום הוא ${todayDisplay}. אתה מסווג הודעות בעברית למשרד יעוץ מס.
+שים לב: תאריכים בהודעה כבר בפורמט YYYY-MM-DD — השתמש בהם בדיוק.
 
 קטגוריות:
 - "appointment" - בקשה לפגישה / תור / להיפגש / קביעה
@@ -255,7 +270,6 @@ async function classifyMessage(text) {
 - "invalid" - רק הודעות ריקות / ברכות קצרות ללא שום תוכן עבודה ("שלום", "היי", "בוקר טוב", "תודה", "ok", "123", "test")
 
 כלל ברזל: כל ספק → "task"! עדיף משימה מיותרת מאשר לאבד מידע.
-
 סימני פגישה: פגישה, תור, נפגש, להיפגש, קבע, קביעת, מתי פנוי, אפשר לקבוע, נתראה
 
 החזר JSON בלבד (ללא הסברים נוספים):
@@ -268,11 +282,10 @@ async function classifyMessage(text) {
   "title": "תוכן ההודעה המלא בדיוק — ללא שם עובד בלבד מהתחלה"
 }
 
-לפגישות: חלץ תאריך לפי המיפוי למעלה, שעה, שם הלקוח (אחרי "עם"). null אם לא צוין.
-למשימות: אם ההודעה כוללת שם של אדם שאליו המשימה מיועדת (לפלוני / עבור / ל[שם] / [שם] צריך) — שמו → assignee. ב-title: שמור את כל המלל המקורי, הסר רק את שם העובד מהתחלה.
-אם לא מצוין עובד ברור — assignee: null`
+לפגישות: חלץ תאריך YYYY-MM-DD, שעה, שם הלקוח (אחרי "עם"). null אם לא צוין.
+למשימות: assignee = שם עובד אם מצוין, אחרת null. title = כל המלל ללא שם עובד מהתחלה.`
           },
-          { role:'user', content:text }
+          { role:'user', content: preprocessed }
         ],
         max_tokens:200, temperature:0
       })
