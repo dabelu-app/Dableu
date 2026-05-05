@@ -840,11 +840,11 @@ function buildInviteMessage(ownerName, date, time) {
   // displayName: שם הבעלים, או 'העסק' כ-fallback מוחלט
   const displayName = ownerName || 'העסק';
   const lines = [
-    `📅 ${displayName} מזמין/ת אותך לפגישה!`,
+    `📅 *${displayName}* מזמין/ת אותך לפגישה!`,
     ''
   ];
-  if (dateStr) lines.push(`📅 תאריך: ${dateStr}`);
-  if (time)    lines.push(`🕐 שעה: ${time}`);
+  if (dateStr) lines.push(`🗓 ${dateStr}`);
+  if (time)    lines.push(`🕐 בשעה ${time}`);
   lines.push('', 'נתראה! 👋');
   return lines.join('\n');
 }
