@@ -616,7 +616,7 @@ function formatDateHebrew(dateStr) {
 // עזר: אחרי שיש תאריך+שעה+שם — בדוק אם יש מייל
 // אם כן → קבע. אם לא → שאל פרטי קשר.
 // ───────────────────────────────────────────
-async function tryFinalize(chatId, userDocName, pending, senderCalId, res, userId) {
+async function tryFinalize(chatId, userDocName, pending, senderCalId, res, userId, ownerName) {
   if (pending.withEmail || pending.withWhatsapp) {
     if (pending.withWhatsapp && !pending.withEmail) {
       const phoneClean = pending.withWhatsapp.replace(/[-\s+]/g, '');
@@ -624,7 +624,7 @@ async function tryFinalize(chatId, userDocName, pending, senderCalId, res, userI
       const dateStr = formatDateHebrew(pending.date || '');
       const timeStr = pending.time ? ` בשעה ${pending.time}` : '';
       await sendWhatsAppReply(waId,
-        `📅 זימון לפגישה!\n\nנקבעה לך פגישה${timeStr}\n${dateStr}\n\nנתראה! 👋`
+        `📅 זימון לפגישה!\n\nנקבעה לך פגישה${ownerName ? ' עם '+ownerName : ''}${timeStr}\n${dateStr}\n\nנתראה! 👋`
       ).catch(()=>{});
     }
     await finalizeAppointment(chatId, userDocName, pending, senderCalId, userId);
@@ -668,6 +668,7 @@ module.exports = async (req, res) => {
   const clientEmail  = userDoc.fields?.email?.stringValue  || '';
   const clientName   = userDoc.fields?.name?.stringValue   || senderName;
   const senderCalId  = userDoc.fields?.googleCalendarId?.stringValue || '';
+  const ownerName    = userDoc.fields?.name?.stringValue || userDoc.fields?.officeName?.stringValue || senderName; // שם בעל העסק
 
   // ── pending מתוך מסמך המשתמש ──
   const pendingStr = userDoc.fields?.pendingAppt?.stringValue || '';
@@ -698,7 +699,7 @@ module.exports = async (req, res) => {
       const upd = { ...pending, date: parsed.date, time: parsed.time || pending.time || '' };
 
       if (upd.date && upd.time && upd.withName) {
-        return tryFinalize(chatId, userDocName, upd, senderCalId, res, userDocId);
+        return tryFinalize(chatId, userDocName, upd, senderCalId, res, userDocId, ownerName);
       }
       if (upd.date && upd.time && !upd.withName) {
         const clients = await getClients(userDocId);
@@ -725,7 +726,7 @@ module.exports = async (req, res) => {
       const upd = { ...pending, time };
 
       if (upd.withName) {
-        return tryFinalize(chatId, userDocName, upd, senderCalId, res, userDocId);
+        return tryFinalize(chatId, userDocName, upd, senderCalId, res, userDocId, ownerName);
       }
       const clients = await getClients(userDocId);
       const list = clients.slice(0,20).map((c,i)=>`${i+1}. ${c.name}`).join('\n');
@@ -770,7 +771,7 @@ module.exports = async (req, res) => {
           const dateStr = formatDateHebrew(upd.date || '');
           const timeStr = upd.time ? ` בשעה ${upd.time}` : '';
           await sendWhatsAppReply(waId,
-            `📅 זימון לפגישה!\n\nנקבעה לך פגישה${timeStr}\n${dateStr}\n\nנתראה! 👋`
+            `📅 זימון לפגישה!\n\nנקבעה לך פגישה${ownerName ? ' עם '+ownerName : ''}${timeStr}\n${dateStr}\n\nנתראה! 👋`
           ).catch(()=>{});
         }
         await finalizeAppointment(chatId, userDocName, upd, senderCalId, userDocId);
@@ -810,7 +811,7 @@ module.exports = async (req, res) => {
         const dateStr = formatDateHebrew(pending.date);
         const timeStr = pending.time ? ` בשעה ${pending.time}` : '';
         await sendWhatsAppReply(waId,
-          `📅 זימון לפגישה!\n\nנקבעה לך פגישה${timeStr}\n📋 ${pending.title||'פגישה'}\n${dateStr}\n\nנתראה! 👋`
+          `📅 זימון לפגישה!\n\nנקבעה לך פגישה${ownerName ? ' עם '+ownerName : ''}${timeStr}\n📋 ${pending.title||'פגישה'}\n${dateStr}\n\nנתראה! 👋`
         );
         await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
         return res.status(200).send('ok');
@@ -928,7 +929,7 @@ module.exports = async (req, res) => {
     // ── הכל ידוע + לקוח נמצא ──
     if (hasDate && hasTime && hasMatch) {
       const upd = { date:classified.date, time:classified.time, title:apptTitle, ...knownWith };
-      return tryFinalize(chatId, userDocName, upd, senderCalId, res, userDocId);
+      return tryFinalize(chatId, userDocName, upd, senderCalId, res, userDocId, ownerName);
     }
 
     // ── תאריך+שעה ידועים, שם צוין אבל לא נמצא ──
