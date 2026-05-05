@@ -45,6 +45,43 @@ async function getUserDoc(phone) {
   return null;
 }
 
+// חיפוש שם בעל עסק לפי מספר טלפון — מנסה waPhone ו-phone בנוסף ל-chatId
+async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
+  // 1. נסה מהמסמך שכבר יש
+  const fromDoc = fallbackDoc?.fields?.name?.stringValue || fallbackDoc?.fields?.officeName?.stringValue || '';
+  if (fromDoc) return fromDoc;
+
+  // 2. חפש לפי waPhone / phone (כך האפליקציה שומרת את מספר הטלפון)
+  const variants = [phone];
+  if (phone.startsWith('972')) variants.push('0' + phone.slice(3));
+  else if (phone.startsWith('0')) variants.push('972' + phone.slice(1));
+
+  for (const ph of variants) {
+    for (const field of ['waPhone', 'phone']) {
+      try {
+        const r = await fetch(
+          `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ structuredQuery: {
+              from: [{ collectionId: 'users' }],
+              where: { fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: { stringValue: ph } } },
+              limit: 1
+            }})
+          }
+        );
+        const d = await r.json();
+        const n = Array.isArray(d) && d[0]?.document?.fields?.name?.stringValue;
+        if (n) return n;
+      } catch(e) {}
+    }
+  }
+
+  // 3. שם תצוגה בווצאפ — רק אם זה לא מספר טלפון
+  if (senderDisplayName && !/^\d/.test(senderDisplayName)) return senderDisplayName;
+
+  return '';
+}
+
 async function patchUserField(docName, fieldName, value) {
   await fetch(
     `https://firestore.googleapis.com/v1/${docName}?updateMask.fieldPaths=${fieldName}&key=${FIREBASE_API_KEY}`,
@@ -668,7 +705,7 @@ module.exports = async (req, res) => {
   const clientEmail  = userDoc.fields?.email?.stringValue  || '';
   const clientName   = userDoc.fields?.name?.stringValue   || senderName;
   const senderCalId  = userDoc.fields?.googleCalendarId?.stringValue || '';
-  const ownerName    = userDoc.fields?.name?.stringValue || userDoc.fields?.officeName?.stringValue || senderName; // שם בעל העסק
+  const ownerName    = await resolveOwnerName(phone, userDoc, senderData?.senderName || ''); // שם בעל העסק
 
   // ── pending מתוך מסמך המשתמש ──
   const pendingStr = userDoc.fields?.pendingAppt?.stringValue || '';
