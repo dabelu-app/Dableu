@@ -374,25 +374,31 @@ textarea.form-input{resize:vertical}
     <!-- Plan Selection -->
     <div style="margin-bottom:14px">
       <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px">בחרי תכנית:</div>
-      <div style="display:flex;gap:8px">
-        <label id="plan-free-lbl" style="flex:1;border:2px solid #2563eb;border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;background:#eff6ff;transition:all .2s">
+      <div style="display:flex;gap:5px">
+        <label id="plan-free-lbl" style="flex:1;border:2px solid #2563eb;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#eff6ff;transition:all .2s">
           <input type="radio" name="r-plan" id="r-plan-free" value="free" checked style="display:none"/>
-          <div style="font-size:18px;margin-bottom:4px">🎁</div>
-          <div style="font-size:13px;font-weight:700;color:#1e40af">חינמי</div>
-          <div style="font-size:11px;color:#3b82f6;margin-top:2px">תכונות בסיסיות</div>
+          <div style="font-size:16px;margin-bottom:3px">🎁</div>
+          <div style="font-size:12px;font-weight:700;color:#1e40af">חינמי</div>
+          <div style="font-size:10px;color:#3b82f6;margin-top:2px">תכונות בסיסיות</div>
         </label>
-        <label id="plan-premium-lbl" style="flex:1;border:2px solid #e2e8f0;border-radius:10px;padding:12px 8px;cursor:pointer;text-align:center;background:#f8fafc;transition:all .2s">
-          <input type="radio" name="r-plan" id="r-plan-premium" value="active" style="display:none"/>
-          <div style="font-size:18px;margin-bottom:4px">⭐</div>
-          <div style="font-size:13px;font-weight:700;color:#475569">פרימיום</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:2px">99₪/חודש — כל התכונות</div>
+        <label id="plan-basic-lbl" style="flex:1;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#f8fafc;transition:all .2s">
+          <input type="radio" name="r-plan" id="r-plan-basic" value="basic" style="display:none"/>
+          <div style="font-size:16px;margin-bottom:3px">💼</div>
+          <div style="font-size:12px;font-weight:700;color:#475569">Basic</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">20₪/חודש</div>
+        </label>
+        <label id="plan-business-lbl" style="flex:1;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#f8fafc;transition:all .2s">
+          <input type="radio" name="r-plan" id="r-plan-business" value="business" style="display:none"/>
+          <div style="font-size:16px;margin-bottom:3px">🚀</div>
+          <div style="font-size:12px;font-weight:700;color:#475569">Business</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">50₪/חודש</div>
         </label>
       </div>
     </div>
 
     <div id="premium-note" style="display:none;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-bottom:12px;text-align:center">
-      💳 לאחר ההרשמה תפנה/י אלינו לסליקה<br>
-      <strong>WhatsApp: <a href="https://wa.me/972XXXXXXXXX" style="color:#92400e">972XXXXXXXXX</a></strong>
+      💳 לאחר ההרשמה תועבר/י לדף תשלום מאובטח<br>
+      <span id="plan-price-note" style="font-weight:600"></span>
     </div>
 
     <div id="reg-btn" style="width:100%;padding:13px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">הרשמה ←</div>
@@ -4806,20 +4812,27 @@ function authShowTab(tab) {
 
 // ── Plan selection highlight ──
 document.addEventListener('DOMContentLoaded', function(){
-  var planFree    = document.getElementById('r-plan-free');
-  var planPremium = document.getElementById('r-plan-premium');
-  var lblFree     = document.getElementById('plan-free-lbl');
-  var lblPremium  = document.getElementById('plan-premium-lbl');
-  var premNote    = document.getElementById('premium-note');
+  var planFree     = document.getElementById('r-plan-free');
+  var planBasic    = document.getElementById('r-plan-basic');
+  var planBusiness = document.getElementById('r-plan-business');
+  var lblFree      = document.getElementById('plan-free-lbl');
+  var lblBasic     = document.getElementById('plan-basic-lbl');
+  var lblBusiness  = document.getElementById('plan-business-lbl');
+  var premNote     = document.getElementById('premium-note');
+  var planPriceNote= document.getElementById('plan-price-note');
 
   function updatePlanUI(){
-    var isPremium = planPremium && planPremium.checked;
-    if(lblFree)    { lblFree.style.border    = isPremium?'2px solid #e2e8f0':'2px solid #2563eb'; lblFree.style.background    = isPremium?'#f8fafc':'#eff6ff'; }
-    if(lblPremium) { lblPremium.style.border = isPremium?'2px solid #2563eb':'2px solid #e2e8f0'; lblPremium.style.background = isPremium?'#eff6ff':'#f8fafc'; }
-    if(premNote)   premNote.style.display = isPremium?'block':'none';
+    var val = document.querySelector('input[name="r-plan"]:checked')?.value || 'free';
+    var isPaid = val === 'basic' || val === 'business';
+    if(lblFree)     { lblFree.style.border     = val==='free'    ?'2px solid #2563eb':'2px solid #e2e8f0'; lblFree.style.background     = val==='free'    ?'#eff6ff':'#f8fafc'; }
+    if(lblBasic)    { lblBasic.style.border    = val==='basic'   ?'2px solid #2563eb':'2px solid #e2e8f0'; lblBasic.style.background    = val==='basic'   ?'#eff6ff':'#f8fafc'; }
+    if(lblBusiness) { lblBusiness.style.border = val==='business'?'2px solid #2563eb':'2px solid #e2e8f0'; lblBusiness.style.background = val==='business'?'#eff6ff':'#f8fafc'; }
+    if(premNote)    premNote.style.display = isPaid?'block':'none';
+    if(planPriceNote) planPriceNote.textContent = val==='basic'?'תשלום: 20₪/חודש':val==='business'?'תשלום: 50₪/חודש':'';
   }
-  if(planFree)    planFree.addEventListener('change', updatePlanUI);
-  if(planPremium) planPremium.addEventListener('change', updatePlanUI);
+  if(planFree)     planFree.addEventListener('change', updatePlanUI);
+  if(planBasic)    planBasic.addEventListener('change', updatePlanUI);
+  if(planBusiness) planBusiness.addEventListener('change', updatePlanUI);
 
   // ── Register button ──
   var btnReg = document.getElementById('reg-btn');
