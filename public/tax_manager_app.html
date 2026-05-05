@@ -369,7 +369,7 @@ textarea.form-input{resize:vertical}
     <input id="r-email" type="email" placeholder="אימייל *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
     <input id="r-pass" type="password" placeholder="סיסמה (לפחות 6 תווים) *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
     <input id="r-pass2" type="password" placeholder="אימות סיסמה *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
-    <input id="r-phone" type="tel" placeholder="📱 מספר ווצאפ *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;direction:ltr"/>
+    <input id="r-phone" type="tel" placeholder="📱 מספר ווצאפ (לקבלת הודעת פתיחה)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;direction:ltr"/>
 
     <!-- Plan Selection -->
     <div style="margin-bottom:14px">
@@ -4931,7 +4931,6 @@ document.addEventListener('DOMContentLoaded', function(){
     function showErr(msg){ if(errEl){errEl.textContent=msg;errEl.style.display='block';} else alert(msg); }
 
     if(!first||!email||!pass){ showErr('יש למלא שם, אימייל וסיסמה'); return; }
-    if(!phone){ showErr('יש להזין מספר ווצאפ לקבלת הודעת פתיחה'); return; }
     if(pass.length<6){ showErr('סיסמה חייבת להיות לפחות 6 תווים'); return; }
     if(pass!==pass2){ showErr('הסיסמאות אינן תואמות'); return; }
     if(errEl) errEl.style.display='none';
