@@ -2,10 +2,26 @@
 <html dir="rtl" lang="he">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <link rel="manifest" href="/manifest.json"/>
-<meta name="theme-color" content="#4CAF50"/>
-<title>מנהל משימות מס</title>
+
+<!-- PWA / Android -->
+<meta name="theme-color" content="#2563eb"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+
+<!-- PWA / iOS (Apple) -->
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Dabelu"/>
+<link rel="apple-touch-icon" href="/logo.png"/>
+
+<!-- SEO / שיתוף -->
+<meta name="description" content="מערכת ניהול משימות, פגישות ולקוחות למשרד"/>
+<meta property="og:title" content="Dabelu - ניהול משימות"/>
+<meta property="og:description" content="נהל משימות, פגישות ולקוחות בקלות"/>
+<meta property="og:image" content="https://dabelu.web.app/logo.png"/>
+
+<title>Dabelu - ניהול משימות</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 :root{
@@ -6067,6 +6083,80 @@ if ('serviceWorker' in navigator) {
 
 // הפעל התראות אחרי התחברות
 window.enablePushNotifications = registerPushNotifications;
+
+// ── באנר "הוסף למסך הבית" ──
+(function() {
+  // iOS: הצג הוראה ידנית אם לא רץ כ-PWA
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone = window.navigator.standalone === true
+    || window.matchMedia('(display-mode: standalone)').matches;
+
+  if (isIos && !isInStandalone) {
+    // הצג פעם אחת בלבד (אחרי 4 שניות)
+    if (!sessionStorage.getItem('ios-banner-shown')) {
+      sessionStorage.setItem('ios-banner-shown', '1');
+      setTimeout(() => {
+        const banner = document.createElement('div');
+        banner.id = 'ios-install-banner';
+        banner.innerHTML = `
+          <div style="
+            position:fixed;bottom:0;left:0;right:0;z-index:99999;
+            background:#1e40af;color:#fff;padding:14px 16px 22px;
+            font-family:Heebo,sans-serif;direction:rtl;
+            box-shadow:0 -4px 20px rgba(0,0,0,.25);
+            border-radius:16px 16px 0 0;
+            display:flex;align-items:center;gap:12px;
+          ">
+            <img src="/logo.png" style="width:44px;height:44px;border-radius:10px;flex-shrink:0"/>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:15px;margin-bottom:3px">הוסף את Dabelu למסך הבית</div>
+              <div style="font-size:13px;opacity:.85">לחץ על <strong>שתף</strong> <span style="font-size:16px">⎙</span> ואז <strong>"הוסף למסך הבית"</strong></div>
+            </div>
+            <button onclick="document.getElementById('ios-install-banner').remove()"
+              style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:18px;flex-shrink:0">✕</button>
+          </div>`;
+        document.body.appendChild(banner);
+      }, 4000);
+    }
+  }
+
+  // Android/Chrome: תפוס את אירוע ה-beforeinstallprompt והצג כפתור
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!isInStandalone) showAndroidInstallBtn();
+  });
+
+  function showAndroidInstallBtn() {
+    if (document.getElementById('android-install-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'android-install-btn';
+    btn.textContent = '📲 הוסף למסך הבית';
+    btn.style.cssText = `
+      position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;
+      background:#2563eb;color:#fff;border:none;border-radius:24px;
+      padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer;
+      box-shadow:0 4px 16px rgba(37,99,235,.45);font-family:Heebo,sans-serif;
+    `;
+    btn.onclick = async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      btn.remove();
+    };
+    document.body.appendChild(btn);
+    // הסתר אחרי 10 שניות
+    setTimeout(() => btn.remove(), 10000);
+  }
+
+  // הסתר כשכבר מותקן
+  window.addEventListener('appinstalled', () => {
+    document.getElementById('android-install-btn')?.remove();
+    document.getElementById('ios-install-banner')?.remove();
+  });
+})();
 </script>
 </body>
 </html>
