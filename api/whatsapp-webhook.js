@@ -840,7 +840,7 @@ function buildInviteMessage(ownerName, date, time) {
   // displayName: שם הבעלים, או 'העסק' כ-fallback מוחלט
   const displayName = ownerName || 'העסק';
   const lines = [
-    `📅 *${displayName}* מזמין/ת אותך לפגישה!`,
+    `📅 *${displayName}* מזמין/ה אותך לפגישה!`,
     ''
   ];
   if (dateStr) lines.push(`🗓 ${dateStr}`);
@@ -1167,7 +1167,7 @@ module.exports = async (req, res) => {
 
   if (classified.intent === 'invalid') {
     if (chatId) await sendWhatsAppReply(chatId,
-      `👋 שלום!\n\nכדי ליצור משימה — שלחו הודעה עם תוכן המשימה.\nכדי לקבוע פגישה — ציינו "פגישה" בהודעה.\n\nניתן גם לשלוח הודעה קולית! 🎤\n\n[debug] officeName="${(userDoc.fields?.officeName?.stringValue||'').trim()}" name="${(userDoc.fields?.name?.stringValue||'').trim()}" ownerName="${ownerName}"`
+      '👋 שלום!\n\nכדי ליצור משימה — שלחו הודעה עם תוכן המשימה.\nכדי לקבוע פגישה — ציינו "פגישה" בהודעה.\n\nניתן גם לשלוח הודעה קולית! 🎤'
     );
     return res.status(200).send('unclear');
   }
