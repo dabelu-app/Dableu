@@ -47,67 +47,77 @@ async function getUserDoc(phone) {
 
 // חיפוש שם בעל עסק לפי מספר טלפון — מנסה waPhone ו-phone בנוסף ל-chatId
 async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
-  // 1. שם מהמסמך שנמצא (chatId lookup)
+  // 1. שם ישירות מהמסמך שנמצא
   const fromDoc = fallbackDoc?.fields?.name?.stringValue || fallbackDoc?.fields?.officeName?.stringValue || '';
-  console.log('[resolveOwnerName] phone:', phone, 'fromDoc:', fromDoc, 'senderDisplayName:', senderDisplayName);
-  console.log('[resolveOwnerName] userDoc fields:', JSON.stringify(Object.keys(fallbackDoc?.fields || {})));
   if (fromDoc) return fromDoc;
 
-  // 2. אם יש email במסמך — חפש משתמש רשום לפי email (מסמך הרשמה)
+  // 2. חיפוש לפי email בכל המסמכים — מוצא את מסמך ההרשמה הראשי שיש בו שם
   const docEmail = fallbackDoc?.fields?.email?.stringValue || '';
   if (docEmail) {
     try {
       const r = await fetch(
         `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        { method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ structuredQuery: {
-            from: [{ collectionId: 'users' }],
-            where: { fieldFilter: { field: { fieldPath: 'email' }, op: 'EQUAL', value: { stringValue: docEmail.toLowerCase() } } },
-            limit: 5
+            from:[{collectionId:'users'}],
+            where:{ fieldFilter:{ field:{fieldPath:'email'}, op:'EQUAL', value:{stringValue:docEmail.toLowerCase()} }},
+            limit:5
           }})
         }
       );
       const d = await r.json();
-      console.log('[resolveOwnerName] email lookup result count:', Array.isArray(d) ? d.length : 'not array');
       if (Array.isArray(d)) {
         for (const item of d) {
           const n = item?.document?.fields?.name?.stringValue;
-          if (n) { console.log('[resolveOwnerName] found by email:', n); return n; }
+          if (n) return n;
         }
       }
-    } catch(e) { console.error('[resolveOwnerName] email lookup error:', e.message); }
+    } catch(e) {}
   }
 
-  // 3. חפש לפי waPhone / phone בכל הפורמטים
+  // 3. חיפוש לפי waPhone / phone בכל הפורמטים
   const variants = [phone];
-  if (phone.startsWith('972')) { variants.push('0' + phone.slice(3)); variants.push(phone.slice(3)); }
-  else if (phone.startsWith('0')) { variants.push('972' + phone.slice(1)); variants.push(phone.slice(1)); }
+  if (phone.startsWith('972')) { variants.push('0'+phone.slice(3)); variants.push(phone.slice(3)); }
+  else if (phone.startsWith('0')) { variants.push('972'+phone.slice(1)); variants.push(phone.slice(1)); }
 
   for (const ph of variants) {
-    for (const field of ['waPhone', 'phone', 'chatId']) {
+    for (const field of ['waPhone','phone','chatId']) {
       try {
         const r = await fetch(
           `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ structuredQuery: {
-              from: [{ collectionId: 'users' }],
-              where: { fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: { stringValue: ph } } },
-              limit: 1
+              from:[{collectionId:'users'}],
+              where:{ fieldFilter:{ field:{fieldPath:field}, op:'EQUAL', value:{stringValue:ph} }},
+              limit:1
             }})
           }
         );
         const d = await r.json();
         const n = Array.isArray(d) && d[0]?.document?.fields?.name?.stringValue;
-        if (n) { console.log('[resolveOwnerName] found by', field, ph, ':', n); return n; }
+        if (n) return n;
       } catch(e) {}
     }
   }
 
-  // 4. שם תצוגה וואטסאפ — אם לא מספר ולא chatId
-  const cleanSender = (senderDisplayName || '').replace(/@.*/, '').trim();
-  if (cleanSender && !/^\d/.test(cleanSender)) { console.log('[resolveOwnerName] using senderName:', cleanSender); return cleanSender; }
+  // 4. שם תצוגה וואטסאפ (אם לא מספר)
+  const cleanSender = (senderDisplayName || '').replace(/@.*/,'').trim();
+  if (cleanSender && !/^\d/.test(cleanSender)) return cleanSender;
 
-  console.log('[resolveOwnerName] no name found, returning empty');
+  // 5. שאל את GreenAPI על שם פרופיל הווצאפ של השולח
+  try {
+    const instance = process.env.GREENAPI_INSTANCE;
+    const token    = process.env.GREENAPI_TOKEN;
+    const r = await fetch(
+      `https://7107.api.greenapi.com/waInstance${instance}/getContactInfo/${token}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ chatId: phone+'@c.us' }) }
+    );
+    const info = await r.json();
+    const waName = info?.name || info?.contactName || info?.displayName || '';
+    if (waName && !/^\d/.test(waName)) return waName;
+  } catch(e) {}
+
   return '';
 }
 
