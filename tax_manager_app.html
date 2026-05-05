@@ -1110,6 +1110,8 @@ function enterApp(){
 }
 function logout(){
   if(!confirm('להתנתק?'))return;
+  // עצור את כל ה-Firestore listeners של המשתמש הנוכחי
+  if(typeof window._stopAllListeners === 'function') window._stopAllListeners();
   // נקה localStorage של המשתמש הנוכחי
   try {
     const uid = S.user?.uid || S.user?.email || 'guest';
@@ -4847,7 +4849,8 @@ document.addEventListener('DOMContentLoaded', function(){
         var result = await window.registerNewUser(name, email, pass, office, plan);
         if(result.error){ showErr(result.error); return; }
         var initials=(first[0]+((last&&last[0])||'')).toUpperCase();
-        // נקה כל מצב קודם לפני כניסת משתמש חדש
+        // עצור listeners ישנים + נקה כל מצב קודם לפני כניסת משתמש חדש
+        if(typeof window._stopAllListeners === 'function') window._stopAllListeners();
         S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
         S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
         S.office={name:'',phone:'',email:'',addr:''};
@@ -4940,7 +4943,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // ── הכנסה לאפליקציה אחרי אימות ──
   async function handleAuthSuccess(user) {
-    // נקה נתונים ישנים מהזיכרון לפני טעינת המשתמש החדש
+    // עצור listeners ישנים + נקה נתונים ישנים מהזיכרון לפני טעינת המשתמש החדש
+    if(typeof window._stopAllListeners === 'function') window._stopAllListeners();
     S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
     S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
     S.office={name:'',phone:'',email:'',addr:''};
@@ -4985,7 +4989,8 @@ document.addEventListener('DOMContentLoaded', function(){
   // ── כניסה עם אימייל + סיסמה (בדיקה מול Firestore) ──
   window.doEmailPasswordLogin = async function(email, pass) {
     const errEl = document.getElementById('aerr');
-    // נקה נתונים ישנים מהזיכרון לפני כניסת משתמש חדש
+    // עצור listeners ישנים + נקה נתונים ישנים מהזיכרון לפני כניסת משתמש חדש
+    if(typeof window._stopAllListeners === 'function') window._stopAllListeners();
     S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
     S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
     S.office={name:'',phone:'',email:'',addr:''};
@@ -5365,12 +5370,20 @@ document.addEventListener('DOMContentLoaded', function(){
     for(let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) & 0x7fffffff;
     return h + 10000;
   }
+  // ── ניהול listeners: unsubscribe הכל לפני login חדש ──
+  window._fsUnsubs = window._fsUnsubs || [];
+  window._stopAllListeners = function() {
+    (window._fsUnsubs || []).forEach(fn => { try { fn(); } catch(e) {} });
+    window._fsUnsubs = [];
+  };
+
   window.listenWhatsAppTasks = function() {
     const pMap = {high:'urgent', urgent:'urgent', medium:'normal', low:'normal'};
     const uid = S.user?.uid || '';
     if (!uid) return;
-    onSnapshot(query(collection(db, 'tasks'), where('userId', '==', uid)), (snap) => {
+    const unsub = onSnapshot(query(collection(db, 'tasks'), where('userId', '==', uid)), (snap) => {
       if(typeof S === 'undefined') return;
+      if(S.user?.uid !== uid) return; // guard: user changed, ignore stale listener
       const ownerName = (S.user?.name || '').trim();
       // טען overrides (שינויים ידניים שנשמרו) — עובד גם אם S.tasks ריק
       const ov = (typeof _loadTaskOverrides === 'function') ? _loadTaskOverrides() : {};
@@ -5431,6 +5444,8 @@ document.addEventListener('DOMContentLoaded', function(){
       if(typeof _saveTasks === 'function') _saveTasks();
       if(typeof renderPage === 'function') renderPage();
     });
+    window._fsUnsubs = window._fsUnsubs || [];
+    window._fsUnsubs.push(unsub);
   };
 
   // ── האזנה בזמן אמת לפגישות ──
@@ -5444,7 +5459,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
     const apptUid = S.user?.uid || '';
     if (!apptUid) return;
-    onSnapshot(query(collection(db, 'appointments'), where('userId', '==', apptUid)), (snap) => {
+    const unsub2 = onSnapshot(query(collection(db, 'appointments'), where('userId', '==', apptUid)), (snap) => {
+      if(S.user?.uid !== apptUid) return; // guard: user changed, ignore stale listener
       const ds = window.toDateStr || (v=>typeof v==='string'?v.slice(0,10):'');
       const firestoreAppts = snap.docs.map(d => {
         const raw = d.data();
@@ -5468,6 +5484,8 @@ document.addEventListener('DOMContentLoaded', function(){
       if(nb){ nb.textContent = upcoming; nb.style.display = upcoming > 0 ? '' : 'none'; }
       if(S.page === 'appointments' || S.page === 'calendar' || S.page === 'dashboard') renderPage();
     }, (err)=>{ console.warn('listenAppointments error:', err); });
+    window._fsUnsubs = window._fsUnsubs || [];
+    window._fsUnsubs.push(unsub2);
   };
 
   // מחיקת פגישה מ-Firestore
@@ -5489,11 +5507,14 @@ document.addEventListener('DOMContentLoaded', function(){
   window.listenWAClients = function() {
     const clientUid = S.user?.uid || '';
     if (!clientUid) return;
-    onSnapshot(query(collection(db, 'clients'), where('userId', '==', clientUid)), (snap) => {
+    const unsub3 = onSnapshot(query(collection(db, 'clients'), where('userId', '==', clientUid)), (snap) => {
+      if(S.user?.uid !== clientUid) return; // guard: user changed, ignore stale listener
       S.waClients = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .sort((a,b) => (a.name||'').localeCompare(b.name||''));
       if(S.page === 'clients') renderPage();
     });
+    window._fsUnsubs = window._fsUnsubs || [];
+    window._fsUnsubs.push(unsub3);
   };
 
   // ── שמירת לקוח WhatsApp ──
@@ -5692,7 +5713,9 @@ document.addEventListener('DOMContentLoaded', function(){
   };
 
   window.listenAllSharedTasks = function(callback) {
-    return onSnapshot(collection(db, 'sharedTasks'), snap => {
+    const uid4 = (typeof S !== 'undefined') ? (S.user?.uid || '') : '';
+    const unsub4 = onSnapshot(collection(db, 'sharedTasks'), snap => {
+      if(uid4 && (typeof S !== 'undefined') && S.user?.uid !== uid4) return; // guard: user changed
       const tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       // סנכרון סטטוסים בזמן אמת ל-S.tasks אצל המעסיק
       if (typeof S !== 'undefined' && S.tasks) {
@@ -5707,6 +5730,9 @@ document.addEventListener('DOMContentLoaded', function(){
       }
       callback(tasks);
     });
+    window._fsUnsubs = window._fsUnsubs || [];
+    window._fsUnsubs.push(unsub4);
+    return unsub4;
   };
 
   window.sendChatMessage = async function(taskId, text, senderEmail, senderName) {
