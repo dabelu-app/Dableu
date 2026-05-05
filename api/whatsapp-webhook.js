@@ -811,7 +811,7 @@ module.exports = async (req, res) => {
         const dateStr = formatDateHebrew(pending.date);
         const timeStr = pending.time ? ` בשעה ${pending.time}` : '';
         await sendWhatsAppReply(waId,
-          `📅 זימון לפגישה!\n\nנקבעה לך פגישה${ownerName ? ' עם '+ownerName : ''}${timeStr}\n📋 ${pending.title||'פגישה'}\n${dateStr}\n\nנתראה! 👋`
+          `📅 זימון לפגישה!\n\nנקבעה לך פגישה${ownerName ? ' עם '+ownerName : ''}${timeStr}\n${dateStr}\n\nנתראה! 👋`
         );
         await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
         return res.status(200).send('ok');
