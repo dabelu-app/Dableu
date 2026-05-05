@@ -1140,6 +1140,24 @@ module.exports = async (req, res) => {
 
   if (!msgText.trim()) return res.status(200).send('empty');
 
+  // ── פקודת דיבאג: "שם" — מה הבוט רואה כשם המשרד ──
+  if (/^שם(\s+משרד)?$/.test(msgText.trim())) {
+    const dbgOfficeName = (userDoc.fields?.officeName?.stringValue || '').trim();
+    const dbgName       = (userDoc.fields?.name?.stringValue       || '').trim();
+    const dbgWaName     = (userDoc.fields?.waName?.stringValue     || '').trim();
+    const dbgEmail      = (userDoc.fields?.email?.stringValue      || '');
+    await sendWhatsAppReply(chatId,
+      `🔍 נתוני המשרד בדוק:\n\n` +
+      `officeName: "${dbgOfficeName}"\n` +
+      `name: "${dbgName}"\n` +
+      `waName: "${dbgWaName}"\n` +
+      `email: "${dbgEmail}"\n` +
+      `ownerName שנקבע: "${ownerName}"\n` +
+      `docId: ${userDocId}`
+    );
+    return res.status(200).send('ok');
+  }
+
   // ── סיווג ──
   let classified = { intent:'task', date:null, time:null, title:msgText };
   try { classified = await classifyMessage(msgText.trim()); }
