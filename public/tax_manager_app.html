@@ -534,6 +534,10 @@ textarea.form-input{resize:vertical}
       <div class="topbar-title" id="topbar-title">לוח בקרה</div>
       <div class="topbar-actions">
         <div class="engine-pill"><div class="pulse-dot"></div>מנוע תזכורות פעיל</div>
+        <button id="pwa-install-btn" onclick="triggerPwaInstall()" title="התקן אפליקציה"
+          style="display:none;background:none;border:1.5px solid var(--accent);color:var(--accent);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer;font-family:'Heebo',sans-serif;font-weight:600">
+          📲 התקן
+        </button>
         <button class="topbar-btn accent" id="topbar-main-btn" onclick="openModal('task')">+ משימה חדשה</button>
       </div>
     </div>
@@ -6149,77 +6153,92 @@ if ('serviceWorker' in navigator) {
 // הפעל התראות אחרי התחברות
 window.enablePushNotifications = registerPushNotifications;
 
-// ── באנר "הוסף למסך הבית" ──
+// ── התקנת PWA ──
 (function() {
-  // iOS: הצג הוראה ידנית אם לא רץ כ-PWA
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isInStandalone = window.navigator.standalone === true
-    || window.matchMedia('(display-mode: standalone)').matches;
+  const isIos        = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid    = /android/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true
+                    || window.matchMedia('(display-mode: standalone)').matches;
 
-  if (isIos && !isInStandalone) {
-    // הצג פעם אחת בלבד (אחרי 4 שניות)
-    if (!sessionStorage.getItem('ios-banner-shown')) {
-      sessionStorage.setItem('ios-banner-shown', '1');
-      setTimeout(() => {
-        const banner = document.createElement('div');
-        banner.id = 'ios-install-banner';
-        banner.innerHTML = `
-          <div style="
-            position:fixed;bottom:0;left:0;right:0;z-index:99999;
-            background:#1e40af;color:#fff;padding:14px 16px 22px;
-            font-family:Heebo,sans-serif;direction:rtl;
-            box-shadow:0 -4px 20px rgba(0,0,0,.25);
-            border-radius:16px 16px 0 0;
-            display:flex;align-items:center;gap:12px;
-          ">
-            <img src="/logo.png" style="width:44px;height:44px;border-radius:10px;flex-shrink:0"/>
-            <div style="flex:1">
-              <div style="font-weight:700;font-size:15px;margin-bottom:3px">הוסף את Dabelu למסך הבית</div>
-              <div style="font-size:13px;opacity:.85">לחץ על <strong>שתף</strong> <span style="font-size:16px">⎙</span> ואז <strong>"הוסף למסך הבית"</strong></div>
-            </div>
-            <button onclick="document.getElementById('ios-install-banner').remove()"
-              style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:18px;flex-shrink:0">✕</button>
-          </div>`;
-        document.body.appendChild(banner);
-      }, 4000);
-    }
-  }
-
-  // Android/Chrome: תפוס את אירוע ה-beforeinstallprompt והצג כפתור
   let deferredPrompt = null;
+
+  // שמור את האירוע ברגע שיורה
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     deferredPrompt = e;
-    if (!isInStandalone) showAndroidInstallBtn();
+    if (!isStandalone) showInstallBtn();
   });
 
-  function showAndroidInstallBtn() {
-    if (document.getElementById('android-install-btn')) return;
-    const btn = document.createElement('button');
-    btn.id = 'android-install-btn';
-    btn.textContent = '📲 הוסף למסך הבית';
-    btn.style.cssText = `
-      position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;
-      background:#2563eb;color:#fff;border:none;border-radius:24px;
-      padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer;
-      box-shadow:0 4px 16px rgba(37,99,235,.45);font-family:Heebo,sans-serif;
-    `;
-    btn.onclick = async () => {
-      if (!deferredPrompt) return;
+  // הצג כפתור "התקן" ב-topbar
+  function showInstallBtn() {
+    const btn = document.getElementById('pwa-install-btn');
+    if (btn) btn.style.display = 'inline-flex';
+  }
+
+  // קריאה מהכפתור
+  window.triggerPwaInstall = async function() {
+    if (deferredPrompt) {
+      // Android: טריגר ישיר
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       deferredPrompt = null;
-      btn.remove();
-    };
-    document.body.appendChild(btn);
-    // הסתר אחרי 10 שניות
-    setTimeout(() => btn.remove(), 10000);
+      document.getElementById('pwa-install-btn').style.display = 'none';
+    } else {
+      // הצג הוראות ידניות
+      showInstallModal();
+    }
+  };
+
+  function showInstallModal() {
+    const existing = document.getElementById('pwa-install-modal');
+    if (existing) { existing.style.display='flex'; return; }
+
+    const iosSteps = `
+      <div style="font-size:14px;line-height:2;color:#1e293b">
+        1️⃣ &nbsp;פתח את הדף ב-<strong>Safari</strong> (לא Chrome)<br>
+        2️⃣ &nbsp;לחץ על כפתור <strong>השיתוף</strong> <span style="font-size:18px">⎙</span> בתחתית המסך<br>
+        3️⃣ &nbsp;גלול מטה ובחר <strong>"הוסף למסך הבית"</strong><br>
+        4️⃣ &nbsp;לחץ <strong>הוסף</strong> בפינה הימנית העליונה
+      </div>`;
+    const androidSteps = `
+      <div style="font-size:14px;line-height:2;color:#1e293b">
+        1️⃣ &nbsp;פתח את הדף ב-<strong>Chrome</strong><br>
+        2️⃣ &nbsp;לחץ על <strong>⋮</strong> (שלוש נקודות) בפינה הימנית עליונה<br>
+        3️⃣ &nbsp;בחר <strong>"הוסף למסך הבית"</strong> או <strong>"Install app"</strong><br>
+        4️⃣ &nbsp;לחץ <strong>הוסף</strong>
+      </div>`;
+    const steps = isIos ? iosSteps : androidSteps;
+    const icon  = isIos ? '⎙' : '⋮';
+
+    const modal = document.createElement('div');
+    modal.id = 'pwa-install-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:flex-end;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:20px 20px 0 0;padding:28px 24px 36px;width:100%;max-width:480px;direction:rtl;font-family:Heebo,sans-serif;box-shadow:0 -8px 30px rgba(0,0,0,.2)">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <img src="/logo.png" style="width:48px;height:48px;border-radius:12px;flex-shrink:0"/>
+          <div>
+            <div style="font-size:17px;font-weight:700;color:#1e293b">הוסף Dabelu למסך הבית</div>
+            <div style="font-size:12px;color:#64748b">גישה מהירה כמו אפליקציה</div>
+          </div>
+        </div>
+        ${steps}
+        <button onclick="document.getElementById('pwa-install-modal').style.display='none'"
+          style="margin-top:22px;width:100%;padding:13px;background:#2563eb;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif">
+          הבנתי ✓
+        </button>
+      </div>`;
+    modal.onclick = e => { if (e.target===modal) modal.style.display='none'; };
+    document.body.appendChild(modal);
   }
 
-  // הסתר כשכבר מותקן
+  // iOS: הצג כפתור בטופבר אם לא מותקן
+  if (isIos && !isStandalone) showInstallBtn();
+
+  // הסתר כשמותקן
   window.addEventListener('appinstalled', () => {
-    document.getElementById('android-install-btn')?.remove();
-    document.getElementById('ios-install-banner')?.remove();
+    const btn = document.getElementById('pwa-install-btn');
+    if (btn) btn.style.display = 'none';
   });
 })();
 </script>
