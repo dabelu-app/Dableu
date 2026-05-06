@@ -290,12 +290,42 @@ textarea.form-input{resize:vertical}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
+/* ═══════════════ MOBILE BOTTOM NAV ═══════════════ */
+#mobile-bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--primary);
+  display:none;
+  z-index:200;
+  border-top:1px solid rgba(255,255,255,.12);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+.mob-nav-items{display:flex;justify-content:space-around;align-items:center;height:58px}
+.mob-nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;padding:6px 2px;cursor:pointer;
+  color:rgba(255,255,255,.45);border:none;background:none;
+  font-family:'Heebo',sans-serif;font-size:9px;font-weight:600;
+  transition:color .15s;position:relative;-webkit-tap-highlight-color:transparent;
+}
+.mob-nav-btn.active{color:#fff}
+.mob-nav-btn .mob-icon{font-size:22px;line-height:1}
+.mob-nav-badge{
+  position:absolute;top:5px;right:18%;
+  background:#dc2626;color:#fff;font-size:9px;font-weight:700;
+  border-radius:50%;min-width:16px;height:16px;
+  display:flex;align-items:center;justify-content:center;padding:0 3px;
+}
+
 @media(max-width:640px){
   .stats-row{grid-template-columns:repeat(2,1fr)}
   .settings-layout{grid-template-columns:1fr}
-  .sidebar{width:56px}
+  .sidebar{display:none!important}
   .sidebar-logo-text,.nav-label,.user-info{display:none}
   .db-two-col{grid-template-columns:1fr!important}
+  .topbar{padding:0 12px;height:48px}
+  .engine-pill{display:none!important}
+  .page-area{padding:12px 10px calc(62px + env(safe-area-inset-bottom,0px))}
+  #mobile-bottom-nav{display:block!important}
 }
 
 /* ═══════════════ WORKER ═══════════════ */
@@ -512,6 +542,34 @@ textarea.form-input{resize:vertical}
       <!-- pages injected here -->
     </div>
   </div>
+
+  <!-- MOBILE BOTTOM NAVIGATION -->
+  <nav id="mobile-bottom-nav">
+    <div class="mob-nav-items">
+      <button class="mob-nav-btn active" id="mob-btn-dashboard"
+        onclick="nav('dashboard',document.querySelectorAll('.nav-item')[0])">
+        <span class="mob-icon">🏠</span><span>בקרה</span>
+      </button>
+      <button class="mob-nav-btn" id="mob-btn-tasks"
+        onclick="nav('tasks',document.querySelectorAll('.nav-item')[1])">
+        <span class="mob-icon">✅</span><span>משימות</span>
+        <span class="mob-nav-badge" id="mob-badge-tasks" style="display:none">0</span>
+      </button>
+      <button class="mob-nav-btn" id="mob-btn-calendar"
+        onclick="nav('calendar',document.querySelectorAll('.nav-item')[2])">
+        <span class="mob-icon">📆</span><span>יומן</span>
+      </button>
+      <button class="mob-nav-btn" id="mob-btn-appointments"
+        onclick="nav('appointments',document.querySelectorAll('.nav-item')[3])">
+        <span class="mob-icon">🤝</span><span>פגישות</span>
+      </button>
+      <button class="mob-nav-btn" id="mob-btn-clients"
+        onclick="nav('clients',document.querySelectorAll('.nav-item')[4])">
+        <span class="mob-icon">👥</span><span>לקוחות</span>
+      </button>
+    </div>
+  </nav>
+
 </div>
 
 <!-- ══════════ MODAL: TASK ══════════ -->
@@ -1155,7 +1213,7 @@ function logout(){
 // ══════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════
-const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
+const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'לקוחות',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
 function nav(page,el){
   S.page=page;
   if(el){
@@ -1163,6 +1221,10 @@ function nav(page,el){
     el.classList.add('active');
     document.getElementById('topbar-title').textContent=pageTitles[page]||page;
   }
+  // סנכרון ניווט תחתון במובייל
+  document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('active'));
+  const mobBtn=document.getElementById('mob-btn-'+page);
+  if(mobBtn) mobBtn.classList.add('active');
   // החלף כפתור טופבאר בהתאם ללשונית
   const btn=document.getElementById('topbar-main-btn');
   if(btn){
@@ -1223,6 +1285,9 @@ function updateNavBadge(){
   const open=S.tasks.filter(t=>!t.done).length;
   const nb=document.getElementById('nb-tasks');
   if(nb){nb.textContent=open;nb.style.display=open>0?'':'none';}
+  // עדכן badge במובייל
+  const mobNb=document.getElementById('mob-badge-tasks');
+  if(mobNb){mobNb.textContent=open;mobNb.style.display=open>0?'flex':'none';}
 }
 
 // ══════════════════════════════════════
