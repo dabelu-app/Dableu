@@ -10,6 +10,11 @@ module.exports = async (req, res) => {
   const { name, email, phone, plan } = req.body || {};
   if (!email) return res.status(400).json({ ok: false, error: 'Missing email' });
 
+  const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ ok: false, error: `כתובת המייל "${email}" אינה תקינה` });
+  }
+
   const siteName  = 'Dabelu';
   const siteUrl   = 'https://dabelu.vercel.app';
   const taskEmail = 'tasks@dabelu.pro';

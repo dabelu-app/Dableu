@@ -13,6 +13,11 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: false, error: 'Missing fields' });
   }
 
+  const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(employeeEmail)) {
+    return res.status(400).json({ ok: false, error: `כתובת המייל "${employeeEmail}" אינה תקינה` });
+  }
+
   const loginUrl = tempCode
     ? `https://dabelu.web.app/tax_manager_app.html?firstLogin=1&email=${encodeURIComponent(employeeEmail)}&code=${tempCode}`
     : `https://dabelu.web.app/tax_manager_app.html`;
