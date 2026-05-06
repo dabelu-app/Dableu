@@ -1,6 +1,41 @@
-const FormData = require('form-data');
-const fetch    = require('node-fetch');
-const { google } = require('googleapis');
+const FormData   = require('form-data');
+const _nodeFetch = require('node-fetch');
+const { google }  = require('googleapis');
+
+// ── Firestore via Service Account (bypasses security rules) ──
+let _fsAuthClient = null;
+async function _getFirestoreToken() {
+  try {
+    if (!_fsAuthClient) {
+      const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || 'null');
+      if (!creds) return null;
+      const auth = new google.auth.GoogleAuth({
+        credentials: creds,
+        scopes: ['https://www.googleapis.com/auth/datastore']
+      });
+      _fsAuthClient = await auth.getClient();
+    }
+    const t = await _fsAuthClient.getAccessToken();
+    return t.token;
+  } catch(e) { console.error('_getFirestoreToken error:', e.message); return null; }
+}
+
+// Intercept all Firestore REST calls: remove ?key=... and add Bearer token
+const fetch = async (url, opts = {}) => {
+  const urlStr = String(url);
+  if (urlStr.includes('firestore.googleapis.com')) {
+    const token = await _getFirestoreToken();
+    if (token) {
+      const cleanUrl = urlStr
+        .replace(/&key=[^&]*/g, '')
+        .replace(/\?key=[^&]*&/, '?')
+        .replace(/\?key=[^&]*/g, '');
+      const headers = { ...(opts.headers || {}), 'Authorization': `Bearer ${token}` };
+      return _nodeFetch(cleanUrl, { ...opts, headers });
+    }
+  }
+  return _nodeFetch(url, opts);
+};
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT  = 'dabelu';

@@ -1210,6 +1210,7 @@ function logout(){
   S.office={name:'',phone:'',email:'',addr:''};
   try { Object.keys(localStorage).filter(k=>k.startsWith('dabelu_')).forEach(k=>localStorage.removeItem(k)); } catch(e){}
   S.user=null;
+  if(typeof window._firebaseSignOut === 'function') window._firebaseSignOut();
   document.getElementById('screen-app').style.display='none';
   document.getElementById('screen-auth').style.display='flex';
 }
@@ -5136,7 +5137,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -5174,16 +5175,17 @@ document.addEventListener('DOMContentLoaded', function(){
     const nameParts = (user.displayName || email).split(' ');
     const initials  = nameParts.map(n => n[0]).join('').slice(0,2).toUpperCase();
 
-    // ── מצא חשבון קיים לפי אימייל (מונע כפילות Google + מייל/סיסמה) ──
-    let canonicalUid = user.uid;
-    let existing     = await loadUserData(user.uid);
+    // תמיד השתמש ב-Firebase Auth UID כ-canonical UID
+    const canonicalUid = user.uid;
+    let existing       = await loadUserData(user.uid);
 
     if (!existing) {
-      // חפש לפי אימייל — אולי נרשם קודם עם מייל+סיסמה
+      // מיגרציה: מצא doc ישן לפי אימייל (reg_TIMESTAMP) והעבר ל-Firebase UID
       const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
       if (!emailSnap.empty) {
-        canonicalUid = emailSnap.docs[0].id;
-        existing     = emailSnap.docs[0].data();
+        existing = emailSnap.docs[0].data();
+        // שמור ב-Firebase Auth UID
+        await setDoc(doc(db, 'users', user.uid), { ...existing, lastLogin: new Date().toISOString() });
       }
     }
 
@@ -5237,123 +5239,96 @@ document.addEventListener('DOMContentLoaded', function(){
     const errEl = document.getElementById('aerr');
     try {
       const em = email.toLowerCase();
-      const passHash = await hashPass(pass);
 
-      // ── בדיקת אדמין ──
-      if (em === ADMIN_EMAIL) {
-        const defaultAdminHash = await hashPass('322964123');
-        // בדיקה מול Firestore קודם (אם שינה סיסמה), אחרת מול ברירת המחדל
-        let adminAllowed = false;
-        let adminUid = 'admin_main';
-        let adminData = null;
-        try {
-          const adminSnap = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
-          if (!adminSnap.empty) {
-            adminData = adminSnap.docs[0].data();
-            adminUid = adminSnap.docs[0].id;
-            if (adminData.passwordHash) {
-              // יש סיסמה שמורה – בדוק מולה
-              adminAllowed = (passHash === adminData.passwordHash);
-            } else {
-              // אין סיסמה שמורה – בדוק מול ברירת המחדל
-              adminAllowed = (passHash === defaultAdminHash);
-            }
-          } else {
-            // אין מסמך – צור ובדוק מול ברירת המחדל
-            adminAllowed = (passHash === defaultAdminHash);
-            await setDoc(doc(db, 'users', 'admin_main'), {
-              name: 'שנית', email: em, passwordHash: defaultAdminHash,
-              subscription: 'active', officeName: 'ניהול', source: 'admin',
-              createdAt: new Date().toISOString(), lastLogin: new Date().toISOString()
-            });
-          }
-        } catch(fsErr) {
-          console.warn('Firestore admin check failed, using default:', fsErr);
-          adminAllowed = (passHash === defaultAdminHash);
+      // ── שלב 1: כניסה דרך Firebase Auth ──
+      let firebaseUser;
+      try {
+        const cred = await signInWithEmailAndPassword(auth, em, pass);
+        firebaseUser = cred.user;
+      } catch(authErr) {
+        // ── מיגרציה: משתמש ישן (reg_TIMESTAMP) שאין לו Firebase Auth account עדיין ──
+        const needsMigration = authErr.code === 'auth/user-not-found'
+          || authErr.code === 'auth/invalid-credential'
+          || authErr.code === 'auth/invalid-email';
+        if (!needsMigration) { errEl.textContent = 'מייל או סיסמה שגויים'; return; }
+
+        const passHash = await hashPass(pass);
+        const oldSnap = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
+        if (oldSnap.empty) { errEl.textContent = 'מייל או סיסמה שגויים'; return; }
+        const oldData = oldSnap.docs[0].data();
+        if (oldData.subscription === 'blocked') { errEl.textContent = 'מייל או סיסמה שגויים'; return; }
+
+        // אמת hash: מול הסיסמה השמורה, או עבור אדמין מול ברירת מחדל
+        let hashOk = false;
+        if (oldData.passwordHash) {
+          hashOk = passHash === oldData.passwordHash;
+        } else if (em === ADMIN_EMAIL) {
+          hashOk = passHash === (await hashPass('322964123'));
         }
-        if (!adminAllowed) {
-          errEl.textContent = 'מייל או סיסמה שגויים';
+        if (!hashOk) { errEl.textContent = 'מייל או סיסמה שגויים'; return; }
+
+        // ── צור Firebase Auth account + מגר Firestore doc ──
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, em, pass);
+          firebaseUser = cred.user;
+          await setDoc(doc(db, 'users', firebaseUser.uid), {
+            ...oldData, lastLogin: new Date().toISOString()
+          });
+          console.log('✅ Migrated user to Firebase Auth UID:', firebaseUser.uid);
+        } catch(createErr) {
+          errEl.textContent = createErr.code === 'auth/email-already-in-use'
+            ? 'מייל או סיסמה שגויים' : 'שגיאה בכניסה — נסה/י שנית';
           return;
         }
-        try {
-          await updateDoc(doc(db, 'users', adminUid), { lastLogin: new Date().toISOString() });
-        } catch(e) {}
-        const adminName = adminData?.name || 'שנית';
-        const adminOfficeName = adminData?.officeName || 'ניהול';
-        S.user = { uid: adminUid, name: adminName, email: em, initials: adminName.slice(0,2).toUpperCase(), officeName: adminOfficeName,
-          phone: adminData?.phone||'', waPhone: adminData?.waPhone||'', role: adminData?.role||'' };
-        if(adminData?.officePhone) S.office.phone = adminData.officePhone;
-        if(adminData?.officeEmail) S.office.email = adminData.officeEmail;
-        if(adminData?.officeAddr) S.office.addr = adminData.officeAddr;
-        if(adminData?.officeName) S.office.name = adminData.officeName;
-        if(adminData?.notif) S.notif = adminData.notif;
-        // טעינת משימות, צוות ולקוחות מ-Firestore לפני כניסה לאפליקציה
-        try {
-          const [adminTasks, adminClients, adminTeamData] = await Promise.all([
-            window.loadTasksFromDB ? window.loadTasksFromDB(adminUid) : Promise.resolve([]),
-            window.loadClientsFromDB ? window.loadClientsFromDB(adminUid) : Promise.resolve([]),
-            window.loadTeamFromDB ? window.loadTeamFromDB(adminUid) : Promise.resolve(null),
-          ]);
-          if(adminTasks && adminTasks.length) S.tasks = adminTasks;
-          if(adminClients && adminClients.length) S.clients = adminClients;
-          if(adminTeamData && adminTeamData.team && adminTeamData.team.length){
-            S.team = adminTeamData.team;
-            if(adminTeamData.nextMemberId) S.nextMemberId = adminTeamData.nextMemberId;
-          }
-        } catch(e){ console.warn('admin data load:', e); }
-        enterApp();
-        return;
       }
 
-      // ── משתמש רגיל ──
-      const snap = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
-      if (snap.empty) {
-        errEl.textContent = 'מייל או סיסמה שגויים';
-        return;
+      // ── שלב 2: טעינת מסמך ב-Firestore לפי Firebase UID ──
+      let uData = await loadUserData(firebaseUser.uid);
+      if (!uData) {
+        // גיבוי: חפש לפי אימייל ומגר
+        const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
+        if (!emailSnap.empty) {
+          uData = emailSnap.docs[0].data();
+          await setDoc(doc(db, 'users', firebaseUser.uid), { ...uData, lastLogin: new Date().toISOString() });
+        }
       }
-      const uDoc = snap.docs[0];
-      const uData = uDoc.data();
-      if (uData.subscription === 'blocked') {
-        errEl.textContent = 'מייל או סיסמה שגויים';
-        return;
-      }
-      if (uData.passwordHash && uData.passwordHash !== passHash) {
-        errEl.textContent = 'מייל או סיסמה שגויים';
-        return;
-      }
-      // עדכון כניסה אחרונה
-      await updateDoc(doc(db, 'users', uDoc.id), { lastLogin: new Date().toISOString() });
+      if (!uData) { errEl.textContent = 'חשבון לא נמצא — פנה לתמיכה'; return; }
+      if (uData.subscription === 'blocked') { await signOut(auth); errEl.textContent = 'מייל או סיסמה שגויים'; return; }
+
+      // ── שלב 3: עדכון lastLogin ──
+      const uid = firebaseUser.uid;
+      try { await updateDoc(doc(db, 'users', uid), { lastLogin: new Date().toISOString() }); } catch(e) {}
+
+      // ── שלב 4: טעינת נתונים + כניסה לאפליקציה ──
       if(typeof S !== 'undefined') {
         const nm = uData.name || em.split('@')[0];
         S.user = {
-          uid: uDoc.id,
-          name: nm,
-          email: em,
+          uid, name: nm, email: em,
           initials: nm.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),
           officeName: uData.officeName || 'משרד ייעוץ מס',
           role: uData.role || 'employer',
           phone: uData.phone || '',
-          waPhone: uData.waPhone || ''
+          waPhone: uData.waPhone || '',
+          subscription: uData.subscription || 'trial'
         };
-        // טעינת פרטי משרד
         if(uData.officePhone) S.office.phone = uData.officePhone;
         if(uData.officeEmail) S.office.email = uData.officeEmail;
-        if(uData.officeAddr) S.office.addr = uData.officeAddr;
-        if(uData.officeName) S.office.name = uData.officeName;
-        // טעינת הגדרות התראות
+        if(uData.officeAddr)  S.office.addr  = uData.officeAddr;
+        if(uData.officeName)  S.office.name  = uData.officeName;
         if(uData.notif) S.notif = uData.notif;
-        // טעינת צוות, משימות ולקוחות — תמיד אפס קודם למניעת דליפת נתונים
-        const tasks   = await window.loadTasksFromDB(uDoc.id);
-        const clients = await window.loadClientsFromDB(uDoc.id);
-        const teamData= await window.loadTeamFromDB(uDoc.id);
-        S.tasks   = tasks   || [];
+        const [tasks, clients, teamData] = await Promise.all([
+          window.loadTasksFromDB(uid),
+          window.loadClientsFromDB(uid),
+          window.loadTeamFromDB(uid),
+        ]);
+        S.tasks  = tasks  || [];
         S.clients = clients || [];
-        S.team    = teamData?.team || [];
+        S.team   = teamData?.team || [];
         if(teamData?.nextMemberId) S.nextMemberId = teamData.nextMemberId;
         enterApp();
       }
     } catch(e) {
-      console.error(e);
+      console.error('doEmailPasswordLogin:', e);
       errEl.textContent = 'מייל או סיסמה שגויים';
     }
   };
@@ -5495,10 +5470,10 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   })();
 
-  // ── הרשמה עם אימייל + סיסמה (שמירה ל-Firestore) ──
+  // ── הרשמה עם אימייל + סיסמה (Firebase Auth + Firestore) ──
   window.registerNewUser = async function(name, email, pass, officeName, plan) {
     const em = email.toLowerCase();
-    // בדיקה שהמייל לא קיים כבר
+    // בדיקה שהמייל לא קיים כבר ב-Firestore
     const existing = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
     if (!existing.empty) {
       const existSub = existing.docs[0]?.data()?.subscription || '';
@@ -5506,18 +5481,30 @@ document.addEventListener('DOMContentLoaded', function(){
         return { error: 'כבר קיים חשבון חינמי לאימייל זה. ניתן להתחבר או לשדרג למנוי.' };
       return { error: 'אימייל זה כבר רשום במערכת — ניתן להתחבר בלשונית "כניסה"' };
     }
-    const passHash = await hashPass(pass);
-    const uid = 'reg_' + Date.now();
-    // free=חינמי, basic/business=ממתין לתשלום, אחר=ניסיון
+
+    // ── יצירת Firebase Auth account ──
+    let uid;
+    const currentAuthUser = auth.currentUser;
+    if (currentAuthUser && (currentAuthUser.email || '').toLowerCase() === em) {
+      // משתמש כבר מחובר (לדוגמה: כניסת Google ללא Firestore doc) — השתמש ב-UID הקיים
+      uid = currentAuthUser.uid;
+    } else {
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, em, pass);
+        uid = cred.user.uid;
+      } catch(authErr) {
+        if (authErr.code === 'auth/email-already-in-use')
+          return { error: 'אימייל זה כבר רשום — התחבר/י בלשונית "כניסה" או עם Google' };
+        return { error: 'שגיאה בהרשמה: ' + authErr.message };
+      }
+    }
+
     const subscription = plan === 'free' ? 'free'
-                       : plan === 'basic' ? 'pending'
-                       : plan === 'business' ? 'pending'
-                       : plan === 'active'   ? 'active'
-                       : 'trial';
+                       : (plan === 'basic' || plan === 'business') ? 'pending'
+                       : plan === 'active' ? 'active' : 'trial';
     await setDoc(doc(db, 'users', uid), {
       name: name,
       email: em,
-      passwordHash: passHash,
       officeName: officeName || 'Dabelu',
       subscription: subscription,
       plan: plan,
@@ -5865,6 +5852,7 @@ document.addEventListener('DOMContentLoaded', function(){
   };
 
   window.hashPass = hashPass;
+  window._firebaseSignOut = async () => { try { await signOut(auth); } catch(e) {} };
 
   // ── Admin: הוספת משתמש ──
   window.addAdminUserToDB = async function(data, plainPass, onSuccess) {
@@ -6060,12 +6048,19 @@ document.addEventListener('DOMContentLoaded', function(){
       const user   = result.user;
       const email  = (user.email || '').toLowerCase();
 
-      // בדוק אם המשתמש קיים ב-Firestore
-      const snap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+      // בדוק אם המשתמש קיים ב-Firestore (לפי Firebase UID קודם, אחרי לפי אימייל)
+      let snap = { empty: true, docs: [] };
+      const byUid = await loadUserData(user.uid);
+      if (byUid) {
+        snap = { empty: false, docs: [{ id: user.uid, data: () => byUid }] };
+      } else {
+        const byEmail = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+        if (!byEmail.empty) snap = byEmail;
+      }
 
-      // ── לא רשום — שלח להרשמה עם פרטים ממולאים ──
+      // ── לא רשום — שלח להרשמה עם פרטים ממולאים (שמור את ה-Firebase Auth session!) ──
       if (snap.empty) {
-        await signOut(auth);
+        // אל תנתק — registerNewUser ישתמש ב-auth.currentUser.uid
         btn.innerHTML = originalHTML;
         btn.style.pointerEvents = '';
         authShowTab('reg');
