@@ -48,6 +48,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
+    // ── התראות Push (נכתב על-ידי ה-API בלבד, אבל מותר גם לבעלים לקרוא) ──
+    match /pushSubscriptions/{subId} {
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.token.email == 'shanitaxes11@gmail.com'
+      );
+      allow write: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid;
+    }
+
     // ── כל השאר חסום ──
     match /{document=**} {
       allow read, write: if false;

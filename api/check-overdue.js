@@ -1,4 +1,4 @@
-const fetch   = require('node-fetch');
+const fetch   = require('./_firestore');
 const webpush = require('web-push');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';

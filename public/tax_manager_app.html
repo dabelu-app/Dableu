@@ -1279,7 +1279,14 @@ function renderPage(){
   else if(S.page==='appointments'){el.innerHTML=renderAppointmentsPage();loadAppointmentsIfNeeded();}
   else if(S.page==='clients'){el.innerHTML=renderClientsPage();loadWAClientsIfNeeded();}
   else if(S.page==='settings')el.innerHTML=renderSettingsPage();
-  else if(S.page==='admin'){el.innerHTML=renderAdminPage();if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();}
+  else if(S.page==='admin'){
+    // הגנת role: רק אדמין רשאי לגשת לדף זה
+    if(!S.user?.email || ADMIN_EMAILS.indexOf(S.user.email.toLowerCase()) === -1){
+      nav('dashboard'); return;
+    }
+    el.innerHTML=renderAdminPage();
+    if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();
+  }
   else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
   else if(S.page==='worker-all')el.innerHTML=renderWorkerAllTasksPage();
   else if(S.page==='worker-chat')el.innerHTML=renderWorkerChatListPage();
@@ -5061,7 +5068,15 @@ document.addEventListener('DOMContentLoaded', function(){
         showErr('טעינה עדיין בתהליך — נסו שנית עוד שנייה');
       }
     } catch(e) {
-      showErr('שגיאה בהרשמה: ' + e.message);
+      // הצג הודעות שגיאה ברורות לפי קוד Firebase Auth
+      const authErrMap = {
+        'auth/email-already-in-use': 'האימייל כבר רשום — עבור/י ללשונית "כניסה"',
+        'auth/invalid-email': 'כתובת המייל אינה תקינה',
+        'auth/weak-password': 'הסיסמה חלשה מדי — יש להשתמש לפחות ב-6 תווים',
+        'auth/network-request-failed': 'שגיאת רשת — בדוק/י חיבור לאינטרנט ונסה/י שנית',
+        'auth/too-many-requests': 'יותר מדי ניסיונות — נסה/י שנית עוד כמה דקות',
+      };
+      showErr(authErrMap[e.code] || ('שגיאה בהרשמה: ' + (e.message || '')));
     } finally {
       btnReg.textContent='הרשמה ←';
       btnReg.style.pointerEvents='';
