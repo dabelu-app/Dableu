@@ -5046,7 +5046,8 @@ document.addEventListener('DOMContentLoaded', function(){
         fetch('https://dabelu.vercel.app/api/send-onboarding',{
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ name, email, phone: phone||'', plan })
-        }).catch(()=>{});
+        }).then(r=>r.json()).then(d=>{ if(!d?.email?.ok) console.warn('onboarding email issue:',d); })
+          .catch(e=>console.error('onboarding fetch error:',e));
         // תכנית בתשלום — הפניה לדף תשלום Bamit/YoPay
         if((plan==='basic'||plan==='business') && BAMIT_PAYMENT[plan]) {
           // שמור uid ותוכנית ב-localStorage לפני המעבר
