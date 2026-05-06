@@ -1,66 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ── משתמשים ──
-    // קריאת doc בודד: רק הבעלים או האדמין
-    // רשימה/שאילתה: כל מי שמחובר (נדרש למיגרציה + בדיקת אימייל בהרשמה)
-    // כתיבה: רק הבעלים
     match /users/{userId} {
-      allow get: if request.auth != null && (
-        request.auth.uid == userId ||
-        request.auth.token.email == 'shanitaxes11@gmail.com'
-      );
-      allow list: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if true;
+      allow write: if true;
     }
-
-    // תתי-אוספים של משתמש (tasks, team, clients, appointments תחת /users/uid/...)
-    match /users/{userId}/{col}/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // subcollections של users (tasks, team, clients וכו')
+    match /users/{userId}/{document=**} {
+      allow read, write: if true;
     }
-
-    // ── לקוחות ברמה עליונה (נוצרים על-ידי הבוט) ──
-    match /clients/{clientId} {
-      allow read, write: if request.auth != null && (
-        (resource != null && resource.data.userId == request.auth.uid) ||
-        request.resource.data.userId == request.auth.uid
-      );
-      allow delete: if request.auth != null &&
-        resource != null && resource.data.userId == request.auth.uid;
+    match /tasks/{taskId} {
+      allow read, write: if true;
     }
-
-    // ── פגישות ברמה עליונה (נוצרות על-ידי הבוט) ──
     match /appointments/{apptId} {
-      allow read, write: if request.auth != null && (
-        (resource != null && resource.data.userId == request.auth.uid) ||
-        request.resource.data.userId == request.auth.uid
-      );
-      allow delete: if request.auth != null &&
-        resource != null && resource.data.userId == request.auth.uid;
+      allow read, write: if true;
     }
-
-    // ── משימות משותפות מעסיק↔עובד ──
+    match /clients/{clientId} {
+      allow read, write: if true;
+    }
+    // משימות משותפות מעסיק↔עובד
     match /sharedTasks/{taskId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
-    match /sharedTasks/{taskId}/{col}/{docId} {
-      allow read, write: if request.auth != null;
+    match /sharedTasks/{taskId}/{document=**} {
+      allow read, write: if true;
     }
-
-    // ── התראות Push (נכתב על-ידי ה-API בלבד, אבל מותר גם לבעלים לקרוא) ──
-    match /pushSubscriptions/{subId} {
-      allow read: if request.auth != null && (
-        resource.data.userId == request.auth.uid ||
-        request.auth.token.email == 'shanitaxes11@gmail.com'
-      );
-      allow write: if request.auth != null &&
-        request.resource.data.userId == request.auth.uid;
-    }
-
-    // ── כל השאר חסום ──
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null;
     }
   }
 }

@@ -1,4 +1,4 @@
-const fetch = require('./_firestore');
+const fetch = require('node-fetch');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT = 'dabelu';

@@ -12,10 +12,6 @@ module.exports = async (req, res) => {
   if (!name || !phone) {
     return res.status(200).json({ ok: false, error: 'Missing fields' });
   }
-  const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
-  if (email && !emailRegex.test(email)) {
-    return res.status(200).json({ ok: false, error: `כתובת המייל "${email}" אינה תקינה` });
-  }
 
   try {
     const transporter = nodemailer.createTransport({
