@@ -1,21 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Background rounded square - light purple like logo -->
-  <rect width="512" height="512" rx="100" fill="#f0eeff"/>
-  <!-- Geometric bold W shape matching Dabelu logo purple style -->
-  <!-- Points: top-left-outer, top-right-of-left-arm, inner-left-valley, middle-peak, inner-right-valley, top-left-of-right-arm, top-right-outer, bottom-right, center-bottom-v, bottom-left -->
-  <polygon
-    points="
-      52,76
-      162,76
-      214,402
-      256,196
-      298,402
-      350,76
-      460,76
-      352,448
-      256,268
-      160,448
-    "
-    fill="#7B61FF"
-  />
+  <!-- Background: light gray matching the logo -->
+  <rect width="512" height="512" rx="80" fill="#f5f5f7"/>
+
+  <!-- W logo — three-layer technique for the double-W rounded effect -->
+
+  <!-- Layer 1: Outer thick W arm (purple) -->
+  <path d="M 55,98 L 194,412 L 256,230 L 318,412 L 457,98"
+        stroke="#6B5AFF"
+        stroke-width="122"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+
+  <!-- Layer 2: Background-color cutout — creates the visible gap between outer and inner W -->
+  <path d="M 55,98 L 194,412 L 256,230 L 318,412 L 457,98"
+        stroke="#f5f5f7"
+        stroke-width="68"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+
+  <!-- Layer 3: Inner W fill (purple) — the inner smaller W visible in the logo -->
+  <path d="M 55,98 L 194,412 L 256,230 L 318,412 L 457,98"
+        stroke="#6B5AFF"
+        stroke-width="46"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
 </svg>
