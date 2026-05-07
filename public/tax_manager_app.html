@@ -13,7 +13,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Dabelu"/>
-<link rel="apple-touch-icon" href="/logo.png"/>
+<link rel="apple-touch-icon" href="/icon-w.svg"/>
+<link rel="icon" type="image/svg+xml" href="/icon-w.svg"/>
 
 <!-- SEO / שיתוף -->
 <meta name="description" content="מערכת ניהול משימות, פגישות ולקוחות למשרד"/>
@@ -373,7 +374,7 @@ textarea.form-input{resize:vertical}
 
   <!-- Logo -->
   <div style="text-align:center;margin-bottom:18px">
-    <div style="font-size:38px;margin-bottom:6px">📋</div>
+    <img src="/icon-w.svg" alt="Dabelu W" style="width:72px;height:72px;margin-bottom:8px;border-radius:16px;display:block;margin-left:auto;margin-right:auto"/>
     <div style="font-size:20px;font-weight:bold;color:#1a1a2e">Dabelu</div>
     <div style="font-size:12px;color:#888;margin-top:3px">מנהל משימות מס</div>
   </div>
@@ -402,6 +403,9 @@ textarea.form-input{resize:vertical}
       <span id="toggle-pw" onclick="var f=document.getElementById('apw'),s=document.getElementById('toggle-pw');f.type=f.type==='password'?'text':'password';s.innerHTML=f.type==='password'?'<svg width=18 height=18 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><path d=&quot;M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z&quot;/><circle cx=12 cy=12 r=3/></svg>':'<svg width=18 height=18 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><path d=&quot;M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24&quot;/><line x1=1 y1=1 x2=23 y2=23/></svg>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#888;line-height:0;user-select:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
     </div>
     <div id="abtn" style="width:100%;padding:12px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">כניסה ←</div>
+    <div style="text-align:center;margin-top:10px;font-size:12px;color:#94a3b8">
+      שכחת סיסמה? <a href="mailto:tasks@dabelu.pro?subject=איפוס סיסמה" style="color:#2563eb;text-decoration:none;font-weight:600">צור/י קשר איתנו</a>
+    </div>
   </div>
 
   <!-- ── REGISTER PANEL ── -->
@@ -475,7 +479,7 @@ textarea.form-input{resize:vertical}
   <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">📋</div>
+      <div class="sidebar-logo-icon" style="background:transparent;padding:0"><img src="/icon-w.svg" style="width:32px;height:32px;border-radius:6px" alt="W"/></div>
       <div class="sidebar-logo-text">
         <div>מנהל משימות</div>
         <div class="sidebar-logo-sub">ייעוץ מס</div>
@@ -5374,8 +5378,14 @@ document.addEventListener('DOMContentLoaded', function(){
         enterApp();
       }
     } catch(e) {
-      console.error(e);
-      errEl.textContent = 'מייל או סיסמה שגויים';
+      console.error('doEmailPasswordLogin error:', e);
+      if (e?.code === 'unavailable' || e?.message?.includes('network') || e?.message?.includes('offline')) {
+        errEl.textContent = 'שגיאת רשת — בדוק/י חיבור אינטרנט ונסה/י שנית';
+      } else if (e?.code === 'permission-denied') {
+        errEl.textContent = 'שגיאת הרשאות — צור/י קשר עם התמיכה';
+      } else {
+        errEl.textContent = 'מייל או סיסמה שגויים';
+      }
     }
   };
 
