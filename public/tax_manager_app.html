@@ -1160,7 +1160,12 @@ function enterApp(){
     if(topBtn) topBtn.style.display='none';
     nav('worker-tasks', document.getElementById('nav-worker-tasks'));
     setTimeout(function(){
-      if(typeof window.listenWorkerTasks === 'function') window.listenWorkerTasks(S.user.email);
+      if(window._firestoreUnsubs){ window._firestoreUnsubs.forEach(fn=>{try{fn();}catch(e){}});}
+      window._firestoreUnsubs=[];
+      if(typeof window.listenWorkerTasks === 'function'){
+        const unsub=window.listenWorkerTasks(S.user.email);
+        if(typeof unsub==='function'){ window._firestoreUnsubs=[unsub]; }
+      }
     }, 400);
   } else {
     // ── מצב מעביד ──
@@ -1180,18 +1185,22 @@ function enterApp(){
     nav('dashboard',document.querySelector('.nav-item'));
     startEngine();
     setTimeout(function(){
-      if(typeof window.listenWhatsAppTasks === 'function') window.listenWhatsAppTasks();
-      if(typeof window.listenAppointments   === 'function') window.listenAppointments();
-      if(typeof window.listenWAClients      === 'function') window.listenWAClients();
+      // נקה listeners ישנים לפני יצירת חדשים (מונע כפל אחרי כניסה/יציאה)
+      if(window._firestoreUnsubs){ window._firestoreUnsubs.forEach(fn=>{try{fn();}catch(e){}});}
+      window._firestoreUnsubs=[];
+      const _addUnsub=fn=>{if(typeof fn==='function') window._firestoreUnsubs.push(fn);};
+      if(typeof window.listenWhatsAppTasks === 'function') _addUnsub(window.listenWhatsAppTasks());
+      if(typeof window.listenAppointments   === 'function') _addUnsub(window.listenAppointments());
+      if(typeof window.listenWAClients      === 'function') _addUnsub(window.listenWAClients());
       if(typeof window.enablePushNotifications === 'function') window.enablePushNotifications();
-      if(typeof window.listenAllSharedTasks === 'function') window.listenAllSharedTasks(function(tasks){
+      if(typeof window.listenAllSharedTasks === 'function') _addUnsub(window.listenAllSharedTasks(function(tasks){
         S.sharedTasks = tasks;
         // עדכן badge הודעות — רק משימות פעילות עם הודעה שלא נקראה
         const totalUnread = tasks.filter(t=>t.lastMessage && t.status!=='done').reduce((s,t)=>s+(t.unreadCount||0),0);
         const nbChats = document.getElementById('nb-worker-chats');
         if(nbChats){ nbChats.textContent=totalUnread; nbChats.style.display=totalUnread?'':'none'; }
         if(S.page==='tasks'||S.page==='dashboard'||S.page==='worker-chats') renderPage();
-      });
+      }));
       // סנכרון ראשוני — שולח לsharedTasks את כל המשימות שכבר הוקצו לעובדים
       setTimeout(function(){
         if(typeof window.syncAssignedTasksToShared === 'function'){
@@ -1205,6 +1214,11 @@ function enterApp(){
 }
 function logout(){
   if(!confirm('להתנתק?'))return;
+  // נקה את כל ה-Firestore listeners לפני ניקוי הסטייט
+  if(window._firestoreUnsubs){
+    window._firestoreUnsubs.forEach(fn=>{ try{fn();}catch(e){} });
+    window._firestoreUnsubs=[];
+  }
   S.tasks=[];S.clients=[];S.team=[];S.appointments=[];S.waClients=[];
   S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
   S.office={name:'',phone:'',email:'',addr:''};
@@ -2095,6 +2109,10 @@ function deleteTask(id){
   // מחק מ-Firestore tasks collection אם זו משימת ווצאפ
   if(t.source==='whatsapp' && t.waDocId && typeof window.deleteWATaskFromDB==='function'){
     window.deleteWATaskFromDB(t.waDocId).catch(()=>{});
+  }
+  // מחק מ-sharedTasks אם משימה הוקצתה לעובד
+  if(t.sharedTaskId && typeof window.deleteSharedTaskFromDB==='function'){
+    window.deleteSharedTaskFromDB(t.sharedTaskId).catch(()=>{});
   }
   S.tasks=S.tasks.filter(t=>t.id!==id);
   _saveTasks();
@@ -3201,7 +3219,7 @@ function disconnectIntegration(name){
 // ══════════════════════════════════════
 function toggleTask(id){
   const t=S.tasks.find(t=>t.id===id);
-  if(t){t.done=!t.done;renderPage();toast(t.done?'✓ משימה הושלמה!':'↩ חזר לפתוחות');}
+  if(t){t.done=!t.done;t.status=t.done?'done':'pending';_saveTasks();renderPage();toast(t.done?'✓ משימה הושלמה!':'↩ חזר לפתוחות');}
 }
 function manualRemind(id){
   const t=S.tasks.find(t=>t.id===id);if(!t)return;
@@ -3250,7 +3268,7 @@ function updateRecurringPreview(){
 function recLabel(type){
   return {monthly:'כל חודש',bimonthly:'כל חודשיים',quarterly:'כל רבעון',weekly:'כל שבוע',biweekly:'כל שבועיים',yearly:'כל שנה',custom:'תאריך קבוע'}[type]||type;
 }
-function addTask(){
+async function addTask(){
   const title=document.getElementById('nt-title').value.trim();
   if(!title){toast('⚠️ יש להזין כותרת');return;}
   const rec=recurringOn?{
@@ -3262,7 +3280,7 @@ function addTask(){
     endCount:parseInt(document.getElementById('nt-reccount')?.value)||null,
     occurrenceCount:0,
   }:null;
-  S.tasks.push({
+  const newTask={
     id:S.nextId++,title,
     type:document.getElementById('nt-type').value,
     assignee:document.getElementById('nt-assignee').value||(S.user?.name||''),
@@ -3272,11 +3290,13 @@ function addTask(){
     done:false,status:'pending',
     createdAt:Date.now(),remindedAt:null,snoozedUntil:null,pinned:false,
     recurring:rec,
-  });
+  };
+  S.tasks.push(newTask);
   recurringOn=false;
   const workerEmail=(document.getElementById('nt-worker-email')?.value||'').trim().toLowerCase();
   if(workerEmail&&typeof window.saveSharedTask==='function'){
-    window.saveSharedTask({
+    // await כדי לקבל את ה-sharedTaskId לפני _saveTasks — מונע כפילות ב-sharedTasks
+    const sharedId=await window.saveSharedTask({
       title,type:document.getElementById('nt-type').value,
       priority:document.getElementById('nt-priority').value,
       dueDate:document.getElementById('nt-date').value,
@@ -3286,6 +3306,7 @@ function addTask(){
       createdBy:S.user?.email||'',
       createdByName:S.user?.name||''
     });
+    if(sharedId) newTask.sharedTaskId=sharedId; // syncAssignedTasksToShared יעדכן במקום ליצור חדש
   }
   if(document.getElementById('nt-worker-email')) document.getElementById('nt-worker-email').value='';
   _saveTasks();
@@ -5137,7 +5158,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0",
@@ -5611,6 +5632,11 @@ document.addEventListener('DOMContentLoaded', function(){
     try { await deleteDoc(doc(db, 'tasks', docId)); } catch(e) { console.error('deleteWATask:', e); }
   };
 
+  // ── מחיקת sharedTask כשמוחקים משימה שהוקצתה לעובד ──
+  window.deleteSharedTaskFromDB = async function(sharedTaskId) {
+    try { await deleteDoc(doc(db, 'sharedTasks', sharedTaskId)); } catch(e) { console.error('deleteSharedTask:', e); }
+  };
+
   // ── האזנה בזמן אמת למשימות וואטסאפ (root collection) ──
   function waTaskId(str) {
     let h = 0;
@@ -5621,7 +5647,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const uid = S.user?.uid || '';
     if (!uid) return;
     const pMap = {high:'urgent', urgent:'urgent', medium:'normal', low:'normal'};
-    onSnapshot(query(collection(db, 'tasks'), where('userId', '==', uid)), (snap) => {
+    return onSnapshot(query(collection(db, 'tasks'), where('userId', '==', uid)), (snap) => {
       if(typeof S === 'undefined') return;
       if(S.user?.uid !== uid) return;
       const ownerName = (S.user?.name || '').trim();
@@ -5681,7 +5707,8 @@ document.addEventListener('DOMContentLoaded', function(){
       S.tasks = [...waTasks, ...S.tasks];
       // נרמל: כל משימה ללא אחראי → בעל העסק
       if(ownerName) S.tasks.forEach(t => { if(!t.assignee || t.assignee==='אני') t.assignee = ownerName; });
-      if(typeof _saveTasks === 'function') _saveTasks();
+      // שמור רק overrides (localStorage) — לא כותבים לFirestore מתוך listener כדי למנוע לולאת כתיבות
+      if(typeof _saveTaskOverrides === 'function') _saveTaskOverrides();
       if(typeof renderPage === 'function') renderPage();
     });
   };
@@ -5697,7 +5724,7 @@ document.addEventListener('DOMContentLoaded', function(){
       if(saved){ S.appointments=JSON.parse(saved); }
     }catch(e){}
 
-    onSnapshot(query(collection(db, 'appointments'), where('userId', '==', apptUid)), (snap) => {
+    return onSnapshot(query(collection(db, 'appointments'), where('userId', '==', apptUid)), (snap) => {
       if(S.user?.uid !== apptUid) return;
       const ds = window.toDateStr || (v=>typeof v==='string'?v.slice(0,10):'');
       const firestoreAppts = snap.docs.map(d => {
@@ -5791,7 +5818,7 @@ document.addEventListener('DOMContentLoaded', function(){
   window.listenWAClients = function() {
     const clientUid = S.user?.uid || '';
     if (!clientUid) return;
-    onSnapshot(query(collection(db, 'clients'), where('userId', '==', clientUid)), (snap) => {
+    return onSnapshot(query(collection(db, 'clients'), where('userId', '==', clientUid)), (snap) => {
       if(S.user?.uid !== clientUid) return;
       S.waClients = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .sort((a,b) => (a.name||'').localeCompare(b.name||''));
@@ -5947,7 +5974,10 @@ document.addEventListener('DOMContentLoaded', function(){
   window.saveSharedTask = async function(taskData) {
     try {
       const ref = await addDoc(collection(db, 'sharedTasks'), {
-        ...taskData, status: 'pending', createdAt: new Date().toISOString()
+        ...taskData,
+        ownerUid: S.user?.uid || '',   // חובה לסינון ב-listenAllSharedTasks
+        status: 'pending',
+        createdAt: new Date().toISOString()
       });
       if(typeof toast==='function') toast('✅ משימה נשלחה לעובד');
       return ref.id;
@@ -5973,29 +6003,47 @@ document.addEventListener('DOMContentLoaded', function(){
   window.updateSharedTaskStatus = async function(taskId, status, email) {
     try {
       const docRef = doc(db, 'sharedTasks', taskId);
-      await updateDoc(docRef, { status, updatedBy: email, updatedAt: new Date().toISOString() });
-      // עדכן גם את המשימה המקורית אצל המעסיק
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const { ownerUid, taskId: origTaskId } = snap.data();
+      // שלב א: עדכן סטטוס ב-sharedTasks עם אימות assigneeEmail
+      await runTransaction(db, async tx => {
+        const snap = tx.get(docRef);
+        const sharedData = (await snap).data();
+        if (!sharedData) throw new Error('sharedTask not found');
+        // אימות: רק העובד המוקצה יכול לשנות סטטוס (מעסיק מסנכרן דרך syncAssignedTasksToShared)
+        const isOwner = sharedData.ownerUid && sharedData.ownerUid === (typeof S!=='undefined'?S.user?.uid:'');
+        const isAssignee = (sharedData.assigneeEmail||'').toLowerCase() === (email||'').toLowerCase();
+        if (!isOwner && !isAssignee) throw new Error('unauthorized');
+        tx.update(docRef, { status, updatedBy: email, updatedAt: new Date().toISOString() });
+      });
+      // שלב ב: עדכן שדה בודד אצל המעסיק ב-transaction נפרד
+      const sharedSnap = await getDoc(docRef);
+      if (sharedSnap.exists()) {
+        const { ownerUid, taskId: origTaskId } = sharedSnap.data();
         if (ownerUid && origTaskId) {
           const empRef = doc(db, 'users', ownerUid, 'data', 'tasks');
-          const empSnap = await getDoc(empRef);
-          if (empSnap.exists()) {
-            const empTasks = empSnap.data().tasks || [];
+          await runTransaction(db, async tx => {
+            const empSnap = tx.get(empRef);
+            const empData = (await empSnap).data();
+            if (!empData) return;
+            const empTasks = [...(empData.tasks || [])];
             const idx = empTasks.findIndex(t => String(t.id) === String(origTaskId));
             if (idx >= 0) {
-              empTasks[idx].status = status;
-              await setDoc(empRef, { tasks: empTasks });
+              empTasks[idx] = { ...empTasks[idx], status };
+              tx.set(empRef, { tasks: empTasks });
             }
-          }
+          });
         }
       }
-    } catch(e) { console.error('updateSharedTaskStatus:', e); }
+    } catch(e) {
+      if (e.message === 'unauthorized') { console.warn('updateSharedTaskStatus: unauthorized attempt by', email); return; }
+      console.error('updateSharedTaskStatus:', e);
+    }
   };
 
   window.listenAllSharedTasks = function(callback) {
-    return onSnapshot(collection(db, 'sharedTasks'), snap => {
+    const ownerUid = S.user?.uid || '';
+    if(!ownerUid) return;
+    // סינון לפי ownerUid — מונע דליפת sharedTasks של מעסיקים אחרים
+    return onSnapshot(query(collection(db, 'sharedTasks'), where('ownerUid', '==', ownerUid)), snap => {
       const tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       // סנכרון סטטוסים בזמן אמת ל-S.tasks אצל המעסיק
       if (typeof S !== 'undefined' && S.tasks) {
