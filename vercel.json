@@ -35,6 +35,10 @@
     {
       "path": "/api/trial-expiry-reminder",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/task-due-reminder",
+      "schedule": "0 6 * * *"
     }
   ]
 }
