@@ -1302,6 +1302,35 @@ function enterApp(){
     // הסתר כפתור "משימה חדשה"
     const topBtn = document.getElementById('topbar-main-btn');
     if(topBtn) topBtn.style.display='none';
+    // ── מובייל: החלף ניווט תחתון לניווט עובד ──
+    const mobNav = document.getElementById('mobile-bottom-nav');
+    if(mobNav){
+      mobNav.querySelector('.mob-nav-items').innerHTML = `
+        <button class="mob-nav-btn active" id="mob-btn-worker-tasks"
+          onclick="nav('worker-tasks')">
+          <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 11l3 3 5-6"/><rect x="3" y="3" width="18" height="18" rx="2"/>
+          </svg></span>
+          <span>המשימות שלי</span>
+          <span class="mob-nav-badge" id="mob-badge-worker-tasks" style="display:none">0</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-btn-worker-chat"
+          onclick="nav('worker-chat')">
+          <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          </svg></span>
+          <span>שיחות</span>
+          <span class="mob-nav-badge" id="mob-badge-worker-chat" style="display:none">0</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-btn-worker-settings"
+          onclick="nav('settings');sSection='user';renderPage()">
+          <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg></span>
+          <span>הגדרות</span>
+        </button>`;
+    }
     nav('worker-tasks', document.getElementById('nav-worker-tasks'));
     setTimeout(function(){
       if(window._firestoreUnsubs){ window._firestoreUnsubs.forEach(fn=>{try{fn();}catch(e){}});}
@@ -1385,7 +1414,12 @@ function nav(page,el){
   }
   // סנכרון ניווט תחתון במובייל
   document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('active'));
-  const mobBtn=document.getElementById('mob-btn-'+page);
+  // עובד: mob-btn-worker-tasks / mob-btn-worker-chat / mob-btn-worker-settings
+  const isWorker = S.user && (S.user.role==='worker'||S.user.role==='employee');
+  const mobBtnId = isWorker
+    ? (page==='worker-tasks'?'mob-btn-worker-tasks': page==='worker-chat'?'mob-btn-worker-chat': page==='settings'?'mob-btn-worker-settings':null)
+    : 'mob-btn-'+page;
+  const mobBtn = mobBtnId ? document.getElementById(mobBtnId) : null;
   if(mobBtn) mobBtn.classList.add('active');
   // החלף כפתור טופבאר בהתאם ללשונית
   const btn=document.getElementById('topbar-main-btn');
@@ -6300,6 +6334,15 @@ document.addEventListener('DOMContentLoaded', function(){
       const pending = S.workerTasks.filter(t=>t.status!=='done').length;
       const nb = document.getElementById('nb-worker-tasks');
       if(nb){ nb.textContent=pending; nb.style.display=pending>0?'':'none'; }
+      // מובייל badge
+      const mobNb = document.getElementById('mob-badge-worker-tasks');
+      if(mobNb){ mobNb.textContent=pending; mobNb.style.display=pending>0?'':'none'; }
+      // badge שיחות (הודעות שלא נקראו מהמעסיק)
+      const unreadChat = S.workerTasks.reduce((s,t)=>s+(t.workerUnreadCount||0),0);
+      const nbChat = document.getElementById('nb-worker-chat');
+      if(nbChat){ nbChat.textContent=unreadChat; nbChat.style.display=unreadChat>0?'':'none'; }
+      const mobNbChat = document.getElementById('mob-badge-worker-chat');
+      if(mobNbChat){ mobNbChat.textContent=unreadChat; mobNbChat.style.display=unreadChat>0?'':'none'; }
       if(S.page==='worker-tasks') if(typeof renderPage==='function') renderPage();
     });
   };
