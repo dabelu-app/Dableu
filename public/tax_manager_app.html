@@ -6,14 +6,14 @@
 <link rel="manifest" href="/manifest.json"/>
 
 <!-- PWA / Android -->
-<meta name="theme-color" content="#2563eb"/>
+<meta name="theme-color" content="#6B5AFF"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 
 <!-- PWA / iOS (Apple) -->
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Dabelu"/>
-<link rel="apple-touch-icon" href="/icon-w.svg"/>
+<link rel="apple-touch-icon" href="/logo-w-plain.png"/>
 <link rel="icon" type="image/svg+xml" href="/icon-w.svg"/>
 
 <!-- SEO / שיתוף -->
@@ -25,92 +25,110 @@
 <title>Dabelu - ניהול משימות</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
+/* ═══════════ SPLASH — mobile only ═══════════ */
+#splash-screen{display:none}
+@media(max-width:640px){
+  #splash-screen{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#6F4CFC 0%,#8b6bff 50%,#6F4CFC 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;transition:opacity .6s ease}
+  #splash-screen::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.15) 0%,transparent 40%),radial-gradient(circle at 80% 80%,rgba(255,255,255,.1) 0%,transparent 40%);opacity:0;animation:splashBgIn 1s ease forwards}
+  @keyframes splashBgIn{to{opacity:1}}
+  .splash-icon-wrap{position:relative;margin-bottom:36px;transform:scale(0) rotate(-720deg);opacity:0;animation:splashIconIn 1.4s cubic-bezier(.34,1.56,.64,1) forwards}
+  @keyframes splashIconIn{to{transform:scale(1) rotate(0deg);opacity:1}}
+  .splash-w-icon{width:180px;height:auto;display:block;filter:brightness(0) invert(1) drop-shadow(0 8px 30px rgba(0,0,0,.3))}
+  .splash-name{color:#fff;font-size:68px;font-weight:800;letter-spacing:3px;line-height:1;margin-bottom:18px;text-shadow:0 4px 20px rgba(0,0,0,.2);font-family:'Century Gothic','Avant Garde','Poppins',sans-serif;display:flex;justify-content:center;direction:ltr}
+  .splash-letter{display:inline-block;opacity:0;transform:translateY(-30px) scale(.5) rotate(-15deg);filter:blur(8px);animation:splashLetterIn .6s cubic-bezier(.34,1.56,.64,1) forwards;animation-delay:calc(1.6s + var(--i)*.15s)}
+  @keyframes splashLetterIn{0%{opacity:0;transform:translateY(-30px) scale(.5) rotate(-15deg);filter:blur(8px)}60%{opacity:1;transform:translateY(5px) scale(1.1) rotate(5deg);filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1) rotate(0);filter:blur(0)}}
+  .splash-tagline{color:#fff;font-size:20px;font-weight:500;letter-spacing:4px;opacity:0;transform:translateY(15px);animation:splashTagIn .8s ease 3.1s forwards}
+  @keyframes splashTagIn{to{opacity:.9;transform:translateY(0)}}
+}
+
 :root{
-  --primary:#1a1a2e;
-  --accent:#2563eb;
-  --accent-light:#eff6ff;
+  --primary:#1e1b4b;
+  --accent:#6B5AFF;
+  --accent-light:#ede9fe;
+  --accent-hover:#5a48f5;
   --surface:#ffffff;
-  --surface2:#f8fafc;
-  --surface3:#f1f5f9;
-  --border:#e2e8f0;
-  --border2:#cbd5e1;
-  --text:#0f172a;
-  --text2:#475569;
-  --text3:#94a3b8;
+  --surface2:#f8f7ff;
+  --surface3:#f0eeff;
+  --sidebar-bg:#f5f3ff;
+  --border:#e5e7eb;
+  --border2:#d1d5db;
+  --text:#1e1b4b;
+  --text2:#6b7280;
+  --text3:#9ca3af;
   --success:#16a34a;
   --success-bg:#f0fdf4;
   --danger:#dc2626;
   --danger-bg:#fef2f2;
   --warning:#d97706;
   --warning-bg:#fffbeb;
-  --info:#2563eb;
-  --info-bg:#eff6ff;
+  --info:#6B5AFF;
+  --info-bg:#ede9fe;
   --wa:#25D366;
   --radius:10px;
   --radius-lg:14px;
-  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
-  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  --shadow:0 1px 3px rgba(107,90,255,.06),0 1px 2px rgba(107,90,255,.04);
+  --shadow-md:0 4px 6px rgba(107,90,255,.08),0 2px 4px rgba(107,90,255,.05);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:'Heebo',sans-serif;background:var(--surface2);color:var(--text);direction:rtl;font-size:14px;line-height:1.5}
 
 /* ═══════════════ LAYOUT ═══════════════ */
 .app-shell{display:flex;height:100vh;overflow:hidden}
-.sidebar{width:220px;background:var(--primary);flex-shrink:0;display:flex;flex-direction:column;transition:width .25s}
+.sidebar{width:220px;background:var(--sidebar-bg);border-left:1px solid rgba(107,90,255,.12);flex-shrink:0;display:flex;flex-direction:column;transition:width .25s}
 .sidebar.collapsed{width:56px}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+.topbar{height:52px;background:var(--surface);border-bottom:1px solid rgba(107,90,255,.12);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
 .page-area{flex:1;overflow-y:auto;padding:20px}
 
 /* ═══════════════ AUTH ═══════════════ */
-#screen-auth{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0f172a 100%);display:flex;align-items:center;justify-content:center;z-index:1000}
-.auth-bg-pattern{position:absolute;inset:0;opacity:.04;background-image:repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 40px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 40px);pointer-events:none}
-.auth-box{position:relative;background:rgba(255,255,255,.97);border-radius:20px;padding:40px 36px;width:380px;box-shadow:0 25px 50px rgba(0,0,0,.4)}
+#screen-auth{position:fixed;inset:0;background:#ffffff;display:flex;align-items:center;justify-content:center;z-index:1000}
+.auth-bg-pattern{position:absolute;inset:0;opacity:.03;background-image:repeating-linear-gradient(0deg,#6B5AFF 0,#6B5AFF 1px,transparent 1px,transparent 48px),repeating-linear-gradient(90deg,#6B5AFF 0,#6B5AFF 1px,transparent 1px,transparent 48px);pointer-events:none}
+.auth-box{position:relative;background:#ffffff;border-radius:24px;padding:40px 36px;width:380px;box-shadow:0 4px 24px rgba(107,90,255,.12),0 1px 4px rgba(107,90,255,.08);border:1px solid rgba(107,90,255,.12)}
 .auth-logo-wrap{text-align:center;margin-bottom:28px}
-.auth-logo-icon{width:64px;height:64px;background:var(--accent);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:30px;margin-bottom:12px;box-shadow:0 8px 20px rgba(37,99,235,.3)}
+.auth-logo-icon{width:64px;height:64px;background:var(--accent);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:30px;margin-bottom:12px;box-shadow:0 8px 20px rgba(107,90,255,.3)}
 .auth-title{font-size:22px;font-weight:600;color:var(--text);margin-bottom:4px}
 .auth-sub{font-size:13px;color:var(--text2)}
 .google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px;border:1.5px solid var(--border2);border-radius:var(--radius);background:#fff;cursor:pointer;font-size:14px;font-weight:500;font-family:'Heebo',sans-serif;transition:all .15s;margin-bottom:16px}
-.google-btn:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.google-btn:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(107,90,255,.12)}
 .google-svg{width:20px;height:20px}
 .divider{display:flex;align-items:center;gap:10px;margin:4px 0 16px;color:var(--text3);font-size:12px}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
 .auth-input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Heebo',sans-serif;color:var(--text);margin-bottom:8px;transition:border-color .15s}
-.auth-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.auth-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(107,90,255,.1)}
 .auth-btn-main{width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;font-family:'Heebo',sans-serif;cursor:pointer;transition:all .15s;margin-top:4px}
-.auth-btn-main:hover{background:#1d4ed8;box-shadow:0 4px 12px rgba(37,99,235,.3)}
+.auth-btn-main:hover{background:var(--accent-hover);box-shadow:0 4px 12px rgba(107,90,255,.3)}
 .auth-footer{margin-top:20px;font-size:11px;color:var(--text3);text-align:center}
 
 /* ═══════════════ SIDEBAR ═══════════════ */
-.sidebar-logo{padding:16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08)}
-.sidebar-logo-icon{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.sidebar-logo-text{color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden}
-.sidebar-logo-sub{color:rgba(255,255,255,.4);font-size:10px}
+.sidebar-logo{padding:16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(107,90,255,.1)}
+.sidebar-logo-icon{width:32px;height:32px;background:transparent;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sidebar-logo-text{color:var(--text);font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden}
+.sidebar-logo-sub{color:var(--text3);font-size:10px;font-weight:400}
 .sidebar-nav{flex:1;padding:12px 8px;overflow-y:auto}
-.nav-group-label{font-size:10px;color:rgba(255,255,255,.3);padding:8px 8px 4px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden}
-.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,.6);transition:all .15s;margin-bottom:2px;white-space:nowrap;overflow:hidden}
-.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-item.active{background:rgba(37,99,235,.35);color:#fff}
+.nav-group-label{font-size:10px;color:var(--text3);padding:8px 8px 4px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--text2);transition:all .15s;margin-bottom:2px;white-space:nowrap;overflow:hidden}
+.nav-item:hover{background:var(--accent-light);color:var(--accent)}
+.nav-item.active{background:var(--accent-light);color:var(--accent);font-weight:600}
 .nav-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center}
 .nav-label{font-size:13px;overflow:hidden}
 .nav-badge{margin-right:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;flex-shrink:0}
-.sidebar-user{padding:12px;border-top:1px solid rgba(255,255,255,.08)}
+.sidebar-user{padding:12px;border-top:1px solid rgba(107,90,255,.1)}
 .sidebar-user-inner{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;cursor:pointer;transition:background .15s}
-.sidebar-user-inner:hover{background:rgba(255,255,255,.08)}
+.sidebar-user-inner:hover{background:var(--accent-light)}
 .user-av{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
 .user-info{overflow:hidden}
-.user-name{font-size:12px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.user-role{font-size:10px;color:rgba(255,255,255,.4)}
+.user-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-role{font-size:10px;color:var(--text3)}
 
 /* ═══════════════ TOPBAR ═══════════════ */
 .collapse-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text2);flex-shrink:0}
-.collapse-btn:hover{background:var(--surface3)}
-.topbar-title{font-size:15px;font-weight:600;flex:1}
+.collapse-btn:hover{background:var(--accent-light);color:var(--accent)}
+.topbar-title{font-size:15px;font-weight:700;flex:1;color:var(--text)}
 .topbar-actions{display:flex;align-items:center;gap:8px}
 .topbar-btn{padding:6px 12px;border-radius:var(--radius);border:1.5px solid var(--border);background:none;font-family:'Heebo',sans-serif;font-size:12px;font-weight:500;cursor:pointer;color:var(--text2);transition:all .15s;display:flex;align-items:center;gap:5px}
-.topbar-btn:hover{border-color:var(--accent);color:var(--accent)}
+.topbar-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
 .topbar-btn.accent{background:var(--accent);color:#fff;border-color:var(--accent)}
-.topbar-btn.accent:hover{background:#1d4ed8}
+.topbar-btn.accent:hover{background:var(--accent-hover)}
 .engine-pill{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--success);background:var(--success-bg);border:1px solid #bbf7d0;border-radius:20px;padding:3px 10px}
 .pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -151,7 +169,7 @@ html,body{height:100%;font-family:'Heebo',sans-serif;background:var(--surface2);
 .tc-title.done-text{text-decoration:line-through;color:var(--text3)}
 .tc-meta{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap}
 .badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600}
-.badge-tax{background:#dbeafe;color:#1d4ed8}
+.badge-tax{background:#ede9fe;color:#4c3fcc}
 .badge-internal{background:var(--warning-bg);color:var(--warning)}
 .badge-meeting{background:var(--success-bg);color:var(--success)}
 .badge-overdue{background:var(--danger-bg);color:var(--danger)}
@@ -165,7 +183,7 @@ html,body{height:100%;font-family:'Heebo',sans-serif;background:var(--surface2);
 .tc-btn:hover{background:var(--surface3);border-color:var(--border2)}
 .tc-btn.b-remind{color:#b45309;border-color:#fcd34d}
 .tc-btn.b-remind:hover{background:var(--warning-bg)}
-.tc-btn.b-snooze{color:#1d4ed8;border-color:#93c5fd}
+.tc-btn.b-snooze{color:#6B5AFF;border-color:#c4b5fd}
 .tc-btn.b-snooze:hover{background:var(--info-bg)}
 .tc-btn.b-done{color:var(--success);border-color:#86efac}
 .tc-btn.b-done:hover{background:var(--success-bg)}
@@ -204,7 +222,7 @@ html,body{height:100%;font-family:'Heebo',sans-serif;background:var(--surface2);
 .settings-nav{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:8px;box-shadow:var(--shadow);height:fit-content;position:relative;padding-bottom:60px}
 .s-nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2);transition:all .15s;margin-bottom:2px}
 .s-nav-item:hover{background:var(--surface3);color:var(--text)}
-.s-nav-item.active{background:var(--accent-light);color:var(--accent);font-weight:600}
+.s-nav-item.active{background:var(--accent-light);color:var(--accent);font-weight:700}
 .settings-content{display:flex;flex-direction:column;gap:14px}
 .s-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow)}
 .s-card-title{font-size:13px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
@@ -213,7 +231,7 @@ html,body{height:100%;font-family:'Heebo',sans-serif;background:var(--surface2);
 .form-row.full{grid-column:1/-1}
 .form-label{font-size:11px;color:var(--text2);font-weight:500}
 .form-input{padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'Heebo',sans-serif;color:var(--text);transition:border-color .15s;background:var(--surface)}
-.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(107,90,255,.1)}
 .form-hint{font-size:10px;color:var(--text3)}
 textarea.form-input{resize:vertical}
 .save-row{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;align-items:center}
@@ -270,14 +288,14 @@ textarea.form-input{resize:vertical}
 .banner.show{display:flex}
 .banner.danger{background:var(--danger-bg);color:var(--danger);border:1px solid #fecaca}
 .empty-state{text-align:center;padding:40px;color:var(--text3);font-size:13px}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:500;opacity:0;transition:opacity .3s;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:500;opacity:0;transition:opacity .3s;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(107,90,255,.3)}
 .toast.show{opacity:1}
 
 /* ═══════════════ BUTTONS ═══════════════ */
 .btn{padding:7px 14px;border-radius:var(--radius);border:1.5px solid var(--border);background:none;font-family:'Heebo',sans-serif;font-size:12px;font-weight:500;cursor:pointer;color:var(--text2);display:inline-flex;align-items:center;gap:5px;transition:all .15s}
 .btn:hover{background:var(--surface3);border-color:var(--border2)}
 .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-.btn.primary:hover{background:#1d4ed8}
+.btn.primary:hover{background:var(--accent-hover)}
 .btn.danger{color:var(--danger);border-color:#fca5a5}
 .btn.danger:hover{background:var(--danger-bg)}
 .btn.sm{padding:4px 10px;font-size:11px}
@@ -294,22 +312,24 @@ textarea.form-input{resize:vertical}
 /* ═══════════════ MOBILE BOTTOM NAV ═══════════════ */
 #mobile-bottom-nav{
   position:fixed;bottom:0;left:0;right:0;
-  background:var(--primary);
+  background:#ffffff;
   display:none;
   z-index:200;
-  border-top:1px solid rgba(255,255,255,.12);
+  border-top:1px solid rgba(107,90,255,.15);
   padding-bottom:env(safe-area-inset-bottom,0px);
+  box-shadow:0 -2px 12px rgba(107,90,255,.08);
 }
 .mob-nav-items{display:flex;justify-content:space-around;align-items:center;height:58px}
 .mob-nav-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:2px;padding:6px 2px;cursor:pointer;
-  color:rgba(255,255,255,.45);border:none;background:none;
+  color:var(--text3);border:none;background:none;
   font-family:'Heebo',sans-serif;font-size:9px;font-weight:600;
   transition:color .15s;position:relative;-webkit-tap-highlight-color:transparent;
 }
-.mob-nav-btn.active{color:#fff}
-.mob-nav-btn .mob-icon{font-size:22px;line-height:1}
+.mob-nav-btn.active{color:var(--accent)}
+.mob-nav-btn .mob-icon{font-size:0;line-height:1;display:flex;align-items:center;justify-content:center}
+.mob-nav-btn .mob-icon svg{width:22px;height:22px;stroke:currentColor;transition:stroke .15s}
 .mob-nav-badge{
   position:absolute;top:5px;right:18%;
   background:#dc2626;color:#fff;font-size:9px;font-weight:700;
@@ -317,12 +337,45 @@ textarea.form-input{resize:vertical}
   display:flex;align-items:center;justify-content:center;padding:0 3px;
 }
 
+/* ── Calendar day cells ── */
+.cal-day-cell{min-height:80px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:6px;transition:border-color .15s;cursor:pointer;display:flex;flex-direction:column}
+.cal-day-cell:hover{border-color:var(--accent)}
+.cal-day-cell.cal-today{border-color:var(--accent)}
+.cal-day-num{font-size:12px;font-weight:500;color:var(--text);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;flex-shrink:0}
+.cal-today .cal-day-num{font-weight:700;color:var(--accent);background:var(--accent-light)}
+.cal-chips{display:flex;flex-direction:column;gap:2px;flex:1;overflow:hidden}
+.cal-chip{font-size:10px;padding:2px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-chip-more{font-size:10px;color:var(--text3)}
+.cal-dots{display:none;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:auto;padding-top:3px}
+.cal-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.cal-dot-urgent{background:#ef4444}
+.cal-dot-deadline{background:#f59e0b}
+.cal-dot-appointment{background:#22c55e}
+.cal-dot-reminder{background:#818cf8}
+.cal-dot-task{background:#6B5AFF}
+.cal-empty-cell{min-height:80px;background:var(--surface3);border-radius:8px;opacity:.35}
+@media(max-width:640px){.cal-empty-cell{min-height:44px}}
+@media(max-width:640px){.mob-hide{display:none!important}}
+
 @media(max-width:640px){
   .stats-row{grid-template-columns:repeat(2,1fr)}
   .settings-layout{grid-template-columns:1fr}
   .sidebar{display:none!important}
   .sidebar-logo-text,.nav-label,.user-info{display:none}
   .db-two-col{grid-template-columns:1fr!important}
+  .db-hide-mobile{display:none!important}
+  .cal-sidebar{display:none!important}
+  .cal-grid-wrap{grid-template-columns:1fr!important}
+  .cal-google-pill{display:none!important}
+  /* יומן מובייל — תאים אחידים, ללא טקסט, רק נקודת אינדיקציה */
+  .cal-day-cell{min-height:64px!important;padding:6px 4px!important}
+  .cal-chips{display:none!important}
+  .cal-dots{display:flex!important;justify-content:center;gap:4px;margin-top:auto;padding-top:4px}
+  /* רקע לבן בתוך האפליקציה */
+  .main{background:#ffffff!important}
+  .page-area{background:#ffffff!important}
+  /* מסך כניסה — רקע בהיר-סגול כדי שהטופס יבלוט */
+  #screen-auth{background:linear-gradient(160deg,#ede9fe 0%,#f5f3ff 60%,#e0d9ff 100%)!important}
   .topbar{padding:0 12px;height:48px}
   .engine-pill{display:none!important}
   .page-area{padding:12px 10px calc(62px + env(safe-area-inset-bottom,0px))}
@@ -342,8 +395,8 @@ textarea.form-input{resize:vertical}
 .wt-btn.done:hover{background:#dcfce7}
 .wt-btn.problem{color:var(--danger);border-color:#fca5a5;background:var(--danger-bg)}
 .wt-btn.problem:hover{background:#fee2e2}
-.wt-btn.chat{color:var(--accent);border-color:#93c5fd;background:var(--accent-light);margin-right:auto;position:relative}
-.wt-btn.chat:hover{background:#dbeafe}
+.wt-btn.chat{color:var(--accent);border-color:#c4b5fd;background:var(--accent-light);margin-right:auto;position:relative}
+.wt-btn.chat:hover{background:#ddd6fe}
 .chat-unread{position:absolute;top:-6px;left:-6px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center}
 
 /* ═══════════════ CHAT MODAL ═══════════════ */
@@ -363,26 +416,38 @@ textarea.form-input{resize:vertical}
 .chat-input{flex:1;padding:9px 14px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;font-family:'Heebo',sans-serif;color:var(--text)}
 .chat-input:focus{outline:none;border-color:var(--accent)}
 .chat-send{padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:20px;font-family:'Heebo',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
-.chat-send:hover{background:#1d4ed8}
+.chat-send:hover{background:#5a48f5}
 </style>
 </head>
 <body>
 
+
+<!-- ══════════ SPLASH (mobile only) ══════════ -->
+<div id="splash-screen">
+  <div class="splash-icon-wrap">
+    <img src="/splash-icon.png" class="splash-w-icon" alt="Dabelu"/>
+  </div>
+  <div class="splash-name">
+    <span class="splash-letter" style="--i:0">D</span><span class="splash-letter" style="--i:1">a</span><span class="splash-letter" style="--i:2">b</span><span class="splash-letter" style="--i:3">e</span><span class="splash-letter" style="--i:4">l</span><span class="splash-letter" style="--i:5">u</span>
+  </div>
+  <div class="splash-tagline">ניהול משרדים חכם</div>
+</div>
+
 <!-- ══════════ AUTH ══════════ -->
-<div id="screen-auth" style="position:fixed;inset:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;z-index:1000;overflow-y:auto">
-<div style="background:white;border-radius:16px;padding:28px 28px 24px;width:360px;max-width:95vw;font-family:Arial,sans-serif;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,.4);margin:auto">
+<div id="screen-auth" style="position:fixed;inset:0;background:linear-gradient(160deg,#ede9fe 0%,#f5f3ff 60%,#e0d9ff 100%);display:flex;align-items:flex-start;justify-content:center;z-index:1000;overflow-y:auto;padding:20px 0 40px">
+<div style="background:white;border-radius:20px;padding:32px 28px 26px;width:360px;max-width:95vw;font-family:'Heebo',Arial,sans-serif;direction:rtl;box-shadow:0 4px 24px rgba(107,90,255,.13),0 1px 4px rgba(107,90,255,.08);border:1px solid rgba(107,90,255,.12);margin:auto">
 
   <!-- Logo -->
   <div style="text-align:center;margin-bottom:18px">
-    <img src="/icon-w.svg" alt="Dabelu W" style="width:72px;height:72px;margin-bottom:8px;border-radius:16px;display:block;margin-left:auto;margin-right:auto"/>
-    <div style="font-size:20px;font-weight:bold;color:#1a1a2e">Dabelu</div>
-    <div style="font-size:12px;color:#888;margin-top:3px">מנהל משימות מס</div>
+    <img src="/icon-w.png" alt="Dabelu W" style="width:72px;height:72px;margin-top:10px;margin-bottom:4px;display:block;margin-left:auto;margin-right:auto;"/>
+    <div style="font-size:22px;font-weight:800;color:#1e1b4b">Dabelu</div>
+    <div style="font-size:12px;color:#9ca3af;margin-top:3px">מנהל משימות מס</div>
   </div>
 
   <!-- Tabs -->
-  <div style="display:flex;border:1.5px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:20px">
-    <div id="tab-login" onclick="authShowTab('login')" style="flex:1;padding:9px;text-align:center;font-size:14px;font-weight:700;cursor:pointer;background:#2563eb;color:#fff;transition:all .2s">כניסה</div>
-    <div id="tab-reg" onclick="authShowTab('reg')" style="flex:1;padding:9px;text-align:center;font-size:14px;font-weight:700;cursor:pointer;background:#f8fafc;color:#64748b;transition:all .2s">הרשמה</div>
+  <div style="display:flex;border:1.5px solid rgba(107,90,255,.2);border-radius:10px;overflow:hidden;margin-bottom:20px">
+    <div id="tab-login" onclick="authShowTab('login')" style="flex:1;padding:9px;text-align:center;font-size:14px;font-weight:700;cursor:pointer;background:#6B5AFF;color:#fff;transition:all .2s">כניסה</div>
+    <div id="tab-reg" onclick="authShowTab('reg')" style="flex:1;padding:9px;text-align:center;font-size:14px;font-weight:700;cursor:pointer;background:#f5f3ff;color:#6b7280;transition:all .2s">הרשמה</div>
   </div>
 
   <!-- ── LOGIN PANEL ── -->
@@ -402,9 +467,9 @@ textarea.form-input{resize:vertical}
       <input id="apw" type="password" placeholder="סיסמה" style="width:100%;padding:10px;padding-right:36px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;direction:ltr;text-align:left"/>
       <span id="toggle-pw" onclick="var f=document.getElementById('apw'),s=document.getElementById('toggle-pw');f.type=f.type==='password'?'text':'password';s.innerHTML=f.type==='password'?'<svg width=18 height=18 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><path d=&quot;M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z&quot;/><circle cx=12 cy=12 r=3/></svg>':'<svg width=18 height=18 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><path d=&quot;M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24&quot;/><line x1=1 y1=1 x2=23 y2=23/></svg>'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#888;line-height:0;user-select:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
     </div>
-    <div id="abtn" style="width:100%;padding:12px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">כניסה ←</div>
-    <div style="text-align:center;margin-top:10px;font-size:12px;color:#94a3b8">
-      שכחת סיסמה? <a href="mailto:tasks@dabelu.pro?subject=איפוס סיסמה" style="color:#2563eb;text-decoration:none;font-weight:600">צור/י קשר איתנו</a>
+    <div id="abtn" style="width:100%;padding:12px;background:#6B5AFF;color:white;border-radius:10px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box;box-shadow:0 4px 14px rgba(107,90,255,.3)">כניסה ←</div>
+    <div style="text-align:center;margin-top:10px;font-size:12px;color:#9ca3af">
+      שכחת סיסמה? <a href="mailto:tasks@dabelu.pro?subject=איפוס סיסמה" style="color:#6B5AFF;text-decoration:none;font-weight:600">צור/י קשר איתנו</a>
     </div>
   </div>
 
@@ -425,11 +490,11 @@ textarea.form-input{resize:vertical}
     <div style="margin-bottom:14px">
       <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px">בחרי תכנית:</div>
       <div style="display:flex;gap:5px">
-        <label id="plan-free-lbl" style="flex:1;border:2px solid #2563eb;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#eff6ff;transition:all .2s">
+        <label id="plan-free-lbl" style="flex:1;border:2px solid #6B5AFF;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#f0eeff;transition:all .2s">
           <input type="radio" name="r-plan" id="r-plan-free" value="free" checked style="display:none"/>
           <div style="font-size:16px;margin-bottom:3px">🎁</div>
-          <div style="font-size:12px;font-weight:700;color:#1e40af">חינמי</div>
-          <div style="font-size:10px;color:#3b82f6;margin-top:2px">תכונות בסיסיות</div>
+          <div style="font-size:12px;font-weight:700;color:#4c3fcc">חינמי</div>
+          <div style="font-size:10px;color:#6B5AFF;margin-top:2px">תכונות בסיסיות</div>
         </label>
         <label id="plan-basic-lbl" style="flex:1;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#f8fafc;transition:all .2s">
           <input type="radio" name="r-plan" id="r-plan-basic" value="basic" style="display:none"/>
@@ -451,25 +516,25 @@ textarea.form-input{resize:vertical}
       <span id="plan-price-note" style="font-weight:600"></span>
     </div>
 
-    <div id="reg-btn" style="width:100%;padding:13px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">הרשמה ←</div>
-    <div style="text-align:center;margin-top:12px;font-size:12px;color:#94a3b8">
-      כבר יש לך חשבון? <span onclick="authShowTab('login')" style="color:#2563eb;cursor:pointer;font-weight:600">כניסה</span>
+    <div id="reg-btn" style="width:100%;padding:13px;background:#6B5AFF;color:white;border-radius:10px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box;box-shadow:0 4px 14px rgba(107,90,255,.3)">הרשמה ←</div>
+    <div style="text-align:center;margin-top:12px;font-size:12px;color:#9ca3af">
+      כבר יש לך חשבון? <span onclick="authShowTab('login')" style="color:#6B5AFF;cursor:pointer;font-weight:600">כניסה</span>
     </div>
   </div>
 
 </div>
 
 <!-- מסך כניסה ראשונה / הגדרת סיסמה -->
-<div id="first-login-box" style="display:none;background:white;border-radius:16px;padding:32px;width:340px;font-family:Arial,sans-serif;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+<div id="first-login-box" style="display:none;background:white;border-radius:20px;padding:32px;width:340px;font-family:'Heebo',Arial,sans-serif;direction:rtl;box-shadow:0 4px 24px rgba(107,90,255,.13);border:1px solid rgba(107,90,255,.12)">
   <div style="text-align:center;margin-bottom:24px">
     <div style="font-size:44px;margin-bottom:8px">🔐</div>
-    <div style="font-size:20px;font-weight:bold;color:#1a1a2e" id="fl-welcome">ברוכה הבאה!</div>
+    <div style="font-size:20px;font-weight:bold;color:#1e1b4b" id="fl-welcome">ברוכה הבאה!</div>
     <div style="font-size:13px;color:#888;margin-top:6px">הגדירי סיסמה אישית לכניסה למערכת</div>
   </div>
   <div id="fl-err" style="color:#dc2626;font-size:12px;text-align:center;margin-bottom:8px;display:none"></div>
   <input id="fl-pass1" type="password" placeholder="סיסמה חדשה (לפחות 6 תווים)" style="width:100%;padding:11px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:10px;box-sizing:border-box;direction:ltr"/>
   <input id="fl-pass2" type="password" placeholder="אימות סיסמה" style="width:100%;padding:11px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:16px;box-sizing:border-box;direction:ltr"/>
-  <div id="fl-btn" style="width:100%;padding:13px;background:#2563eb;color:white;border-radius:8px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box">כנסי למערכת ←</div>
+  <div id="fl-btn" style="width:100%;padding:13px;background:#6B5AFF;color:white;border-radius:10px;font-size:15px;font-weight:bold;text-align:center;cursor:pointer;box-sizing:border-box;box-shadow:0 4px 14px rgba(107,90,255,.3)">כנסי למערכת ←</div>
 </div>
 </div>
 
@@ -479,7 +544,7 @@ textarea.form-input{resize:vertical}
   <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="sidebar-logo-icon" style="background:transparent;padding:0"><img src="/icon-w.svg" style="width:32px;height:32px;border-radius:6px" alt="W"/></div>
+      <div class="sidebar-logo-icon" style="background:transparent;padding:0"><img src="/icon-w.png?v=3" style="width:34px;height:34px;border-radius:8px;box-shadow:0 2px 8px rgba(107,90,255,.3)" alt="W"/></div>
       <div class="sidebar-logo-text">
         <div>מנהל משימות</div>
         <div class="sidebar-logo-sub">ייעוץ מס</div>
@@ -542,8 +607,21 @@ textarea.form-input{resize:vertical}
           style="display:none;background:none;border:1.5px solid var(--accent);color:var(--accent);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer;font-family:'Heebo',sans-serif;font-weight:600">
           📲 התקן
         </button>
+        <!-- כפתור חיפוש — מובייל + לשונית משימות בלבד -->
+        <button id="topbar-search-btn" onclick="toggleTaskSearch()" title="חיפוש משימה"
+          style="display:none;background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:8px;color:var(--text2);line-height:1;transition:color .15s">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
         <button class="topbar-btn accent" id="topbar-main-btn" onclick="openModal('task')">+ משימה חדשה</button>
       </div>
+    </div>
+    <!-- שורת חיפוש שנשלפת מהטופבאר (מובייל) -->
+    <div id="topbar-search-row" style="display:none;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border)">
+      <input id="topbar-search-input" type="search" placeholder="🔍 חיפוש משימה..." dir="rtl"
+        oninput="setTaskSearch(this.value)"
+        style="width:100%;padding:9px 14px;border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-family:'Heebo',sans-serif;outline:none;background:var(--surface2)"/>
     </div>
 
     <div class="page-area" id="page-area">
@@ -554,27 +632,77 @@ textarea.form-input{resize:vertical}
   <!-- MOBILE BOTTOM NAVIGATION -->
   <nav id="mobile-bottom-nav">
     <div class="mob-nav-items">
+
+      <!-- בקרה -->
       <button class="mob-nav-btn active" id="mob-btn-dashboard"
         onclick="nav('dashboard',document.querySelectorAll('.nav-item')[0])">
-        <span class="mob-icon">🏠</span><span>בקרה</span>
+        <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg></span>
+        <span>בקרה</span>
       </button>
+
+      <!-- משימות -->
       <button class="mob-nav-btn" id="mob-btn-tasks"
         onclick="nav('tasks',document.querySelectorAll('.nav-item')[1])">
-        <span class="mob-icon">✅</span><span>משימות</span>
+        <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 11l3 3 5-6"/>
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+        </svg></span>
+        <span>משימות</span>
         <span class="mob-nav-badge" id="mob-badge-tasks" style="display:none">0</span>
       </button>
+
+      <!-- יומן -->
       <button class="mob-nav-btn" id="mob-btn-calendar"
         onclick="nav('calendar',document.querySelectorAll('.nav-item')[2])">
-        <span class="mob-icon">📆</span><span>יומן</span>
+        <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+          <line x1="8" y1="14" x2="8" y2="14"/>
+          <line x1="12" y1="14" x2="12" y2="14"/>
+          <line x1="16" y1="14" x2="16" y2="14"/>
+        </svg></span>
+        <span>יומן</span>
       </button>
+
+      <!-- פגישות -->
       <button class="mob-nav-btn" id="mob-btn-appointments"
         onclick="nav('appointments',document.querySelectorAll('.nav-item')[3])">
-        <span class="mob-icon">🤝</span><span>פגישות</span>
+        <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="7" r="3"/>
+          <path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
+          <path d="M16 3.13a4 4 0 010 7.75"/>
+          <path d="M21 21v-2a4 4 0 00-3-3.85"/>
+        </svg></span>
+        <span>פגישות</span>
       </button>
+
+      <!-- לקוחות -->
       <button class="mob-nav-btn" id="mob-btn-clients"
         onclick="nav('clients',document.querySelectorAll('.nav-item')[4])">
-        <span class="mob-icon">👥</span><span>לקוחות</span>
+        <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20v-1a5 5 0 015-5h6a5 5 0 015 5v1"/>
+        </svg></span>
+        <span>לקוחות</span>
       </button>
+
+      <!-- הגדרות -->
+      <button class="mob-nav-btn" id="mob-btn-settings"
+        onclick="nav('settings',document.querySelectorAll('.nav-item')[0]);sSection='user';renderPage()">
+        <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg></span>
+        <span>הגדרות</span>
+      </button>
+
     </div>
   </nav>
 
@@ -674,7 +802,7 @@ textarea.form-input{resize:vertical}
             <div class="form-row"><label class="form-label">מספר חזרות</label><input class="form-input" id="nt-reccount" type="number" min="1" max="60" value="12" placeholder="12"/></div>
           </div>
 
-          <div id="rec-preview" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px;font-size:11px;color:#1e40af"></div>
+          <div id="rec-preview" style="background:#f0eeff;border:1px solid #c4b5fd;border-radius:8px;padding:8px 10px;font-size:11px;color:#4c3fcc"></div>
         </div>
       </div>
 
@@ -929,6 +1057,16 @@ textarea.form-input{resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
+// ══════════ Splash dismiss (mobile only) ══════════
+(function(){
+  var s=document.getElementById('splash-screen');
+  if(!s||window.getComputedStyle(s).display==='none') return;
+  setTimeout(function(){
+    s.style.opacity='0';
+    setTimeout(function(){s.style.display='none';},650);
+  },4000);
+})();
+
 // ══════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════
@@ -1086,11 +1224,11 @@ function showPaywall() {
 
   var paywall = document.createElement('div');
   paywall.id = 'paywall-screen';
-  paywall.style.cssText = 'position:fixed;inset:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:Arial,sans-serif;direction:rtl;overflow-y:auto;padding:20px';
+  paywall.style.cssText = 'position:fixed;inset:0;background:linear-gradient(145deg,#f5f3ff 0%,#ffffff 60%,#ede9fe 100%);display:flex;align-items:center;justify-content:center;z-index:9999;font-family:Arial,sans-serif;direction:rtl;overflow-y:auto;padding:20px';
   paywall.innerHTML =
     '<div style="background:white;border-radius:20px;padding:32px 24px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">' +
     '<div style="font-size:44px;margin-bottom:12px">🔒</div>' +
-    '<h2 style="font-size:20px;font-weight:900;color:#1a1a2e;margin-bottom:8px">תקופת הניסיון הסתיימה</h2>' +
+    '<h2 style="font-size:20px;font-weight:900;color:#1e1b4b;margin-bottom:8px">תקופת הניסיון הסתיימה</h2>' +
     '<p style="color:#666;font-size:13px;margin-bottom:22px;line-height:1.65">7 ימי הניסיון החינמי הסתיימו.<br/>בחר/י מסלול כדי להמשיך להשתמש ב-Dabelu.</p>' +
     '<div style="display:flex;gap:12px;margin-bottom:18px">' +
       // Basic
@@ -1135,6 +1273,8 @@ function enterApp(){
   }
   document.getElementById('screen-auth').style.display='none';
   document.getElementById('screen-app').style.display='flex';
+  // שמירת session ב-localStorage כדי לדלג על מסך הכניסה בפתיחה הבאה
+  try{if(S.user&&S.user.uid){localStorage.setItem('dabelu_session',JSON.stringify({uid:S.user.uid,name:S.user.name,email:S.user.email,initials:S.user.initials,officeName:S.user.officeName,subscription:S.user.subscription||'trial',role:S.user.role||'',savedAt:Date.now()}));}}catch(e){}
   // update all user elements
   const initials=S.user.initials||'?';
   const name=S.user.name||'משתמש';
@@ -1257,8 +1397,42 @@ function nav(page,el){
       btn.textContent='+ משימה חדשה';
       btn.onclick=function(){openModal('task');};
     }
+    // במובייל — הצג כפתור רק בלשונית משימות
+    const isMobile = window.innerWidth <= 640;
+    if(isMobile){
+      btn.style.display = (page==='tasks') ? '' : 'none';
+    } else {
+      btn.style.display = '';
+    }
+  }
+  // כפתור חיפוש — מובייל + משימות בלבד
+  const searchBtn = document.getElementById('topbar-search-btn');
+  if(searchBtn){
+    const isMob = window.innerWidth <= 640;
+    searchBtn.style.display = (isMob && page==='tasks') ? 'flex' : 'none';
+  }
+  // סגור שורת חיפוש בכניסה ללשונית אחרת
+  if(page !== 'tasks'){
+    const sr = document.getElementById('topbar-search-row');
+    if(sr) sr.style.display = 'none';
+    if(typeof setTaskSearch === 'function') setTaskSearch('');
   }
   renderPage();
+}
+
+function toggleTaskSearch(){
+  const row = document.getElementById('topbar-search-row');
+  const inp = document.getElementById('topbar-search-input');
+  if(!row) return;
+  const isOpen = row.style.display !== 'none';
+  if(isOpen){
+    row.style.display = 'none';
+    setTaskSearch('');
+    if(inp) inp.value = '';
+  } else {
+    row.style.display = 'block';
+    setTimeout(()=>{ if(inp) inp.focus(); }, 60);
+  }
 }
 function toggleBubble(){
   const b=document.getElementById('user-bubble');
@@ -1389,7 +1563,7 @@ function renderDashboard(){
     </div>
   </div>
   <!-- TWO COLUMN: urgent tasks + deadlines -->
-  <div class="db-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+  <div class="db-two-col db-hide-mobile" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
 
     <!-- עמודה שמאל: משימות דורשות תשומת לב -->
     <div style="background:var(--surface);border:1.5px solid ${(over48>0||urgent>0)?'#fcd34d':'var(--border)'};border-radius:var(--radius-lg);overflow:hidden">
@@ -1537,15 +1711,17 @@ function renderTasksPage(){
   };
   const applySort = list => {
     return list.sort((a,b)=>{
+      const ad = a.date || '9999-12-31';
+      const bd = b.date || '9999-12-31';
       if(fs==='priority'){
         if(a.pinned!==b.pinned) return a.pinned?-1:1;
         if(a.priority!==b.priority) return a.priority==='urgent'?-1:1;
-        return a.date.localeCompare(b.date);
+        return ad.localeCompare(bd);
       }
-      if(fs==='date')      return a.date.localeCompare(b.date);
-      if(fs==='date_desc') return b.date.localeCompare(a.date);
-      if(fs==='assignee')  return a.assignee.localeCompare(b.assignee,'he');
-      if(fs==='type')      return a.type.localeCompare(b.type);
+      if(fs==='date')      return ad.localeCompare(bd);
+      if(fs==='date_desc') return bd.localeCompare(ad);
+      if(fs==='assignee')  return (a.assignee||'').localeCompare(b.assignee||'','he');
+      if(fs==='type')      return (a.type||'').localeCompare(b.type||'');
       if(fs==='created')   return b.createdAt-a.createdAt;
       return 0;
     });
@@ -1665,7 +1841,7 @@ function renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cp,ci,cd,t
       ${tabBtn('inprogress','בביצוע',ci,'#d97706')}
       ${tabBtn('done','טופלו',cd,'#16a34a')}
     </div>
-    <div style="display:flex;gap:6px;align-items:center">
+    <div class="mob-hide" style="display:flex;gap:6px;align-items:center">
       <button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.view='tabs';renderPage()"
         style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:${fv==='tabs'?'var(--accent)':'var(--surface)'};color:${fv==='tabs'?'#fff':'var(--text2)'};font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif" title="תצוגת לשוניות">≡ לשוניות</button>
       <button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.view='worker';renderPage()"
@@ -1676,8 +1852,8 @@ function renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cp,ci,cd,t
   </div>
 
   <!-- FILTER BAR: chips inline with type+sort -->
-  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:2.5px solid #1e293b;border-radius:var(--radius-lg)">
-    <span style="font-size:11px;font-weight:600;color:var(--text3);flex-shrink:0;margin-left:4px">סינון ומיון:</span>
+  <div class="mob-hide" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:2.5px solid #1e293b;border-radius:var(--radius-lg)">
+    <span class="mob-hide" style="font-size:11px;font-weight:600;color:var(--text3);flex-shrink:0;margin-left:4px">סינון ומיון:</span>
 
     ${fv==='tabs'?`
     <input id="task-search-input" type="text" placeholder="🔍 חיפוש חופשי..." value="${(S.taskFilter?.search||'').replace(/"/g,'&quot;')}"
@@ -1721,14 +1897,14 @@ function renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cp,ci,cd,t
       </button>`;
     }).join('')}`:''}
 
-    <div style="flex:1"></div>
+    <div class="mob-hide" style="flex:1"></div>
 
     <!-- type + sort -->
-    <select class="filter-select" style="font-size:11px;padding:4px 8px"
+    <select class="filter-select mob-hide" style="font-size:11px;padding:4px 8px"
       onchange="S.taskFilter=S.taskFilter||{};S.taskFilter.type=this.value;renderPage()">
       ${typeOpts.map(([v,l])=>`<option value="${v}" ${ft===v?'selected':''}>${l}</option>`).join('')}
     </select>
-    <select class="filter-select" style="font-size:11px;padding:4px 8px"
+    <select class="filter-select mob-hide" style="font-size:11px;padding:4px 8px"
       onchange="S.taskFilter=S.taskFilter||{};S.taskFilter.sort=this.value;renderPage()">
       ${sortOpts.map(([v,l])=>`<option value="${v}" ${fs===v?'selected':''}>${l}</option>`).join('')}
     </select>
@@ -1991,9 +2167,9 @@ function taskAccordionHTML(t){
         const st=(S.sharedTasks||[]).find(s=>s.id===t.sharedTaskId);
         const unread=st?.unreadCount||0;
         const last=st?.lastMessage||'';
-        const chatBg    = unread ? '#eff6ff'    : 'var(--surface)';
-        const chatBorder = unread ? '#93c5fd'    : 'var(--border)';
-        const chatColor  = unread ? '#1d4ed8'    : 'var(--text2)';
+        const chatBg    = unread ? '#f0eeff'    : 'var(--surface)';
+        const chatBorder = unread ? '#c4b5fd'    : 'var(--border)';
+        const chatColor  = unread ? '#6B5AFF'    : 'var(--text2)';
         const chatWeight = unread ? '600'        : '400';
         const safeTitle  = (t.title||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
         return `<div onclick="event.stopPropagation();openTaskChat('${t.sharedTaskId}','${safeTitle}')"
@@ -2161,8 +2337,8 @@ function renderWAPage(){
   </div>
 
   <!-- INFO BOX -->
-  <div style="background:${waTab==='whatsapp'?'#f0fdf4':'#eff6ff'};border:1px solid ${waTab==='whatsapp'?'#bbf7d0':'#bfdbfe'};border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px">
-    <div style="font-size:12px;font-weight:700;color:${waTab==='whatsapp'?'#166534':'#1e40af'};margin-bottom:6px">${waTab==='whatsapp'?'💬 שלח משימות בוואטסאפ':'📧 שלח משימות במייל'}</div>
+  <div style="background:${waTab==='whatsapp'?'#f0fdf4':'#f0eeff'};border:1px solid ${waTab==='whatsapp'?'#bbf7d0':'#c4b5fd'};border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px">
+    <div style="font-size:12px;font-weight:700;color:${waTab==='whatsapp'?'#166534':'#4c3fcc'};margin-bottom:6px">${waTab==='whatsapp'?'💬 שלח משימות בוואטסאפ':'📧 שלח משימות במייל'}</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:8px">
       ${waTab==='whatsapp'?`שלח הודעה חופשית למספר הייעודי שלך – ה-AI יזהה אוטומטית את המשימה, העובד, הדחיפות והתאריך.`:`שלח מייל לכתובת הייעודית שלך – נושא המייל יהפוך לכותרת המשימה.`}
     </div>
@@ -2196,7 +2372,7 @@ function renderWAPage(){
     </div>
     <div class="wa-msgs" id="wa-msgs">
       ${msgs.length?msgs.map((m,i)=>`
-        <div class="wa-msg ${m.auto?'auto-msg':''}" style="${m.urgent?'border-right:3px solid #dc2626;background:#fffbfb;':''}${m.channel==='email'?'border-right:3px solid #2563eb;':''}">
+        <div class="wa-msg ${m.auto?'auto-msg':''}" style="${m.urgent?'border-right:3px solid #dc2626;background:#fffbfb;':''}${m.channel==='email'?'border-right:3px solid #6B5AFF;':''}">
           ${m.channel==='email'?`<div style="font-size:10px;font-weight:700;color:var(--accent);margin-bottom:4px">📧 מ: ${m.from||'לקוח'} · נושא: ${m.subject||m.text.substring(0,30)}</div>`:''}
           <div style="white-space:pre-wrap">${m.text}</div>
           ${m.parsed?`<div style="margin-top:6px;padding:6px 8px;background:var(--surface3);border-radius:6px;font-size:11px">
@@ -2984,8 +3160,8 @@ function renderTeamSettings(){
         <span style="font-size:10px;color:var(--text2)">קריאה בלבד</span>
       </button>
     </div>
-    <div id="new-code-banner" style="display:none;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:var(--radius);padding:12px;margin-bottom:12px;text-align:center">
-      <div style="font-size:11px;color:#1e40af;margin-bottom:6px">קוד הזמנה חדש – שתף עם העובד:</div>
+    <div id="new-code-banner" style="display:none;background:#f0eeff;border:1.5px solid #c4b5fd;border-radius:var(--radius);padding:12px;margin-bottom:12px;text-align:center">
+      <div style="font-size:11px;color:#4c3fcc;margin-bottom:6px">קוד הזמנה חדש – שתף עם העובד:</div>
       <div id="new-code-val" style="font-family:monospace;font-size:24px;font-weight:700;letter-spacing:4px;color:var(--accent)"></div>
       <div style="display:flex;justify-content:center;gap:8px;margin-top:8px">
         <button class="btn sm" onclick="copyCode(document.getElementById('new-code-val').textContent)">📋 העתק</button>
@@ -3131,12 +3307,12 @@ function renderCalendarSettings(){
     <div class="s-card-title">📅 יומן Google</div>
 
     <!-- יומן דבליו מרכזי -->
-    <div style="border:1.5px solid #2563eb33;border-radius:12px;padding:16px;margin-bottom:16px;background:#eff6ff">
+    <div style="border:1.5px solid rgba(107,90,255,.2);border-radius:12px;padding:16px;margin-bottom:16px;background:#f0eeff">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
         <div style="font-size:24px">📆</div>
         <div>
-          <div style="font-size:13px;font-weight:700;color:#1e40af">יומן דבליו מרכזי</div>
-          <div style="font-size:11px;color:#3b82f6">כל הפגישות נרשמות כאן אוטומטית</div>
+          <div style="font-size:13px;font-weight:700;color:#4c3fcc">יומן דבליו מרכזי</div>
+          <div style="font-size:11px;color:#6B5AFF">כל הפגישות נרשמות כאן אוטומטית</div>
         </div>
         <div style="margin-right:auto;background:#16a34a;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">✓ פעיל</div>
       </div>
@@ -3579,7 +3755,7 @@ function startEditTaskTitle(id){
 // ══════════════════════════════════════
 //  TEAM
 // ══════════════════════════════════════
-const memberColors=[['#dbeafe','#1d4ed8'],['#dcfce7','#166534'],['#fef9c3','#a16207'],['#fce7f3','#9d174d'],['#ede9fe','#6d28d9']];
+const memberColors=[['#ede9fe','#6B5AFF'],['#dcfce7','#166534'],['#fef9c3','#a16207'],['#fce7f3','#9d174d'],['#ddd6fe','#4c3fcc']];
 function highlightPref(){
   ['wa','email','both'].forEach(id=>{
     const lbl=document.getElementById('pref-'+id+'-lbl');
@@ -3737,13 +3913,16 @@ function renderCalendarPage(){
   const startDow=firstDay.getDay();
   const totalDays=lastDay.getDate();
 
-  const prevMonth=()=>{
-    if(!S.calMonth&&S.calMonth!==0){S.calMonth=now.getMonth();S.calYear=now.getFullYear();}
+  // פונקציות ניווט — מוגדרות גלובלית כדי שה-onclick יוכל לגשת אליהן
+  window.calNavPrev=function(){
+    const _n=new Date();
+    if(S.calMonth===undefined||S.calMonth===null){S.calMonth=_n.getMonth();S.calYear=_n.getFullYear();}
     if(S.calMonth===0){S.calMonth=11;S.calYear--;}else{S.calMonth--;}
     renderPage();
   };
-  const nextMonth=()=>{
-    if(!S.calMonth&&S.calMonth!==0){S.calMonth=now.getMonth();S.calYear=now.getFullYear();}
+  window.calNavNext=function(){
+    const _n=new Date();
+    if(S.calMonth===undefined||S.calMonth===null){S.calMonth=_n.getMonth();S.calYear=_n.getFullYear();}
     if(S.calMonth===11){S.calMonth=0;S.calYear++;}else{S.calMonth++;}
     renderPage();
   };
@@ -3751,19 +3930,27 @@ function renderCalendarPage(){
   // Build calendar grid
   let cells='';
   // Empty cells before first day
-  for(let i=0;i<startDow;i++) cells+=`<div style="min-height:80px;background:var(--surface3);border-radius:8px;opacity:.4"></div>`;
+  for(let i=0;i<startDow;i++) cells+=`<div class="cal-empty-cell"></div>`;
   // Day cells
   for(let d=1;d<=totalDays;d++){
     const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dayEvents=events.filter(e=>e.date===dateStr);
     const isToday=dateStr===today();
+    // dot color per event source/priority
+    const dotClass=e=>e.priority==='urgent'?'cal-dot-urgent':e.source==='deadline'?'cal-dot-deadline':e.source==='appointment'?'cal-dot-appointment':e.source==='reminder'?'cal-dot-reminder':'cal-dot-task';
+    // chip color per event source/priority
+    const chipBg=e=>e.priority==='urgent'?'#fee2e2':e.source==='deadline'?'#fef3c7':e.source==='appointment'?'#f0fdf4':'#ede9fe';
+    const chipClr=e=>e.priority==='urgent'?'#b91c1c':e.source==='deadline'?'#92400e':e.source==='appointment'?'#15803d':'#6B5AFF';
     cells+=`
-    <div style="min-height:80px;background:var(--surface);border:1.5px solid ${isToday?'var(--accent)':'var(--border)'};border-radius:8px;padding:6px;transition:all .15s;cursor:pointer" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='${isToday?'var(--accent)':'var(--border)'}'">
-      <div style="font-size:12px;font-weight:${isToday?'700':'500'};color:${isToday?'var(--accent)':'var(--text)'};background:${isToday?'var(--accent-light)':'transparent'};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px">${d}</div>
-      ${dayEvents.slice(0,2).map(e=>`
-        <div style="font-size:10px;padding:2px 5px;border-radius:4px;margin-bottom:2px;background:${e.priority==='urgent'?'#fee2e2':e.source==='deadline'?'#fef3c7':e.source==='appointment'?'#f0fdf4':'#dbeafe'};color:${e.priority==='urgent'?'#b91c1c':e.source==='deadline'?'#92400e':e.source==='appointment'?'#15803d':'#1e40af'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${e.title}">${e.title}</div>
-      `).join('')}
-      ${dayEvents.length>2?`<div style="font-size:10px;color:var(--text3)">+${dayEvents.length-2} עוד</div>`:''}
+    <div class="cal-day-cell${isToday?' cal-today':''}" onclick="openDayModal('${dateStr}')">
+      <div class="cal-day-num">${d}</div>
+      <div class="cal-chips">
+        ${dayEvents.slice(0,2).map(e=>`<div class="cal-chip" style="background:${chipBg(e)};color:${chipClr(e)}" title="${e.title}">${e.title}</div>`).join('')}
+        ${dayEvents.length>2?`<div class="cal-chip-more">+${dayEvents.length-2} עוד</div>`:''}
+      </div>
+      <div class="cal-dots">
+        ${dayEvents.slice(0,4).map(e=>`<span class="cal-dot ${dotClass(e)}"></span>`).join('')}
+      </div>
     </div>`;
   }
 
@@ -3774,20 +3961,22 @@ function renderCalendarPage(){
 
   return `
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-    <div style="display:flex;align-items:center;gap:12px">
-      <button class="btn" onclick="(${prevMonth.toString()})()">→</button>
-      <div style="font-size:16px;font-weight:700">${monthNames[month]} ${year}</div>
-      <button class="btn" onclick="(${nextMonth.toString()})()">←</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn" style="font-size:11px;padding:4px 8px" onclick="S.calYear=(${year})-1;renderPage()">‹‹</button>
+      <button class="btn" onclick="calNavPrev()">‹</button>
+      <div style="font-size:16px;font-weight:700;min-width:120px;text-align:center">${monthNames[month]} ${year}</div>
+      <button class="btn" onclick="calNavNext()">›</button>
+      <button class="btn" style="font-size:11px;padding:4px 8px" onclick="S.calYear=(${year})+1;renderPage()">››</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn sm" onclick="S.calMonth=new Date().getMonth();S.calYear=new Date().getFullYear();renderPage()">היום</button>
-      <div style="font-size:11px;background:var(--info-bg);color:var(--info);padding:4px 10px;border-radius:20px;border:1px solid var(--border-info)">
+      <div class="cal-google-pill" style="font-size:11px;background:var(--info-bg);color:var(--info);padding:4px 10px;border-radius:20px;border:1px solid var(--border-info)">
         🔗 חיבור Google Calendar – שלב 3
       </div>
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start">
+  <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start" class="cal-grid-wrap">
     <div>
       <!-- Day headers -->
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px">
@@ -3807,7 +3996,7 @@ function renderCalendarPage(){
     </div>
 
     <!-- Sidebar -->
-    <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="cal-sidebar" style="display:flex;flex-direction:column;gap:12px">
 
       <!-- אירועי היום -->
       <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:12px">
@@ -3816,7 +4005,7 @@ function renderCalendarPage(){
           אירועי היום
         </div>
         ${todayEvents.length?todayEvents.map(e=>`
-          <div style="border-right:3px solid ${e.source==='meeting'?'#2563eb':e.source==='deadline'?'#d97706':'#16a34a'};padding:6px 8px;border-radius:0 6px 6px 0;margin-bottom:5px;background:var(--surface2)">
+          <div style="border-right:3px solid ${e.source==='meeting'?'#6B5AFF':e.source==='deadline'?'#d97706':'#16a34a'};padding:6px 8px;border-radius:0 6px 6px 0;margin-bottom:5px;background:var(--surface2)">
             <div style="font-size:11px;font-weight:600">${e.title}</div>
             ${e.assignee?`<div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${e.assignee}</div>`:''}
           </div>`).join('')
@@ -3875,6 +4064,94 @@ function renderCalendarPage(){
 
     </div>
   </div>`;
+}
+
+function openDayModal(dateStr){
+  const [y,m,d]=dateStr.split('-');
+  const monthNames=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const dayNames=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const dateObj=new Date(parseInt(y),parseInt(m)-1,parseInt(d));
+  const dayName=dayNames[dateObj.getDay()];
+  const dateDisplay=`יום ${dayName}, ${parseInt(d)} ${monthNames[parseInt(m)-1]} ${y}`;
+
+  // אסוף את כל הפריטים של היום הזה
+  const items=[];
+  const priorityOrder={urgent:0,high:1,normal:2,low:3};
+
+  // כל המשימות
+  (S.tasks||[]).forEach(t=>{
+    if(t.date===dateStr){
+      items.push({title:t.title||'(ללא כותרת)',time:t.time||'',priority:t.priority||'normal',status:t.status||'pending',assignee:t.assignee||'',source:'task',icon:t.priority==='urgent'?'🔥':t.type==='meeting'?'🤝':'📋'});
+    }
+  });
+  // תזכורות
+  (S.reminders||[]).forEach(r=>{
+    if(r.date===dateStr) items.push({title:r.task||'תזכורת',time:'',priority:'normal',status:'',assignee:r.assignee||'',source:'reminder',icon:'🔔'});
+  });
+  // פגישות מבוט
+  (S.appointments||[]).forEach(a=>{
+    if(a.date===dateStr) items.push({title:(a.clientName||a.title||'פגישה'),time:a.time||'',priority:'normal',status:'',assignee:'',source:'appointment',icon:'🤝'});
+  });
+  // דדליינים
+  (typeof deadlines!=='undefined'?deadlines:[]).forEach(dl=>{
+    if(dl.date===dateStr) items.push({title:dl.title,time:'',priority:'urgent',status:'',assignee:'',source:'deadline',icon:'⚠️'});
+  });
+
+  // מיון: קודם לפי שעה, אחר כך לפי עדיפות
+  items.sort((a,b)=>{
+    if(a.time&&b.time) return a.time.localeCompare(b.time);
+    if(a.time) return -1; if(b.time) return 1;
+    return (priorityOrder[a.priority]||2)-(priorityOrder[b.priority]||2);
+  });
+
+  const statusLabel={pending:'⏳ ממתין',in_progress:'🔄 בתהליך',done:'✅ הושלם'};
+  const bgColor={urgent:'#fee2e2',high:'#fef3c7',normal:'#f0eeff',low:'#f0fdf4'};
+  const txtColor={urgent:'#b91c1c',high:'#92400e',normal:'#4c3fcc',low:'#15803d'};
+
+  const itemsHtml=items.length===0
+    ?'<div style="text-align:center;color:var(--text3);padding:40px 20px;font-size:14px">אין פריטים ביום זה 🎉</div>'
+    :items.map(it=>`
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:${bgColor[it.priority]||'#f0eeff'};border-radius:10px;margin-bottom:8px;border-right:3px solid ${txtColor[it.priority]||'#6B5AFF'}">
+        <div style="font-size:18px;flex-shrink:0;line-height:1.4">${it.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text);word-break:break-word">${it.title}</div>
+          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;align-items:center">
+            ${it.time?`<span style="font-size:11px;color:var(--text2);background:#fff;padding:1px 6px;border-radius:20px">🕐 ${it.time}</span>`:''}
+            ${it.status?`<span style="font-size:11px;color:var(--text2)">${statusLabel[it.status]||it.status}</span>`:''}
+            ${it.assignee?`<span style="font-size:11px;color:var(--text2)">👤 ${it.assignee}</span>`:''}
+            <span style="font-size:10px;color:${txtColor[it.priority]||'#6B5AFF'};background:#fff;padding:1px 6px;border-radius:20px">${{task:'משימה',reminder:'תזכורת',appointment:'פגישה',deadline:'דדליין'}[it.source]||it.source}</span>
+          </div>
+        </div>
+      </div>`).join('');
+
+  // הסר modal קיים
+  const existing=document.getElementById('cal-day-modal');
+  if(existing) existing.remove();
+
+  const overlay=document.createElement('div');
+  overlay.id='cal-day-modal';
+  overlay.style.cssText='position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.onclick=function(e){if(e.target===overlay)overlay.remove();};
+
+  overlay.innerHTML=`
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:460px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.25);overflow:hidden">
+      <!-- כותרת -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:linear-gradient(135deg,#6B5AFF,#8b6bff);flex-shrink:0">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#fff">${dateDisplay}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.8);margin-top:2px">${items.length} פריט${items.length!==1?'ים':''}</div>
+        </div>
+        <button onclick="document.getElementById('cal-day-modal').remove()"
+          style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.2);cursor:pointer;font-size:16px;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s"
+          onmouseenter="this.style.background='rgba(255,255,255,.35)'" onmouseleave="this.style.background='rgba(255,255,255,.2)'">✕</button>
+      </div>
+      <!-- תוכן -->
+      <div style="overflow-y:auto;padding:14px;flex:1">
+        ${itemsHtml}
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
 }
 
 function onClientSelect(val){
@@ -4375,7 +4652,7 @@ function renderAdminPage(){
 .adm-search:focus{outline:none;border-color:var(--accent)}
 .adm-btn{padding:7px 16px;border:none;border-radius:var(--radius);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .adm-btn-primary{background:var(--accent);color:#fff}
-.adm-btn-primary:hover{background:#1d4ed8}
+.adm-btn-primary:hover{background:#5a48f5}
 .adm-table-wrap{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow)}
 .adm-table{width:100%;border-collapse:collapse}
 .adm-table thead{background:var(--surface2)}
@@ -4387,10 +4664,10 @@ function renderAdminPage(){
 .adm-badge.trial{background:#fffbeb;color:#d97706}
 .adm-badge.free{background:#f0fdf4;color:#16a34a}
 .adm-badge.blocked{background:#fef2f2;color:#dc2626}
-.adm-badge.active{background:#eff6ff;color:#2563eb}
+.adm-badge.active{background:#ede9fe;color:#6B5AFF}
 .adm-action{padding:4px 10px;border-radius:6px;font-size:11px;font-family:inherit;cursor:pointer;font-weight:600;border:1.5px solid}
-.adm-edit{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
-.adm-edit:hover{background:#dbeafe}
+.adm-edit{background:#ede9fe;color:#6B5AFF;border-color:#c4b5fd}
+.adm-edit:hover{background:#ddd6fe}
 .adm-del{background:#fef2f2;color:#dc2626;border-color:#fecaca;margin-right:6px}
 .adm-del:hover{background:#fee2e2}
 .adm-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center}
@@ -4412,7 +4689,7 @@ function renderAdminPage(){
 .adm-tab-btn{background:var(--surface2);color:var(--text2);border:1.5px solid var(--border);font-weight:500}
 .adm-tab-btn:hover{background:#e2e8f0}
 .adm-tab-active{background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important}
-.adm-badge.basic{background:#eff6ff;color:#2563eb}
+.adm-badge.basic{background:#ede9fe;color:#6B5AFF}
 .adm-badge.business{background:#f0fdf4;color:#16a34a}
 .adm-badge.pending{background:#fff7ed;color:#ea580c}
 .adm-badge.trial_expired{background:#fef2f2;color:#dc2626}
@@ -4512,7 +4789,7 @@ function admRenderTable(users, hierarchy, orphans){
   if(stats) stats.innerHTML=`
     <div class="adm-stat"><div class="adm-stat-num">${total}</div><div class="adm-stat-lbl">סה"כ משתמשים</div></div>
     <div class="adm-stat" style="cursor:pointer;border-color:#16a34a" onclick="admSetTab('paying')"><div class="adm-stat-num" style="color:#16a34a">${paying}</div><div class="adm-stat-lbl">💳 מנויים משלמים</div></div>
-    <div class="adm-stat"><div class="adm-stat-num" style="color:#2563eb">${active}</div><div class="adm-stat-lbl">פעילים / חינמי</div></div>
+    <div class="adm-stat"><div class="adm-stat-num" style="color:#6B5AFF">${active}</div><div class="adm-stat-lbl">פעילים / חינמי</div></div>
     <div class="adm-stat"><div class="adm-stat-num" style="color:#d97706">${trial}</div><div class="adm-stat-lbl">בניסיון</div></div>
     <div class="adm-stat"><div class="adm-stat-num" style="color:#dc2626">${blocked}</div><div class="adm-stat-lbl">חסומים</div></div>
   `;
@@ -4704,7 +4981,7 @@ function showWelcomeModal(user, plainPass){
   const name = user.name || 'עובד יקר';
   const email = user.email || '';
   const phone = (user.chatId||'').replace(/\D/g,'');
-  const siteUrl = 'https://cosmic-daifuku-4d8c28.netlify.app';
+  const siteUrl = 'https://dabelu.web.app/tax_manager_app.html';
   const senderName = (S.user && S.user.name) || 'שנית';
 
   const msg = `👋 שלום ${name}!
@@ -4828,8 +5105,8 @@ function renderWorkerAllTasksPage(){
     const done    = tasks.filter(t=>t.status==='done').length;
     return `
     <div style="margin-bottom:18px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 14px;background:${isMe?'#eff6ff':'var(--surface)'};border-radius:var(--radius);border:1.5px solid ${isMe?'#2563eb':'var(--border)'}">
-        <div style="width:32px;height:32px;border-radius:50%;background:${isMe?'#2563eb':'#64748b'};color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 14px;background:${isMe?'#f0eeff':'var(--surface)'};border-radius:var(--radius);border:1.5px solid ${isMe?'#6B5AFF':'var(--border)'}">
+        <div style="width:32px;height:32px;border-radius:50%;background:${isMe?'#6B5AFF':'#64748b'};color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           ${(worker[0]||'?').toUpperCase()}
         </div>
         <div style="flex:1">
@@ -4873,9 +5150,9 @@ function renderEmployerChatsPage(){
   if(!chats.length) return `<div class="empty-state" style="padding:40px 20px">💬<br/><span style="font-size:14px;font-weight:600;display:block;margin:12px 0 6px">אין הודעות כרגע</span><span style="font-size:12px;color:var(--text3)">הודעות מעובדים יופיעו כאן</span></div>`;
   return chats.sort((a,b)=>(b.lastMessageAt||b.createdAt||'').localeCompare(a.lastMessageAt||a.createdAt||'')).map(t=>{
     const unread=t.unreadCount||0;
-    return `<div class="wt-card" style="cursor:pointer;${unread?'border-color:#93c5fd;background:#eff6ff;':''}" onclick="openTaskChat('${t.id}','${(t.title||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+    return `<div class="wt-card" style="cursor:pointer;${unread?'border-color:#c4b5fd;background:#f0eeff;':''}" onclick="openTaskChat('${t.id}','${(t.title||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
     <div style="display:flex;align-items:center;gap:12px">
-      <div style="width:40px;height:40px;border-radius:50%;background:${unread?'#2563eb':'#64748b'};color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <div style="width:40px;height:40px;border-radius:50%;background:${unread?'#6B5AFF':'#64748b'};color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
         ${(t.assigneeName||t.assigneeEmail||'?')[0].toUpperCase()}
       </div>
       <div style="flex:1;min-width:0">
@@ -4884,7 +5161,7 @@ function renderEmployerChatsPage(){
           ${unread?`<span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:50%;min-width:18px;height:18px;padding:0 4px;display:flex;align-items:center;justify-content:center">${unread}</span>`:''}
         </div>
         <div style="font-size:11px;color:var(--text3)">👤 ${t.assigneeName||t.assigneeEmail||''}</div>
-        <div style="font-size:12px;color:${unread?'#1d4ed8':'var(--text2)'};font-weight:${unread?600:400};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.lastMessage||'לחץ לפתיחת שיחה'}</div>
+        <div style="font-size:12px;color:${unread?'#6B5AFF':'var(--text2)'};font-weight:${unread?600:400};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.lastMessage||'לחץ לפתיחת שיחה'}</div>
       </div>
       <span style="color:var(--text3);font-size:20px;flex-shrink:0">›</span>
     </div>
@@ -4985,12 +5262,12 @@ function authShowTab(tab) {
   if(!login||!reg) return;
   if(tab==='login'){
     login.style.display='block'; reg.style.display='none';
-    if(tl){tl.style.background='#2563eb';tl.style.color='#fff';}
-    if(tr){tr.style.background='#f8fafc';tr.style.color='#64748b';}
+    if(tl){tl.style.background='#6B5AFF';tl.style.color='#fff';}
+    if(tr){tr.style.background='#f5f3ff';tr.style.color='#6b7280';}
   } else {
     login.style.display='none'; reg.style.display='block';
-    if(tr){tr.style.background='#2563eb';tr.style.color='#fff';}
-    if(tl){tl.style.background='#f8fafc';tl.style.color='#64748b';}
+    if(tr){tr.style.background='#6B5AFF';tr.style.color='#fff';}
+    if(tl){tl.style.background='#f5f3ff';tl.style.color='#6b7280';}
   }
 }
 
@@ -5021,8 +5298,8 @@ document.addEventListener('DOMContentLoaded', function(){
       var lbl = document.getElementById('plan-'+p+'-lbl');
       if(!lbl) return;
       var active = selected === p;
-      lbl.style.border     = active ? '2px solid #2563eb' : '2px solid #e2e8f0';
-      lbl.style.background = active ? '#eff6ff' : '#f8fafc';
+      lbl.style.border     = active ? '2px solid #6B5AFF' : '2px solid #e5e7eb';
+      lbl.style.background = active ? '#ede9fe' : '#f5f3ff';
     });
     if(premNote) premNote.style.display = isPaid ? 'block' : 'none';
     if(planPriceNote) planPriceNote.textContent = selected==='basic' ? 'Basic — 20₪/חודש' : selected==='business' ? 'Business — 50₪/חודש' : '';
@@ -5050,7 +5327,9 @@ document.addEventListener('DOMContentLoaded', function(){
     var emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
     if(!first||!email||!pass){ showErr('יש למלא שם, אימייל וסיסמה'); return; }
     if(!emailRegex.test(email)){ showErr('כתובת המייל אינה תקינה — בדוק/י שוב (לדוגמה: name@example.com)'); return; }
-    if(!phone){ showErr('יש למלא מספר ווצאפ לקבלת הודעת פתיחה'); return; }
+    if(!phone){ showErr('יש למלא מספר ווצאפ — חובה להירשם במערכת'); return; }
+    var phoneDigits=(phone||'').replace(/[^\d]/g,'');
+    if(phoneDigits.length<9||phoneDigits.length>12){ showErr('מספר הטלפון אינו תקין — הזיני מספר ישראלי כגון 0501234567 או 972501234567'); return; }
     if(pass.length<6){ showErr('סיסמה חייבת להיות לפחות 6 תווים'); return; }
     if(pass!==pass2){ showErr('הסיסמאות אינן תואמות'); return; }
     if(errEl) errEl.style.display='none';
@@ -5060,10 +5339,10 @@ document.addEventListener('DOMContentLoaded', function(){
     btnReg.style.pointerEvents='none';
     try {
       if(typeof window.registerNewUser === 'function') {
-        var result = await window.registerNewUser(name, email, pass, office, plan);
+        var result = await window.registerNewUser(name, email, pass, office, plan, phone);
         if(result.error){ showErr(result.error); return; }
         var initials=(first[0]+((last&&last[0])||'')).toUpperCase();
-        S.user={name:name,email:email,initials:initials,officeName:office||'Dabelu',uid:result.uid,subscription:result.subscription};
+        S.user={name:name,email:email,initials:initials,officeName:office||'Dabelu',uid:result.uid,subscription:result.subscription,chatId:result.chatId||'',waPhone:result.chatId||'',phone:result.chatId||''};
         if(office&&S.office) S.office.name=office;
         // משתמש חדש — אפס לחלוטין למניעת דליפת נתונים מסשן קודם
         S.tasks=[]; S.clients=[]; S.team=[]; S.appointments=[];
@@ -5156,12 +5435,13 @@ document.addEventListener('DOMContentLoaded', function(){
     if (e.key === 'Enter' && document.getElementById('screen-auth').style.display !== 'none') doEnter();
   });
 })();
+
 </script>
 
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -5527,7 +5807,16 @@ document.addEventListener('DOMContentLoaded', function(){
   })();
 
   // ── הרשמה עם אימייל + סיסמה (שמירה ל-Firestore) ──
-  window.registerNewUser = async function(name, email, pass, officeName, plan) {
+  // נרמול מספר טלפון לפורמט chatId (972XXXXXXXXX)
+  function _normalizePhone(p) {
+    const digits = (p||'').toString().replace(/[^\d]/g,'');
+    if(!digits) return '';
+    if(digits.startsWith('972')) return digits;
+    if(digits.startsWith('0'))   return '972'+digits.slice(1);
+    return '972'+digits;
+  }
+
+  window.registerNewUser = async function(name, email, pass, officeName, plan, phone) {
     const em = email.toLowerCase();
     // בדיקה שהמייל לא קיים כבר
     const existing = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
@@ -5539,6 +5828,8 @@ document.addEventListener('DOMContentLoaded', function(){
     }
     const passHash = await hashPass(pass);
     const uid = 'reg_' + Date.now();
+    // נרמל טלפון → chatId לזיהוי הודעות וואטסאפ
+    const chatId = _normalizePhone(phone);
     // free=חינמי, basic/business=ממתין לתשלום, אחר=ניסיון
     const subscription = plan === 'free' ? 'free'
                        : plan === 'basic' ? 'pending'
@@ -5552,11 +5843,14 @@ document.addEventListener('DOMContentLoaded', function(){
       officeName: officeName || 'Dabelu',
       subscription: subscription,
       plan: plan,
+      chatId: chatId,        // ← לזיהוי הודעות וואטסאפ
+      waPhone: chatId,       // ← גיבוי
+      phone: chatId,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
       source: 'self-register'
     });
-    return { uid, name, email: em, officeName, subscription, plan };
+    return { uid, name, email: em, officeName, subscription, plan, chatId };
   };
   document.getElementById('btn-google').addEventListener('click', function(){ if(typeof window.signInWithGoogle==='function') window.signInWithGoogle(); });
 
@@ -6135,7 +6429,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if(lastEl)  lastEl.value  = nameParts.slice(1).join(' ') || '';
         if(emailEl) emailEl.value = email;
         const regErr = document.getElementById('reg-err');
-        if(regErr){ regErr.textContent='👋 ברוכ/ה הבא/ה! בחר/י תוכנית כדי להמשיך'; regErr.style.color='#2563eb'; regErr.style.display='block'; }
+        if(regErr){ regErr.textContent='👋 ברוכ/ה הבא/ה! בחר/י תוכנית כדי להמשיך'; regErr.style.color='#6B5AFF'; regErr.style.display='block'; }
         return;
       }
 
@@ -6181,6 +6475,49 @@ document.addEventListener('DOMContentLoaded', function(){
       }
     }
   };
+
+  // ══════════ כניסה אוטומטית בעת פתיחת האפליקציה ══════════
+  function _showAuthScreen(){ const el=document.getElementById('screen-auth'); if(el) el.style.display='flex'; }
+
+  onAuthStateChanged(auth, async (firebaseUser) => {
+    // אם כבר נכנסנו לאפליקציה — לא לעשות כלום
+    if(document.getElementById('screen-app') && document.getElementById('screen-app').style.display==='flex') return;
+
+    if(firebaseUser) {
+      // Session של Google קיים — כנס ישירות
+      try { await handleAuthSuccess(firebaseUser); } catch(e){ _showAuthScreen(); }
+      return;
+    }
+
+    // אין Firebase Auth session — בדוק localStorage session (כניסה עם אימייל/סיסמה)
+    try {
+      const raw = localStorage.getItem('dabelu_session');
+      if(raw) {
+        const sess = JSON.parse(raw);
+        if(sess && sess.uid && Date.now() - sess.savedAt < 30*24*60*60*1000) {
+          if(typeof S !== 'undefined') {
+            S.user = { uid:sess.uid, name:sess.name, email:sess.email, initials:sess.initials, officeName:sess.officeName, subscription:sess.subscription||'trial', role:sess.role||'' };
+            try {
+              const tasks   = await window.loadTasksFromDB(sess.uid);
+              const clients = await window.loadClientsFromDB(sess.uid);
+              const teamData= await window.loadTeamFromDB(sess.uid);
+              S.tasks   = tasks   || [];
+              S.clients = clients || [];
+              S.team    = teamData?.team || [];
+              if(teamData?.nextMemberId) S.nextMemberId = teamData.nextMemberId;
+            } catch(e2){ console.warn('data load:', e2); }
+            if(typeof enterApp==='function') enterApp();
+            else if(typeof window.enterApp==='function') window.enterApp();
+            return;
+          }
+        }
+        localStorage.removeItem('dabelu_session');
+      }
+    } catch(e){ localStorage.removeItem('dabelu_session'); }
+
+    // אין session כלל — הצג מסך כניסה
+    _showAuthScreen();
+  });
 </script>
 <script>
 // PWA - רישום Service Worker והתראות
@@ -6201,7 +6538,7 @@ async function registerPushNotifications() {
     await fetch('https://dabelu.vercel.app/api/save-subscription', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription: sub.toJSON(), userId: 'admin' })
+      body: JSON.stringify({ subscription: sub.toJSON(), userId: (typeof S !== 'undefined' && S.user?.uid) ? S.user.uid : 'admin' })
     });
   } catch(e) { console.error('Push registration failed:', e); }
 }
@@ -6286,7 +6623,7 @@ window.enablePushNotifications = registerPushNotifications;
         </div>
         ${steps}
         <button onclick="document.getElementById('pwa-install-modal').style.display='none'"
-          style="margin-top:22px;width:100%;padding:13px;background:#2563eb;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif">
+          style="margin-top:22px;width:100%;padding:13px;background:#6B5AFF;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif">
           הבנתי ✓
         </button>
       </div>`;
