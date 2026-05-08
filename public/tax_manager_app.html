@@ -695,7 +695,7 @@ textarea.form-input{resize:vertical}
 
       <!-- הגדרות -->
       <button class="mob-nav-btn" id="mob-btn-settings"
-        onclick="nav('settings',document.querySelectorAll('.nav-item')[0]);sSection='user';renderPage()">
+        onclick="sSection='personal';nav('settings',document.querySelectorAll('.nav-item')[0])">
         <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
           <path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -1507,20 +1507,30 @@ function toggleSidebar(){
 function renderPage(){
   const el=document.getElementById('page-area');
   updateNavBadge();
-  if(S.page==='dashboard')el.innerHTML=renderDashboard();
-  else if(S.page==='tasks')el.innerHTML=renderTasksPage();
-  else if(S.page==='whatsapp'||S.page==='messages')el.innerHTML=renderWAPage();
-  else if(S.page==='reminders')el.innerHTML=renderRemindersPage();
-  else if(S.page==='deadlines')el.innerHTML=renderDeadlinesPage();
-  else if(S.page==='calendar'){el.innerHTML=renderCalendarPage();loadAppointmentsIfNeeded();}
-  else if(S.page==='appointments'){el.innerHTML=renderAppointmentsPage();loadAppointmentsIfNeeded();}
-  else if(S.page==='clients'){el.innerHTML=renderClientsPage();loadWAClientsIfNeeded();}
-  else if(S.page==='settings')el.innerHTML=renderSettingsPage();
-  else if(S.page==='admin'){el.innerHTML=renderAdminPage();if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();}
-  else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
-  else if(S.page==='worker-all')el.innerHTML=renderWorkerAllTasksPage();
-  else if(S.page==='worker-chat')el.innerHTML=renderWorkerChatListPage();
-  else if(S.page==='worker-chats')el.innerHTML=renderEmployerChatsPage();
+  try{
+    if(S.page==='dashboard')el.innerHTML=renderDashboard();
+    else if(S.page==='tasks')el.innerHTML=renderTasksPage();
+    else if(S.page==='whatsapp'||S.page==='messages')el.innerHTML=renderWAPage();
+    else if(S.page==='reminders')el.innerHTML=renderRemindersPage();
+    else if(S.page==='deadlines')el.innerHTML=renderDeadlinesPage();
+    else if(S.page==='calendar'){el.innerHTML=renderCalendarPage();loadAppointmentsIfNeeded();}
+    else if(S.page==='appointments'){el.innerHTML=renderAppointmentsPage();loadAppointmentsIfNeeded();}
+    else if(S.page==='clients'){el.innerHTML=renderClientsPage();loadWAClientsIfNeeded();}
+    else if(S.page==='settings')el.innerHTML=renderSettingsPage();
+    else if(S.page==='admin'){el.innerHTML=renderAdminPage();if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();}
+    else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
+    else if(S.page==='worker-all')el.innerHTML=renderWorkerAllTasksPage();
+    else if(S.page==='worker-chat')el.innerHTML=renderWorkerChatListPage();
+    else if(S.page==='worker-chats')el.innerHTML=renderEmployerChatsPage();
+  }catch(e){
+    console.error('renderPage error ['+S.page+']',e);
+    el.innerHTML=`<div style="padding:24px;text-align:center;color:var(--danger)">
+      <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px">שגיאה בטעינת הדף</div>
+      <div style="font-size:11px;color:var(--text2);font-family:monospace">${e.message}</div>
+      <button class="btn primary" style="margin-top:16px" onclick="nav('dashboard')">חזור לבקרה</button>
+    </div>`;
+  }
 }
 
 function updateNavBadge(){
@@ -3021,18 +3031,24 @@ function renderSettingsPage(){
     </div>`;
   }
 
-  // ── מצב מעסיק: כל הסקשנים ──
-  const sections={
-    office: renderOfficeSettings(),
-    personal: renderPersonalSettings(),
-    team: renderTeamSettings(),
-    notifications: renderNotifSettings(),
-    permissions: renderPermSettings(),
-    whatsapp: renderWASettings(),
-    calendar: renderCalendarSettings(),
-    history: renderHistorySettings(),
-    performance: renderPerformanceSettings(),
+  // ── מצב מעסיק: רנדר רק את הסקשן הנוכחי (lazy — מונע קריסה של כל הדף) ──
+  const sectionRenderers={
+    office:       renderOfficeSettings,
+    personal:     renderPersonalSettings,
+    team:         renderTeamSettings,
+    notifications:renderNotifSettings,
+    permissions:  renderPermSettings,
+    whatsapp:     renderWASettings,
+    calendar:     renderCalendarSettings,
+    history:      renderHistorySettings,
+    performance:  renderPerformanceSettings,
   };
+  // ודא sSection תמיד תקין
+  if(!sectionRenderers[sSection]) sSection='office';
+  let sectionContent='';
+  try{ sectionContent=sectionRenderers[sSection](); }
+  catch(e){ sectionContent=`<div style="padding:20px;color:var(--danger);font-size:13px">⚠️ שגיאה בטעינה: ${e.message}</div>`; }
+
   const navItems=[
     {id:'office',icon:'🏢',label:'פרטי משרד'},
     {id:'personal',icon:'👤',label:'פרופיל אישי'},
@@ -3061,7 +3077,7 @@ function renderSettingsPage(){
       </div>
     </div>
     <div class="settings-content">
-      ${sections[sSection]||''}
+      ${sectionContent}
     </div>
   </div>`;
 }
@@ -3156,7 +3172,7 @@ function renderPersonalSettings(){
 
 function renderTeamSettings(){
   const cards=S.team.map(m=>{
-    const [bg,clr]=m.colors;
+    const [bg,clr]=m.colors||['#dbeafe','#1d4ed8'];
     const initials=m.name.split(' ').map(w=>w[0]).join('').slice(0,2);
     const roleLbl={owner:'בעל משרד',manager:'מנהל',employee:'עובד'}[m.role];
     const rClass={owner:'rp-owner',manager:'rp-manager',employee:'rp-employee'}[m.role];
