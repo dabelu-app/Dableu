@@ -5841,17 +5841,19 @@ document.addEventListener('DOMContentLoaded', function(){
     const nameParts = (user.displayName || email).split(' ');
     const initials  = nameParts.map(n => n[0]).join('').slice(0,2).toUpperCase();
 
-    // ── מצא חשבון קיים לפי אימייל (מונע כפילות Google + מייל/סיסמה) ──
+    // ── מצא חשבון קיים — תמיד לפי מייל קודם (מונע כפילות Google + מייל/סיסמה) ──
     let canonicalUid = user.uid;
-    let existing     = await loadUserData(user.uid);
+    let existing     = null;
 
-    if (!existing) {
-      // חפש לפי אימייל — אולי נרשם קודם עם מייל+סיסמה
-      const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
-      if (!emailSnap.empty) {
-        canonicalUid = emailSnap.docs[0].id;
-        existing     = emailSnap.docs[0].data();
-      }
+    // חיפוש לפי מייל — הדרך הבטוחה ביותר למנוע כפל חשבונות
+    const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+    if (!emailSnap.empty) {
+      // השתמש תמיד בחשבון הקיים לפי מייל — אף פעם לא יווצרו שני חשבונות לאותו מייל
+      canonicalUid = emailSnap.docs[0].id;
+      existing     = emailSnap.docs[0].data();
+    } else {
+      // אין רשומה קיימת — נסה לפי Firebase UID (מקרה ראשון לאחר רישום)
+      existing = await loadUserData(user.uid);
     }
 
     if(typeof S !== 'undefined') {
@@ -5984,7 +5986,12 @@ document.addEventListener('DOMContentLoaded', function(){
         errEl.textContent = 'מייל או סיסמה שגויים';
         return;
       }
-      if (uData.passwordHash && uData.passwordHash !== passHash) {
+      // אם אין סיסמה שמורה — החשבון נוצר עם Google, לא עם מייל/סיסמה
+      if (!uData.passwordHash) {
+        errEl.textContent = 'חשבון זה מחובר לכניסה עם Google — אנא השתמשי בכפתור "כניסה עם Google"';
+        return;
+      }
+      if (uData.passwordHash !== passHash) {
         errEl.textContent = 'מייל או סיסמה שגויים';
         return;
       }
