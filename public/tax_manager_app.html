@@ -1693,7 +1693,13 @@ function renderDashboard(){
     <span class="section-title">👥 סקירת צוות</span>
     <button class="btn sm" onclick="navToTasks('pending','')">תצוגת כל העובדים</button>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+  ${(()=>{
+    const isMob = window.innerWidth <= 640;
+    const wrapStyle = isMob
+      ? 'display:flex;flex-direction:row;overflow-x:auto;gap:10px;padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;'
+      : 'display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px';
+    const cardBase = isMob ? 'flex:0 0 128px;min-width:128px;' : '';
+    return `<div style="${wrapStyle}">
     ${getTeamWithOwner().map(w=>{
       const [bg,clr]=w.colors||['#dbeafe','#1d4ed8'];
       const isOwner=w.isOwner||isOwnerName(w.name);
@@ -1705,36 +1711,32 @@ function renderDashboard(){
       const wClients=(S.waClients||[]).filter(c=>isOwner?(c.assignedTo===w.name||!c.assignedTo):c.assignedTo===w.name).length;
       return `
       <div onclick="navToTasks('pending','${w.name}')"
-        style="background:var(--surface);border:1.5px solid ${hasUrgent?'#fca5a5':'var(--border)'};border-radius:var(--radius-lg);padding:12px;cursor:pointer;transition:all .2s"
-        onmouseenter="this.style.boxShadow='0 4px 12px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'"
+        style="${cardBase}position:relative;background:var(--surface);border:1.5px solid ${hasUrgent?'#fca5a5':'var(--border)'};border-radius:var(--radius-lg);padding:12px 10px 10px;cursor:pointer;transition:all .2s;text-align:center"
+        onmouseenter="this.style.boxShadow='0 4px 14px rgba(0,0,0,.10)';this.style.transform='translateY(-2px)'"
         onmouseleave="this.style.boxShadow='';this.style.transform=''">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-          <div style="width:32px;height:32px;border-radius:50%;background:${bg};color:${clr};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">${avInitials(w.name)}</div>
-          <div>
-            <div style="font-size:12px;font-weight:700">${w.name.split(' ')[0]}${isOwner?' 👑':''}</div>
-            <div style="font-size:10px;color:var(--text2)">${{owner:'בעל משרד',manager:'מנהל',employee:'עובד'}[w.role]||'עובד'}</div>
+        ${hasUrgent?`<span style="position:absolute;top:7px;left:7px;font-size:9px;background:#fee2e2;color:#b91c1c;padding:1px 5px;border-radius:8px;font-weight:700">דחוף!</span>`:''}
+        <div style="width:42px;height:42px;border-radius:50%;background:${bg};color:${clr};font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">${avInitials(w.name)}</div>
+        <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${w.name.split(' ')[0]}${isOwner?' 👑':''}</div>
+        <div style="font-size:9px;color:var(--text2);margin-bottom:8px">${{owner:'בעל משרד',manager:'מנהל',employee:'עובד'}[w.role]||'עובד'}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px">
+          <div style="background:#fee2e225;border-radius:6px;padding:4px 2px">
+            <div style="font-size:15px;font-weight:700;color:#dc2626">${wp}</div>
+            <div style="font-size:8px;color:#dc2626">טרם</div>
           </div>
-          ${hasUrgent?`<span style="margin-right:auto;font-size:10px;background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:10px;font-weight:700">דחוף!</span>`:''}
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center">
-          <div style="background:#fee2e220;border-radius:6px;padding:4px 2px">
-            <div style="font-size:16px;font-weight:700;color:#dc2626">${wp}</div>
-            <div style="font-size:9px;color:var(--text2)">טרם טופל</div>
+          <div style="background:#fef3c725;border-radius:6px;padding:4px 2px">
+            <div style="font-size:15px;font-weight:700;color:#d97706">${wi}</div>
+            <div style="font-size:8px;color:#d97706">בביצוע</div>
           </div>
-          <div style="background:#fef3c720;border-radius:6px;padding:4px 2px">
-            <div style="font-size:16px;font-weight:700;color:#d97706">${wi}</div>
-            <div style="font-size:9px;color:var(--text2)">בביצוע</div>
-          </div>
-          <div style="background:#dcfce720;border-radius:6px;padding:4px 2px">
-            <div style="font-size:16px;font-weight:700;color:#16a34a">${wd}</div>
-            <div style="font-size:9px;color:var(--text2)">טופלו</div>
+          <div style="background:#dcfce725;border-radius:6px;padding:4px 2px">
+            <div style="font-size:15px;font-weight:700;color:#16a34a">${wd}</div>
+            <div style="font-size:8px;color:#16a34a">טופלו</div>
           </div>
         </div>
-        ${wClients>0?`<div style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:4px;font-size:10px;color:var(--text2);background:#f0fdf4;border-radius:6px;padding:3px 6px"><span style="color:#16a34a;font-weight:700">${wClients}</span> לקוחות</div>`:''}
-        <div style="margin-top:8px;font-size:10px;color:var(--text3);text-align:center">לחץ לצפייה במשימות ←</div>
+        ${wClients>0?`<div style="margin-top:6px;font-size:9px;color:#16a34a;background:#f0fdf4;border-radius:6px;padding:2px 6px">${wClients} לקוחות</div>`:''}
       </div>`;
     }).join('')}
-  </div>
+    </div>`;
+  })()}
   </div>
   `;
 }
