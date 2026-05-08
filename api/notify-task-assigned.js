@@ -130,16 +130,21 @@ module.exports = async (req, res) => {
 
   // ── שלח WhatsApp ──
   if (workerPhone) {
-    try {
-      const normalized = normalizePhone(workerPhone);
-      if (normalized) {
+    const normalized = normalizePhone(workerPhone);
+    console.log(`[notify-task-assigned] phone raw="${workerPhone}" normalized="${normalized}"`);
+    if (normalized) {
+      try {
         await sendWhatsApp(normalized + '@c.us', msgBody);
         waSent = true;
         console.log(`[notify-task-assigned] WA sent to ${normalized}`);
+      } catch(e) {
+        console.error('[notify-task-assigned] WA error:', e.message);
       }
-    } catch(e) {
-      console.error('[notify-task-assigned] WA error:', e.message);
+    } else {
+      console.warn('[notify-task-assigned] phone normalization failed — skipping WA');
     }
+  } else {
+    console.log('[notify-task-assigned] no phone provided — skipping WA');
   }
 
   // ── שלח Push Notification ──

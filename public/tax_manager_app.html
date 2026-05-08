@@ -3798,24 +3798,35 @@ function notifyWorkerTaskAssigned(workerName, taskTitle, dueDate, isReassign){
   if(!workerName || isOwnerName(workerName)) return;
   const member = (S.team||[]).find(m=>m.name===workerName);
   if(!member) return;
+  // נקה מספר טלפון — 'לא הוזן' או חסר ספרות → שלח ריק
+  const rawDigits = (member.phone||'').replace(/[^\d]/g,'');
+  const cleanPhone = rawDigits.length >= 9 ? member.phone : '';
+  const cleanEmail = member.email || '';
   const body = {
-    workerPhone:  member.phone   || '',
-    workerEmail:  member.email   || '',
+    workerPhone:  cleanPhone,
+    workerEmail:  cleanEmail,
     workerName:   workerName,
     taskTitle:    taskTitle,
     employerName: S.user?.name   || '',
     dueDate:      dueDate        || '',
     isReassign:   !!isReassign
   };
+  console.log('[notify-task] שולח התראה:', {cleanPhone, cleanEmail, workerName, taskTitle});
   // שלח ברקע — לא חוסם את ה-UI
   fetch('/api/notify-task-assigned',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)
   }).then(r=>r.json()).then(d=>{
+    console.log('[notify-task] תוצאה:', d);
     if(d.waSent) toast(`💬 הודעת ווצאפ נשלחה ל${workerName}!`);
     else if(d.pushSent>0) toast(`🔔 התראה נשלחה ל${workerName}!`);
-  }).catch(()=>{});
+    else if(!cleanPhone && !cleanEmail) toast(`⚠️ חסר מספר ווצאפ ל${workerName} — הוסיפי מספר בניהול צוות`);
+    else toast(`⚠️ שליחת ווצאפ ל${workerName} נכשלה — בדקי את חיבור הבוט`);
+  }).catch(e=>{
+    console.error('[notify-task] שגיאה:', e);
+    toast(`⚠️ שגיאה בשליחת התראה ל${workerName}`);
+  });
 }
 
 // ── Reassign a task to a different worker (owner/manager only) ──
