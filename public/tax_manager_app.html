@@ -3372,7 +3372,7 @@ function renderTeamSettings(){
       </div>
       ${m.role!=='owner'?`<div style="display:flex;gap:6px">
         <button class="btn sm" onclick="openEditMember(${m.id})">✏️ עריכה</button>
-        <button class="btn sm" onclick="toast('📲 הזמנה נשלחה ל${m.name}')">📲</button>
+        <button class="btn sm" title="שלח הודעת ווצאפ בדיקה" onclick="testWAToMember('${m.name.replace(/'/g,"\\'")}')">💬 בדיקה</button>
         <button class="btn sm danger" onclick="removeMember(${m.id})">הסר</button>
       </div>`:`<div style="display:flex;gap:6px">
         <button class="btn sm" onclick="openEditMember(${m.id})">✏️ עריכה</button>
@@ -3826,6 +3826,41 @@ function notifyWorkerTaskAssigned(workerName, taskTitle, dueDate, isReassign){
   }).catch(e=>{
     console.error('[notify-task] שגיאה:', e);
     toast(`⚠️ שגיאה בשליחת התראה ל${workerName}`);
+  });
+}
+
+// ── בדיקת שליחת ווצאפ לעובד (כפתור בדיקה בדף צוות) ──
+function testWAToMember(workerName){
+  const member=(S.team||[]).find(m=>m.name===workerName);
+  if(!member){toast('⚠️ עובד לא נמצא');return;}
+  const rawDigits=(member.phone||'').replace(/[^\d]/g,'');
+  const cleanPhone=rawDigits.length>=9?member.phone:'';
+  const cleanEmail=member.email||'';
+  if(!cleanPhone&&!cleanEmail){
+    toast(`⚠️ חסר מספר ווצאפ ל${workerName} — ערכי את העובד והוסיפי מספר`);
+    return;
+  }
+  toast(`💬 שולח הודעת בדיקה ל${workerName}...`);
+  fetch('/api/notify-task-assigned',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      workerPhone:cleanPhone,
+      workerEmail:cleanEmail,
+      workerName:workerName,
+      taskTitle:'הודעת בדיקה מהמערכת',
+      employerName:S.user?.name||'',
+      dueDate:'',
+      isReassign:false
+    })
+  }).then(r=>r.json()).then(d=>{
+    console.log('[test-wa] result:',d);
+    if(d.waSent) toast(`✅ ווצאפ נשלח ל${workerName} בהצלחה!`);
+    else if(d.pushSent>0) toast(`✅ התראה נשלחה ל${workerName} (ווצאפ נכשל — בדקי לוגים)`);
+    else toast(`❌ שליחה נכשלה ל${workerName} — פתחי console לפרטים`);
+  }).catch(e=>{
+    console.error('[test-wa] error:',e);
+    toast(`❌ שגיאת רשת — ווצאפ לא נשלח`);
   });
 }
 
