@@ -3088,14 +3088,14 @@ function renderClientsPage(){
         style="width:100%;padding:10px 14px;border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-family:'Heebo',sans-serif;background:var(--surface);box-sizing:border-box"/>
     </div>
 
-    <!-- filter bar -->
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg)">
+    <!-- filter bar — מוסתר במובייל, רק חיפוש -->
+    <div class="mob-hide" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg)">
       <span style="font-size:11px;font-weight:600;color:var(--text3);flex-shrink:0;margin-left:4px">סינון:</span>
       <button onclick="S.clientWorkerFilter='';renderPage()"
         style="padding:3px 10px;border-radius:20px;border:1.5px solid ${workerFilter===''?'var(--accent)':'var(--border)'};background:${workerFilter===''?'var(--accent-light)':'transparent'};color:${workerFilter===''?'var(--accent)':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'Heebo',sans-serif">כולם</button>
       ${workerChips}
       <div style="flex:1"></div>
-      <input class="mob-hide" style="padding:4px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:11px;font-family:'Heebo',sans-serif;background:var(--surface2);color:var(--text);width:160px"
+      <input style="padding:4px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:11px;font-family:'Heebo',sans-serif;background:var(--surface2);color:var(--text);width:160px"
         placeholder="🔍 חיפוש..." value="${S.clientSearch||''}" oninput="S.clientSearch=this.value;renderPage()">
     </div>
 
