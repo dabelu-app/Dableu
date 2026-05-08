@@ -10,15 +10,46 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE
 );
 
-// ── שליחת WhatsApp ──
-async function sendWhatsApp(chatId, message) {
-  const instance = process.env.GREENAPI_INSTANCE;
-  const token    = process.env.GREENAPI_TOKEN;
-  const fullId   = chatId.includes('@') ? chatId : chatId + '@c.us';
-  await fetch(
-    `https://7107.api.greenapi.com/waInstance${instance}/sendMessage/${token}`,
-    { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ chatId: fullId, message }) }
-  );
+// ── שליחת Push Notification למשתמש לפי userId ──
+async function sendPushToUser(userId, title, body) {
+  if (!userId) return 0;
+  try {
+    const r = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          structuredQuery: {
+            from: [{ collectionId: 'pushSubscriptions' }],
+            where: { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: userId } } },
+            limit: 10
+          }
+        })
+      }
+    );
+    const subs = await r.json();
+    let sent = 0;
+    for (const item of (Array.isArray(subs) ? subs : [])) {
+      if (!item.document) continue;
+      const f = item.document.fields;
+      try {
+        await webpush.sendNotification(
+          { endpoint: f.endpoint?.stringValue, keys: JSON.parse(f.keys?.stringValue || '{}') },
+          JSON.stringify({ title, body, url: '/tax_manager_app.html' })
+        );
+        sent++;
+      } catch(e) {
+        console.error('push send error:', e.message);
+        if (e.statusCode === 410) {
+          const docId = item.document.name.split('/').pop();
+          await fetch(
+            `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/pushSubscriptions/${docId}?key=${FIREBASE_API_KEY}`,
+            { method: 'DELETE' }
+          );
+        }
+      }
+    }
+    return sent;
+  } catch(e) { console.error('sendPushToUser error:', e); return 0; }
 }
 
 // ── שאילתת Firestore ──
@@ -73,13 +104,6 @@ async function getTeamMembers(userDocId) {
   } catch(e) { return []; }
 }
 
-// ── נרמול מספר טלפון לפורמט 972XXXXXXXXX ──
-function normalizePhone(phone) {
-  if (!phone) return null;
-  const digits = phone.toString().replace(/[^\d]/g, '');
-  if (!digits) return null;
-  return digits.startsWith('972') ? digits : '972' + digits.replace(/^0/, '');
-}
 
 module.exports = async (req, res) => {
   // cutoff מינימלי (12 שעות = הגדרה הקצרה ביותר) — לשאילתת tasks
@@ -106,7 +130,10 @@ module.exports = async (req, res) => {
   );
   const stData = await stResp.json();
   const allPendingShared = (stData.documents || []).filter(d => {
-    return d.fields?.status?.stringValue === 'pending' && d.fields?.createdAt?.stringValue;
+    // דלג על משימות עם תאריך יעד — הן יקבלו התראה ב-task-due-reminder ביום עצמן
+    return d.fields?.status?.stringValue === 'pending' &&
+           d.fields?.createdAt?.stringValue &&
+           !d.fields?.dueDate?.stringValue;
   });
 
   // קבץ לפי מעסיק (ללא סינון זמן — נסנן בלולאה לפי הגדרת כל מעסיק)
@@ -155,30 +182,25 @@ module.exports = async (req, res) => {
       byWorker[key].titles.push(t.title);
     }
 
-    // שלח התראה לכל עובד
+    // שלח Push לכל עובד (לפי userId מאוסף users, חיפוש לפי אימייל)
     for (const wd of Object.values(byWorker)) {
-      const member = team.find(m =>
-        m.email.toLowerCase() === wd.assigneeEmail ||
-        m.name === wd.assignee
-      );
-      if (!member) continue;
-      const phone = normalizePhone(member.phone);
-      if (!phone) continue;
-
+      const workerUser = userByEmail[wd.assigneeEmail];
+      if (!workerUser) continue;
       const list = wd.titles.map((t, i) => `${i + 1}. ${t}`).join('\n');
-      await sendWhatsApp(phone + '@c.us',
-        `⏰ *תזכורת — משימות הממתינות לטיפולך*\n\n${list}\n\nיש לפתוח את המערכת ולטפל בהן ✅`
+      const pushed = await sendPushToUser(workerUser.id,
+        `⏰ משימות הממתינות לטיפולך (${wd.titles.length})`,
+        list.slice(0, 200)
       );
-      workerNotified++;
+      if (pushed > 0) workerNotified++;
     }
 
-    // שלח סיכום למעסיק
-    const empPhone = normalizePhone(employer.chatId || employer.phone);
-    if (empPhone) {
-      const list = tasks.map((t, i) => `${i + 1}. ${t.title} — 👤 ${t.assignee}`).join('\n');
-      await sendWhatsApp(empPhone + '@c.us',
-        `⚠️ *תזכורת — משימות שלא טופלו מעל ${hours} שעות:*\n\n${list}\n\n✉️ נשלחה תזכורת ישירה לכל עובד רלוונטי.`
-      );
+    // שלח Push למעסיק
+    const list = tasks.map((t, i) => `${i + 1}. ${t.title} — 👤 ${t.assignee}`).join('\n');
+    const pushSent = await sendPushToUser(employer.id,
+      `⚠️ משימות שלא טופלו (${tasks.length})`,
+      list.slice(0, 200)
+    );
+    if (pushSent > 0) {
       employerNotified++;
       notifiedEmployers.add(empEmail);
     }
@@ -216,6 +238,9 @@ module.exports = async (req, res) => {
     const employer = userById[uid];
     if (employer && assigneeEmail && assigneeEmail !== employer.email.toLowerCase()) continue;
 
+    // דלג על משימות עם תאריך יעד — יטופלו ב-task-due-reminder ביום עצמן
+    if (f.date?.stringValue) continue;
+
     // בדוק שחרג גם מהcutoff הספציפי של המעסיק
     const createdAt = f.createdAt?.stringValue || '';
     if (employer) {
@@ -231,38 +256,65 @@ module.exports = async (req, res) => {
   for (const [uid, titles] of Object.entries(tasksByUser)) {
     const employer = userById[uid];
     if (!employer) continue;
-    const phone = normalizePhone(employer.chatId || employer.phone);
-    if (!phone) continue;
     // אל תשלח שוב למעביד שכבר קיבל הודעה בחלק א׳
     if (notifiedEmployers.has((employer.email || '').toLowerCase())) continue;
 
     const hours = employer.reminderHours || 48;
     const list = titles.map((t, i) => `${i + 1}. ${t}`).join('\n');
-    await sendWhatsApp(phone + '@c.us',
-      `⚠️ *תזכורת — משימות כלליות שלא טופלו מעל ${hours} שעות:*\n\n${list}`
+    await sendPushToUser(employer.id,
+      `⚠️ משימות ממתינות (${titles.length})`,
+      list.slice(0, 200)
     );
     employerNotified++;
   }
 
   // ══════════════════════════════════════════════════════
-  // חלק ג׳: Push notifications
+  // חלק ג׳: tasks של משתמשים — users/{uid}/data/tasks
+  // (המשימות שנוצרו בממשק האפליקציה, שמורות כמערך)
   // ══════════════════════════════════════════════════════
-  const totalOverdue = allPendingShared.length;
-  if (totalOverdue > 0) {
-    const subDocs = await firestoreQuery({
-      structuredQuery: { from: [{ collectionId: 'pushSubscriptions' }], limit: 50 }
-    });
-    for (const d of subDocs) {
-      if (!d.document) continue;
-      const f = d.document.fields;
-      try {
-        await webpush.sendNotification(
-          { endpoint: f.endpoint?.stringValue, keys: JSON.parse(f.keys?.stringValue || '{}') },
-          JSON.stringify({ title: '⚠️ משימות ממתינות לטיפול', body: `${totalOverdue} משימות לא טופלו` })
-        );
-      } catch(e) { console.error('push failed:', e.message); }
+  for (const user of allUsers) {
+    if (!user.id) continue;
+    // דלג על מי שכבר קיבל התראה בחלקים הקודמים
+    if (notifiedEmployers.has((user.email || '').toLowerCase())) continue;
+
+    let tasksDoc;
+    try {
+      const r = await fetch(
+        `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${user.id}/data/tasks?key=${FIREBASE_API_KEY}`
+      );
+      tasksDoc = await r.json();
+    } catch (e) { continue; }
+
+    if (!tasksDoc || !tasksDoc.fields) continue;
+
+    const hours     = user.reminderHours || 48;
+    const empCutoff = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+    const tasksArr = tasksDoc.fields?.tasks?.arrayValue?.values || [];
+    const overdue  = [];
+    for (const tv of tasksArr) {
+      const f         = tv.mapValue?.fields || {};
+      const status    = f.status?.stringValue    || '';
+      const createdAt = f.createdAt?.stringValue || '';
+      const dueDate   = f.date?.stringValue      || '';
+      const title     = f.title?.stringValue     || f.text?.stringValue || '';
+      // דלג על משימות עם תאריך יעד — הן יקבלו התראה ב-task-due-reminder ביום עצמן
+      if (dueDate) continue;
+      if (status === 'pending' && createdAt && createdAt < empCutoff && title) {
+        overdue.push(title);
+      }
     }
+
+    if (!overdue.length) continue;
+
+    const list = overdue.map((t, i) => `${i + 1}. ${t}`).join('\n');
+    await sendPushToUser(user.id,
+      `⚠️ משימות ממתינות (${overdue.length})`,
+      list.slice(0, 200)
+    );
+    employerNotified++;
+    notifiedEmployers.add((user.email || '').toLowerCase());
   }
 
-  return res.status(200).json({ ok: true, workerNotified, employerNotified, overdueShared: totalOverdue });
+  return res.status(200).json({ ok: true, workerNotified, employerNotified, overdueShared: allPendingShared.length });
 };
