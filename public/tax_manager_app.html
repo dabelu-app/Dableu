@@ -1273,8 +1273,10 @@ function enterApp(){
   }
   document.getElementById('screen-auth').style.display='none';
   document.getElementById('screen-app').style.display='flex';
-  // שמירת session ב-localStorage כדי לדלג על מסך הכניסה בפתיחה הבאה
-  try{if(S.user&&S.user.uid){localStorage.setItem('dabelu_session',JSON.stringify({uid:S.user.uid,name:S.user.name,email:S.user.email,initials:S.user.initials,officeName:S.user.officeName,subscription:S.user.subscription||'trial',role:S.user.role||'',savedAt:Date.now()}));}}catch(e){}
+  // שמירת session ב-sessionStorage — נמחק כשסוגרים את האפליקציה
+  try{if(S.user&&S.user.uid){sessionStorage.setItem('dabelu_session',JSON.stringify({uid:S.user.uid,name:S.user.name,email:S.user.email,initials:S.user.initials,officeName:S.user.officeName,subscription:S.user.subscription||'trial',role:S.user.role||'',savedAt:Date.now()}));}}catch(e){}
+  // נקה session ישן מ-localStorage (מעבר)
+  try{localStorage.removeItem('dabelu_session');}catch(e){}
   // update all user elements
   const initials=S.user.initials||'?';
   const name=S.user.name||'משתמש';
@@ -5576,7 +5578,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserSessionPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -5591,6 +5593,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
+  // סשן תקף רק בזמן שהאפליקציה פתוחה — בפתיחה מחדש מבקש כניסה
+  await setPersistence(auth, browserSessionPersistence);
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -6633,12 +6637,12 @@ document.addEventListener('DOMContentLoaded', function(){
       return;
     }
 
-    // אין Firebase Auth session — בדוק localStorage session (כניסה עם אימייל/סיסמה)
+    // אין Firebase Auth session — בדוק sessionStorage session (כניסה עם אימייל/סיסמה)
     try {
-      const raw = localStorage.getItem('dabelu_session');
+      const raw = sessionStorage.getItem('dabelu_session');
       if(raw) {
         const sess = JSON.parse(raw);
-        if(sess && sess.uid && Date.now() - sess.savedAt < 30*24*60*60*1000) {
+        if(sess && sess.uid) { // sessionStorage מתאפס כשסוגרים — אין צורך בבדיקת גיל
           if(typeof S !== 'undefined') {
             S.user = { uid:sess.uid, name:sess.name, email:sess.email, initials:sess.initials, officeName:sess.officeName, subscription:sess.subscription||'trial', role:sess.role||'' };
             try {
@@ -6655,9 +6659,9 @@ document.addEventListener('DOMContentLoaded', function(){
             return;
           }
         }
-        localStorage.removeItem('dabelu_session');
+        sessionStorage.removeItem('dabelu_session');
       }
-    } catch(e){ localStorage.removeItem('dabelu_session'); }
+    } catch(e){ sessionStorage.removeItem('dabelu_session'); }
 
     // אין session כלל — הצג מסך כניסה
     _showAuthScreen();
