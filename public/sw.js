@@ -1,17 +1,18 @@
-const CACHE_NAME = 'dabelu-v2';
-const APP_SHELL = [
-  '/tax_manager_app.html',
+const CACHE_NAME = 'dabelu-v6';
+const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
-  'https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600&display=swap'
+  '/icon-w.png',
+  '/icon-w.svg',
+  '/splash-icon.png'
 ];
 
-// ── התקנה: שמור app shell בקאש ──
+// ── התקנה: שמור רק נכסים סטטיים (לא HTML!) ──
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
-      cache.addAll(APP_SHELL).catch(() => {})
+      cache.addAll(STATIC_ASSETS).catch(() => {})
     )
   );
 });
@@ -25,50 +26,37 @@ self.addEventListener('activate', event => {
   );
 });
 
-// ── קריאות רשת: cache-first לנכסים סטטיים, network-first לשאר ──
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // דלג על בקשות ל-API, Firebase, Firestore, חיצוני
+  // דלג על בקשות חיצוניות
   if (
+    url.hostname !== self.location.hostname ||
     url.pathname.startsWith('/api/') ||
-    url.hostname.includes('firestore') ||
-    url.hostname.includes('firebase') ||
-    url.hostname.includes('googleapis') ||
-    url.hostname.includes('greenapi') ||
-    url.hostname.includes('groq') ||
     event.request.method !== 'GET'
   ) return;
 
-  // נכסים סטטיים — cache first
-  if (
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.jpg') ||
-    url.pathname.endsWith('.svg') ||
-    url.pathname.endsWith('.ico') ||
-    url.pathname === '/manifest.json'
-  ) {
+  // HTML — תמיד מהרשת (אין קאש!) כדי לקבל עדכונים מייד
+  if (url.pathname.endsWith('.html') || url.pathname === '/' || !url.pathname.includes('.')) {
     event.respondWith(
-      caches.match(event.request).then(cached =>
-        cached || fetch(event.request).then(resp => {
-          const clone = resp.clone();
-          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
-          return resp;
-        })
+      fetch(event.request).catch(() =>
+        caches.match('/tax_manager_app.html')
       )
     );
     return;
   }
 
-  // דף האפליקציה — network first, fallback לקאש
+  // נכסים סטטיים (תמונות, SVG, manifest) — cache first
   event.respondWith(
-    fetch(event.request)
-      .then(resp => {
-        const clone = resp.clone();
-        caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+    caches.match(event.request).then(cached =>
+      cached || fetch(event.request).then(resp => {
+        if (resp.ok) {
+          const clone = resp.clone();
+          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+        }
         return resp;
       })
-      .catch(() => caches.match(event.request).then(c => c || caches.match('/tax_manager_app.html')))
+    )
   );
 });
 
@@ -78,13 +66,13 @@ self.addEventListener('push', event => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'Dabelu', {
       body:    data.body || 'יש עדכונים חדשים',
-      icon:    '/logo.png',
-      badge:   '/logo.png',
+      icon:    '/icon-w.png',
+      badge:   '/icon-w.png',
       dir:     'rtl',
       lang:    'he',
       vibrate: [200, 100, 200],
       tag:     'dabelu-notification',
-      requireInteraction: false,
+      requireInteraction: true,
       data:    { url: data.url || '/tax_manager_app.html' }
     })
   );
