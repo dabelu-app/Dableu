@@ -29,15 +29,15 @@
 #splash-screen{display:none}
 @media(max-width:640px){
   #splash-screen{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#6F4CFC 0%,#8b6bff 50%,#6F4CFC 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;transition:opacity .6s ease}
-  #splash-screen::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.15) 0%,transparent 40%),radial-gradient(circle at 80% 80%,rgba(255,255,255,.1) 0%,transparent 40%);opacity:0;animation:splashBgIn .8s ease forwards}
+  #splash-screen::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.15) 0%,transparent 40%),radial-gradient(circle at 80% 80%,rgba(255,255,255,.1) 0%,transparent 40%);opacity:0;animation:splashBgIn .6s ease forwards}
   @keyframes splashBgIn{to{opacity:1}}
 
   /* אייקון — מסתובב ומתרחב */
-  .splash-icon-wrap{position:relative;margin-bottom:40px;transform:scale(0) rotate(-720deg);opacity:0;animation:splashIconIn 1.3s cubic-bezier(.34,1.56,.64,1) forwards}
+  .splash-icon-wrap{position:relative;margin-bottom:40px;transform:scale(0) rotate(-720deg);opacity:0;animation:splashIconIn 1.1s cubic-bezier(.34,1.56,.64,1) forwards}
   @keyframes splashIconIn{to{transform:scale(1) rotate(0deg);opacity:1}}
 
   /* זוהר מתמשך על האייקון אחרי שהוא נכנס */
-  .splash-icon-wrap::after{content:'';position:absolute;inset:0;animation:splashIconShine 2.2s ease-in-out infinite 2s}
+  .splash-icon-wrap::after{content:'';position:absolute;inset:0;animation:splashIconShine 2.2s ease-in-out infinite 1.7s}
   @keyframes splashIconShine{
     0%,100%{filter:drop-shadow(0 8px 30px rgba(0,0,0,.3))}
     50%{filter:drop-shadow(0 0 55px rgba(255,255,255,.65))}
@@ -47,7 +47,7 @@
   .splash-name{color:#fff;font-size:76px;font-weight:800;letter-spacing:3px;line-height:1;margin-bottom:20px;text-shadow:0 4px 20px rgba(0,0,0,.2);font-family:'Century Gothic','Avant Garde','Poppins',sans-serif;display:flex;justify-content:center;direction:ltr}
 
   /* אותיות נופלות בזו אחר זו */
-  .splash-letter{display:inline-block;opacity:0;transform:translateY(-30px) scale(.5) rotate(-15deg);filter:blur(8px);animation:splashLetterIn .55s cubic-bezier(.34,1.56,.64,1) forwards;animation-delay:calc(1.5s + var(--i)*.13s)}
+  .splash-letter{display:inline-block;opacity:0;transform:translateY(-30px) scale(.5) rotate(-15deg);filter:blur(8px);animation:splashLetterIn .48s cubic-bezier(.34,1.56,.64,1) forwards;animation-delay:calc(1.2s + var(--i)*.11s)}
   @keyframes splashLetterIn{
     0%{opacity:0;transform:translateY(-30px) scale(.5) rotate(-15deg);filter:blur(8px)}
     60%{opacity:1;transform:translateY(5px) scale(1.1) rotate(5deg);filter:blur(0)}
@@ -55,7 +55,7 @@
   }
 
   /* טאגליין מופיע אחרי כל האותיות */
-  .splash-tagline{color:#fff;font-size:24px;font-weight:500;letter-spacing:4px;opacity:0;transform:translateY(15px);animation:splashTagIn .7s ease 2.7s forwards}
+  .splash-tagline{color:#fff;font-size:24px;font-weight:500;letter-spacing:4px;opacity:0;transform:translateY(15px);animation:splashTagIn .6s ease 2.3s forwards}
   @keyframes splashTagIn{to{opacity:.95;transform:translateY(0)}}
 }
 
