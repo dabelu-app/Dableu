@@ -306,6 +306,17 @@ textarea.form-input{resize:vertical}
 .banner.show{display:flex}
 .banner.danger{background:var(--danger-bg);color:var(--danger);border:1px solid #fecaca}
 .empty-state{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+
+/* ═══ Team overview — horizontal scroll on mobile ═══ */
+.team-overview-row{display:flex;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:10px;padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.team-overview-row::-webkit-scrollbar{display:none}
+.team-overview-card{flex:0 0 128px;min-width:128px;position:relative;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 10px 10px;cursor:pointer;transition:all .2s;text-align:center}
+.team-overview-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.10);transform:translateY(-2px)}
+.team-overview-card.urgent{border-color:#fca5a5}
+@media(min-width:641px){
+  .team-overview-row{flex-wrap:wrap;overflow-x:visible;padding-bottom:0}
+  .team-overview-card{flex:1 1 160px;min-width:160px}
+}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:500;opacity:0;transition:opacity .3s;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(107,90,255,.3)}
 .toast.show{opacity:1}
 
@@ -1693,13 +1704,7 @@ function renderDashboard(){
     <span class="section-title">👥 סקירת צוות</span>
     <button class="btn sm" onclick="navToTasks('pending','')">תצוגת כל העובדים</button>
   </div>
-  ${(()=>{
-    const isMob = window.innerWidth <= 640;
-    const wrapStyle = isMob
-      ? 'display:flex;flex-direction:row;overflow-x:auto;gap:10px;padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;'
-      : 'display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px';
-    const cardBase = isMob ? 'flex:0 0 128px;min-width:128px;' : '';
-    return `<div style="${wrapStyle}">
+  <div class="team-overview-row">
     ${getTeamWithOwner().map(w=>{
       const [bg,clr]=w.colors||['#dbeafe','#1d4ed8'];
       const isOwner=w.isOwner||isOwnerName(w.name);
@@ -1710,10 +1715,7 @@ function renderDashboard(){
       const hasUrgent=S.tasks.some(t=>wFilter(t)&&t.priority==='urgent'&&t.status!=='done');
       const wClients=(S.waClients||[]).filter(c=>isOwner?(c.assignedTo===w.name||!c.assignedTo):c.assignedTo===w.name).length;
       return `
-      <div onclick="navToTasks('pending','${w.name}')"
-        style="${cardBase}position:relative;background:var(--surface);border:1.5px solid ${hasUrgent?'#fca5a5':'var(--border)'};border-radius:var(--radius-lg);padding:12px 10px 10px;cursor:pointer;transition:all .2s;text-align:center"
-        onmouseenter="this.style.boxShadow='0 4px 14px rgba(0,0,0,.10)';this.style.transform='translateY(-2px)'"
-        onmouseleave="this.style.boxShadow='';this.style.transform=''">
+      <div class="team-overview-card ${hasUrgent?'urgent':''}" onclick="navToTasks('pending','${w.name}')">
         ${hasUrgent?`<span style="position:absolute;top:7px;left:7px;font-size:9px;background:#fee2e2;color:#b91c1c;padding:1px 5px;border-radius:8px;font-weight:700">דחוף!</span>`:''}
         <div style="width:42px;height:42px;border-radius:50%;background:${bg};color:${clr};font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">${avInitials(w.name)}</div>
         <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${w.name.split(' ')[0]}${isOwner?' 👑':''}</div>
@@ -1735,8 +1737,7 @@ function renderDashboard(){
         ${wClients>0?`<div style="margin-top:6px;font-size:9px;color:#16a34a;background:#f0fdf4;border-radius:6px;padding:2px 6px">${wClients} לקוחות</div>`:''}
       </div>`;
     }).join('')}
-    </div>`;
-  })()}
+  </div>
   </div>
   `;
 }
