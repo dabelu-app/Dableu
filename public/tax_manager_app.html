@@ -2076,6 +2076,14 @@ function renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cp,ci,cd,t
     </div>
   </div>
 
+  <!-- חיפוש מובייל — בולט, כמו פגישות -->
+  <div class="mob-show" style="margin-bottom:12px">
+    <input type="search" placeholder="🔍 חיפוש משימה..." dir="rtl"
+      value="${((S.taskFilter?.search)||'').replace(/"/g,'&quot;')}"
+      oninput="setTaskSearch(this.value)"
+      style="width:100%;padding:10px 14px;border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-family:'Heebo',sans-serif;background:var(--surface);box-sizing:border-box"/>
+  </div>
+
   <!-- FILTER BAR: chips inline with type+sort -->
   <div class="mob-hide" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:2.5px solid #1e293b;border-radius:var(--radius-lg)">
     <span class="mob-hide" style="font-size:11px;font-weight:600;color:var(--text3);flex-shrink:0;margin-left:4px">סינון ומיון:</span>
