@@ -3579,6 +3579,8 @@ async function addTask(){
   _saveTasks();
   closeModal('task');renderPage();
   toast(rec?`🔁 משימה חוזרת נוספה! (${recLabel(rec.type)})`:workerEmail?'✓ משימה נוספה ונשלחה לעובד!':'✓ משימה נוספה!');
+  // שלח WhatsApp + Push לעובד שקיבל את המשימה
+  notifyWorkerTaskAssigned(newTask.assignee, newTask.title, newTask.date, false);
 }
 // ── Returns S.team always including the logged-in owner/manager as first entry ──
 function getTeamWithOwner(){
@@ -3607,6 +3609,32 @@ function populateAssigneeSelect(){
   sel.innerHTML=opts.join('');
 }
 
+// ── שלח הודעת WhatsApp + Push לעובד שקיבל משימה ──
+function notifyWorkerTaskAssigned(workerName, taskTitle, dueDate, isReassign){
+  // לא שולחים לבעל המשרד עצמו
+  if(!workerName || isOwnerName(workerName)) return;
+  const member = (S.team||[]).find(m=>m.name===workerName);
+  if(!member) return;
+  const body = {
+    workerPhone:  member.phone   || '',
+    workerEmail:  member.email   || '',
+    workerName:   workerName,
+    taskTitle:    taskTitle,
+    employerName: S.user?.name   || '',
+    dueDate:      dueDate        || '',
+    isReassign:   !!isReassign
+  };
+  // שלח ברקע — לא חוסם את ה-UI
+  fetch('/api/notify-task-assigned',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  }).then(r=>r.json()).then(d=>{
+    if(d.waSent) toast(`💬 הודעת ווצאפ נשלחה ל${workerName}!`);
+    else if(d.pushSent>0) toast(`🔔 התראה נשלחה ל${workerName}!`);
+  }).catch(()=>{});
+}
+
 // ── Reassign a task to a different worker (owner/manager only) ──
 function reassignTask(id,newAssignee){
   const t=S.tasks.find(t=>t.id===id);
@@ -3616,6 +3644,8 @@ function reassignTask(id,newAssignee){
   _saveTasks();
   renderPage();
   toast(`📤 המשימה הועברה מ${prev} ל${newAssignee}`);
+  // שלח התראה לעובד החדש
+  notifyWorkerTaskAssigned(newAssignee, t.title, t.date, true);
 }
 
 // ══════════════════════════════════════
