@@ -1659,7 +1659,8 @@ function renderDashboard(){
 
   </div>
 
-  <!-- TEAM OVERVIEW -->
+  <!-- TEAM OVERVIEW — מוסתר במובייל בצד עובד -->
+  <div class="${(S.user?.role==='worker'||S.user?.role==='employee')?'mob-hide':''}">
   <div class="section-header" style="margin-top:4px">
     <span class="section-title">👥 סקירת צוות</span>
     <button class="btn sm" onclick="navToTasks('pending','')">תצוגת כל העובדים</button>
@@ -1705,6 +1706,7 @@ function renderDashboard(){
         <div style="margin-top:8px;font-size:10px;color:var(--text3);text-align:center">לחץ לצפייה במשימות ←</div>
       </div>`;
     }).join('')}
+  </div>
   </div>
   `;
 }
