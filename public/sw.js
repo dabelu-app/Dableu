@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v7';
+const CACHE_NAME = 'dabelu-v8';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -63,18 +63,30 @@ self.addEventListener('fetch', event => {
 // ── Push notifications ──
 self.addEventListener('push', event => {
   const data = event.data ? event.data.json() : {};
+  const notif = {
+    id:    Date.now(),
+    title: data.title || 'Dabelu',
+    body:  data.body  || 'יש עדכונים חדשים',
+    time:  new Date().toISOString(),
+    read:  false
+  };
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Dabelu', {
-      body:    data.body || 'יש עדכונים חדשים',
-      icon:    '/icon-w.png',
-      badge:   '/icon-w.png',
-      dir:     'rtl',
-      lang:    'he',
-      vibrate: [200, 100, 200],
-      tag:     'dabelu-notification',
-      requireInteraction: true,
-      data:    { url: data.url || '/tax_manager_app.html' }
-    })
+    Promise.all([
+      self.registration.showNotification(notif.title, {
+        body:    notif.body,
+        icon:    '/icon-w.png',
+        badge:   '/icon-w.png',
+        dir:     'rtl',
+        lang:    'he',
+        vibrate: [200, 100, 200],
+        tag:     'dabelu-notification',
+        requireInteraction: true,
+        data:    { url: data.url || '/tax_manager_app.html' }
+      }),
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(allClients => {
+        allClients.forEach(client => client.postMessage({ type: 'PUSH_RECEIVED', notif }));
+      })
+    ])
   );
 });
 
