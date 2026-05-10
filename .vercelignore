@@ -1,7 +1,5 @@
-api/appointment-reminder.js
 api/contact.js
 api/delete-appointment.js
-api/debug-email.js
 check_braces.js
 check_script.js
 check_script2.js

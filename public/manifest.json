@@ -6,35 +6,29 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f0eeff",
-  "theme_color": "#2563eb",
+  "background_color": "#ffffff",
+  "theme_color": "#6B5AFF",
   "lang": "he",
   "dir": "rtl",
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/icon-w.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-w.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/logo.png",
+      "src": "/icon-w.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo.png",
+      "src": "/icon-w.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-w.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "screenshots": [],
@@ -44,14 +38,14 @@
       "short_name": "משימות",
       "description": "פתח את רשימת המשימות",
       "url": "/tax_manager_app.html#tasks",
-      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-w.png", "sizes": "192x192" }]
     },
     {
       "name": "יומן",
       "short_name": "יומן",
       "description": "פתח את היומן",
       "url": "/tax_manager_app.html#calendar",
-      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-w.png", "sizes": "192x192" }]
     }
   ]
 }

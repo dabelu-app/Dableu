@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Purple W on transparent background — 3-layer technique -->
+
+  <!-- Layer 1: Outer thick W (purple) -->
+  <path d="M 108,188 L 392,838 L 512,456 L 632,838 L 916,188"
+        stroke="#6B5AFF"
+        stroke-width="258"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+
+  <!-- Layer 2: White cutout gap (blends with white background) -->
+  <path d="M 108,188 L 392,838 L 512,456 L 632,838 L 916,188"
+        stroke="white"
+        stroke-width="152"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+
+  <!-- Layer 3: Inner W (purple) -->
+  <path d="M 108,188 L 392,838 L 512,456 L 632,838 L 916,188"
+        stroke="#6B5AFF"
+        stroke-width="100"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+</svg>

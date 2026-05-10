@@ -3,7 +3,15 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Dablu – פתרונות ניהול חכמים למשרדי מס</title>
+<title>Dabelu - ניהול משימות למשרדי מס</title>
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#2563eb"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Dabelu"/>
+<link rel="apple-touch-icon" href="/logo.png"/>
+<meta name="description" content="מערכת ניהול משימות, פגישות ולקוחות למשרד"/>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <style>
 :root{
@@ -596,6 +604,11 @@ input:focus,textarea:focus{outline:none;border-color:var(--p)!important;box-shad
 </style>
 
 <script>
+// רישום Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(function(){});
+}
+
 // Scroll animations
 var obs = new IntersectionObserver(function(entries){
   entries.forEach(function(e){

@@ -310,7 +310,7 @@ textarea.form-input{resize:vertical}
 /* ═══ Team overview — horizontal scroll on mobile ═══ */
 .team-overview-row{display:flex;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:10px;padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .team-overview-row::-webkit-scrollbar{display:none}
-.team-overview-card{flex:0 0 128px;min-width:128px;position:relative;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 10px 10px;cursor:pointer;transition:all .2s;text-align:center}
+.team-overview-card{flex:0 0 calc(33.333% - 7px);min-width:0;min-height:180px;position:relative;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:14px 8px;cursor:pointer;transition:all .2s;text-align:center;display:flex;flex-direction:column;justify-content:center}
 .team-overview-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.10);transform:translateY(-2px)}
 .team-overview-card.urgent{border-color:#fca5a5}
 @media(min-width:641px){
@@ -651,13 +651,6 @@ textarea.form-input{resize:vertical}
           style="display:none;background:none;border:1.5px solid var(--accent);color:var(--accent);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer;font-family:'Heebo',sans-serif;font-weight:600">
           📲 התקן
         </button>
-        <!-- כפתור חיפוש — מובייל + לשונית משימות בלבד -->
-        <button id="topbar-search-btn" onclick="toggleTaskSearch()" title="חיפוש משימה"
-          style="display:none;background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:8px;color:var(--text2);line-height:1;transition:color .15s">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-        </button>
         <button class="topbar-btn accent" id="topbar-main-btn" onclick="openModal('task')">+ משימה חדשה</button>
         <!-- פעמון התראות — מובייל בלבד -->
         <button id="notif-bell-btn" onclick="openNotifPanel()" title="התראות">
@@ -669,13 +662,6 @@ textarea.form-input{resize:vertical}
         </button>
       </div>
     </div>
-    <!-- שורת חיפוש שנשלפת מהטופבאר (מובייל) -->
-    <div id="topbar-search-row" style="display:none;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border)">
-      <input id="topbar-search-input" type="search" placeholder="🔍 חיפוש משימה..." dir="rtl"
-        oninput="setTaskSearch(this.value)"
-        style="width:100%;padding:9px 14px;border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-family:'Heebo',sans-serif;outline:none;background:var(--surface2)"/>
-    </div>
-
     <div class="page-area" id="page-area">
       <!-- pages injected here -->
     </div>
@@ -724,7 +710,7 @@ textarea.form-input{resize:vertical}
 
       <!-- משימות -->
       <button class="mob-nav-btn" id="mob-btn-tasks"
-        onclick="nav('tasks',document.querySelectorAll('.nav-item')[1])">
+        onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.assignee='';S.taskFilter.client='';S.taskFilter.view='tabs';nav('tasks',document.querySelectorAll('.nav-item')[1])">
         <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 11l3 3 5-6"/>
           <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -1012,11 +998,11 @@ textarea.form-input{resize:vertical}
       </div>
     </div>
     <div style="background:var(--surface2);border-radius:var(--radius);padding:8px 10px;font-size:11px;color:var(--text2);margin-top:8px;border:1px solid var(--border)">
-      📧 הזמנה תישלח לאימייל העובד עם קישור לכניסה
+      📧💬 הזמנה ראשונית תישלח גם במייל וגם בוואטסאפ. הבחירה למעלה משפיעה רק על תזכורות עתידיות.
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('member')">ביטול</button>
-      <button class="btn primary" onclick="addMember()">הוסף והזמן</button>
+      <button class="btn primary" id="nm-submit-btn" onclick="addMember()">הוסף והזמן</button>
     </div>
   </div>
 </div>
@@ -1459,7 +1445,7 @@ function enterApp(){
       setTimeout(function(){
         if(typeof window.syncAssignedTasksToShared === 'function'){
           (S.tasks||[]).forEach(t=>{
-            if(t.assignee && !t.done) window.syncAssignedTasksToShared(t).catch(()=>{});
+            if(t.assignee) window.syncAssignedTasksToShared(t).catch(()=>{});
           });
         }
       }, 1200);
@@ -1530,34 +1516,7 @@ function nav(page,el){
       btn.style.display = '';
     }
   }
-  // כפתור חיפוש — מובייל + משימות בלבד
-  const searchBtn = document.getElementById('topbar-search-btn');
-  if(searchBtn){
-    const isMob = window.innerWidth <= 640;
-    searchBtn.style.display = (isMob && page==='tasks') ? 'flex' : 'none';
-  }
-  // סגור שורת חיפוש בכניסה ללשונית אחרת
-  if(page !== 'tasks'){
-    const sr = document.getElementById('topbar-search-row');
-    if(sr) sr.style.display = 'none';
-    if(typeof setTaskSearch === 'function') setTaskSearch('');
-  }
   renderPage();
-}
-
-function toggleTaskSearch(){
-  const row = document.getElementById('topbar-search-row');
-  const inp = document.getElementById('topbar-search-input');
-  if(!row) return;
-  const isOpen = row.style.display !== 'none';
-  if(isOpen){
-    row.style.display = 'none';
-    setTaskSearch('');
-    if(inp) inp.value = '';
-  } else {
-    row.style.display = 'block';
-    setTimeout(()=>{ if(inp) inp.focus(); }, 60);
-  }
 }
 function toggleBubble(){
   const b=document.getElementById('user-bubble');
@@ -1847,7 +1806,7 @@ function renderDashboard(){
     <span class="section-title">👥 סקירת צוות</span>
     <button class="btn sm" onclick="navToTasks('pending','')">תצוגת כל העובדים</button>
   </div>
-  <div style="display:flex;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:10px;padding-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+  <div class="team-overview-row">
     ${getTeamWithOwner().map(w=>{
       const [bg,clr]=w.colors||['#dbeafe','#1d4ed8'];
       const isOwner=w.isOwner||isOwnerName(w.name);
@@ -1858,10 +1817,7 @@ function renderDashboard(){
       const hasUrgent=S.tasks.some(t=>wFilter(t)&&t.priority==='urgent'&&t.status!=='done');
       const wClients=(S.waClients||[]).filter(c=>isOwner?(c.assignedTo===w.name||!c.assignedTo):c.assignedTo===w.name).length;
       return `
-      <div onclick="navToTasks('pending','${w.name}')"
-        style="flex:0 0 130px;min-width:130px;position:relative;background:var(--surface);border:1.5px solid ${hasUrgent?'#fca5a5':'var(--border)'};border-radius:var(--radius-lg);padding:12px 10px 10px;cursor:pointer;transition:all .2s;text-align:center"
-        onmouseenter="this.style.boxShadow='0 4px 14px rgba(0,0,0,.10)';this.style.transform='translateY(-2px)'"
-        onmouseleave="this.style.boxShadow='';this.style.transform=''">
+      <div onclick="navToTasks('pending','${w.name}')" class="team-overview-card${hasUrgent?' urgent':''}">
         ${hasUrgent?`<span style="position:absolute;top:7px;left:7px;font-size:9px;background:#fee2e2;color:#b91c1c;padding:1px 5px;border-radius:8px;font-weight:700">דחוף!</span>`:''}
         <div style="width:42px;height:42px;border-radius:50%;background:${bg};color:${clr};font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">${avInitials(w.name)}</div>
         <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${w.name.split(' ')[0]}${isOwner?' 👑':''}</div>
@@ -2077,7 +2033,7 @@ function renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cp,ci,cd,t
   </div>
 
   <!-- חיפוש מובייל — בולט, כמו פגישות -->
-  <div class="mob-show" style="margin-bottom:12px">
+  <div class="mob-show" style="margin-bottom:14px">
     <input type="search" placeholder="🔍 חיפוש משימה..." dir="rtl"
       value="${((S.taskFilter?.search)||'').replace(/"/g,'&quot;')}"
       oninput="setTaskSearch(this.value)"
@@ -2502,7 +2458,17 @@ function cycleStatus(id){
 function setStatus(id,status){
   const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
   t.status=status;t.done=status==='done';
+  t._lastUserChange=Date.now(); // מנעול: ה-listener לא ידרוס שינוי טרי
   taskTab=status;
+  // במובייל: עבור לתצוגת לשוניות + סינון פתוח — כך המשימה בוודאות תופיע בלשונית הסטטוס החדשה
+  if(window.innerWidth<=640){
+    S.taskFilter=S.taskFilter||{};
+    S.taskFilter.view='tabs';
+    S.taskFilter.assignee='';
+    S.taskFilter.client='';
+    S.taskFilter.type='';
+    S.taskFilter.search='';
+  }
   _saveTasks();
   renderPage();
   const labels={pending:'טרם טופל',inprogress:'בביצוע ▶',done:'טופל ✓'};
@@ -3728,8 +3694,9 @@ async function addTask(){
     endCount:parseInt(document.getElementById('nt-reccount')?.value)||null,
     occurrenceCount:0,
   }:null;
+  // ID ייחודי מבוסס Date.now — מונע התנגשויות עם משימות קיימות
   const newTask={
-    id:S.nextId++,title,
+    id:Date.now()+Math.floor(Math.random()*1000),title,
     type:document.getElementById('nt-type').value,
     assignee:document.getElementById('nt-assignee').value||(S.user?.name||''),
     date:document.getElementById('nt-date').value,
@@ -3811,7 +3778,7 @@ function notifyWorkerTaskAssigned(workerName, taskTitle, dueDate, isReassign){
   };
   console.log('[notify-task] שולח התראה:', {cleanPhone, cleanEmail, workerName, taskTitle});
   // שלח ברקע — לא חוסם את ה-UI
-  fetch('/api/notify-task-assigned',{
+  fetch('https://dabelu.vercel.app/api/notify-task-assigned',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)
@@ -3839,7 +3806,7 @@ function testWAToMember(workerName){
     return;
   }
   toast(`💬 שולח הודעת בדיקה ל${workerName}...`);
-  fetch('/api/notify-task-assigned',{
+  fetch('https://dabelu.vercel.app/api/notify-task-assigned',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
@@ -4109,7 +4076,9 @@ function highlightPref(){
   });
 }
 
+let _addingMember=false;
 async function addMember(){
+  if(_addingMember) return;
   const name=document.getElementById('nm-name').value.trim();
   const email=document.getElementById('nm-email').value.trim();
   const phone=document.getElementById('nm-phone').value.trim();
@@ -4123,38 +4092,62 @@ async function addMember(){
   if(phone && S.team.some(t=>t.phone&&t.phone.replace(/\D/g,'')===phone.replace(/\D/g,''))){
     toast('⚠️ עובד עם מספר טלפון זה כבר קיים בצוות');return;
   }
-  const c=memberColors[S.nextMemberId%memberColors.length];
-  const notifyLabel={whatsapp:'💬 וואטסאפ',email:'📧 מייל',both:'🔔 שניהם'}[notify];
-  const role=document.getElementById('nm-role').value;
-  const perm=document.getElementById('nm-perm').value;
-
-  // יצירת קוד כניסה זמני
-  const tempCode=Math.random().toString(36).slice(2,8).toUpperCase();
-  const officeName=S.office?.name||S.user?.officeName||'המשרד';
-  const inviterName=S.user?.name||'';
-
-  // שמירת העובד ב-Firestore
-  if(window.createInvitedEmployee){
-    try{ await window.createInvitedEmployee(name,email,role,tempCode,officeName); }
-    catch(e){ console.error('createInvitedEmployee:',e); }
-  }
-
-  // שליחת מייל הזמנה
+  _addingMember=true;
+  const btn=document.getElementById('nm-submit-btn');
+  const origLabel=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.style.opacity='.6'; btn.style.pointerEvents='none'; btn.textContent='⏳ שומר...'; }
   try{
-    const res = await fetch('https://dabelu.vercel.app/api/invite',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({employeeName:name,employeeEmail:email,officeName,inviterName,tempCode})
-    });
-    const data = await res.json();
-    if(!data.ok) console.warn('Invite API error:',data.error);
-  }catch(e){ console.error('Failed to send invite:',e); }
+    const c=memberColors[S.nextMemberId%memberColors.length];
+    const notifyLabel={whatsapp:'💬 וואטסאפ',email:'📧 מייל',both:'🔔 שניהם'}[notify];
+    const role=document.getElementById('nm-role').value;
+    const perm=document.getElementById('nm-perm').value;
 
-  S.team.push({id:S.nextMemberId++,name,email,phone:phone||'לא הוזן',role,perm,colors:c,status:'הוזמן',notify,notifyLabel});
-  _saveTeam();
-  closeModal('member');renderPage();
-  toast(`📧 מייל הזמנה נשלח ל${name}!`);
-  document.getElementById('nm-name').value='';document.getElementById('nm-email').value='';document.getElementById('nm-phone').value='';
+    // יצירת קוד כניסה זמני
+    const tempCode=Math.random().toString(36).slice(2,8).toUpperCase();
+    const officeName=S.office?.name||S.user?.officeName||'המשרד';
+    const inviterName=S.user?.name||'';
+
+    // שמירת העובד ב-Firestore
+    if(window.createInvitedEmployee){
+      try{ await window.createInvitedEmployee(name,email,role,tempCode,officeName); }
+      catch(e){ console.error('createInvitedEmployee:',e); }
+    }
+
+    // שליחת הזמנה — תמיד נשלחת גם במייל וגם בוואטסאפ (אם יש טלפון).
+    // העדפת הערוץ של העובד (notify) משפיעה רק על תזכורות עתידיות.
+    let inviteResult = { emailSent:false, waSent:false };
+    try{
+      const res = await fetch('https://dabelu.vercel.app/api/invite',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          employeeName:name,
+          employeeEmail:email,
+          employeePhone:phone||'',
+          officeName, inviterName, tempCode
+        })
+      });
+      const data = await res.json();
+      inviteResult = data || inviteResult;
+      if(!data.ok) console.warn('Invite API error:',data);
+    }catch(e){ console.error('Failed to send invite:',e); }
+
+    S.team.push({id:S.nextMemberId++,name,email,phone:phone||'לא הוזן',role,perm,colors:c,status:'הוזמן',notify,notifyLabel});
+    _saveTeam();
+    closeModal('member');renderPage();
+    // toast לפי מה שנשלח בפועל
+    let toastMsg;
+    if(inviteResult.emailSent && inviteResult.waSent) toastMsg=`📧💬 הזמנה נשלחה ל${name} במייל ובוואטסאפ!`;
+    else if(inviteResult.emailSent && inviteResult.skippedWA) toastMsg=`📧 מייל הזמנה נשלח ל${name} (אין מספר טלפון לוואטסאפ)`;
+    else if(inviteResult.emailSent)                    toastMsg=`📧 מייל הזמנה נשלח ל${name} (וואטסאפ נכשל)`;
+    else if(inviteResult.waSent)                       toastMsg=`💬 הזמנה נשלחה ל${name} בוואטסאפ (מייל נכשל)`;
+    else                                                toastMsg=`⚠️ ${name} נוסף, אך שליחת ההזמנה נכשלה`;
+    toast(toastMsg);
+    document.getElementById('nm-name').value='';document.getElementById('nm-email').value='';document.getElementById('nm-phone').value='';
+  } finally {
+    _addingMember=false;
+    if(btn){ btn.disabled=false; btn.style.opacity=''; btn.style.pointerEvents=''; btn.textContent=origLabel||'הוסף והזמן'; }
+  }
 }
 function removeMember(id){
   const m=S.team.find(t=>t.id===id);if(!m)return;
@@ -4830,10 +4823,10 @@ function _saveTasks(){
   if(S.user?.uid && window.saveTasksToDB){
     window.saveTasksToDB(S.user.uid, S.tasks||[]).catch(e=>console.warn('saveTasksToDB:',e));
   }
-  // סנכרון אוטומטי: משימות עם עובד → sharedTasks
+  // סנכרון אוטומטי: משימות עם עובד → sharedTasks (כולל done — אחרת ה-listener מחזיר את הסטטוס לאחור)
   if(typeof window.syncAssignedTasksToShared === 'function'){
     (S.tasks||[]).forEach(t=>{
-      if(t.assignee && !t.done) window.syncAssignedTasksToShared(t).catch(()=>{});
+      if(t.assignee) window.syncAssignedTasksToShared(t).catch(()=>{});
     });
   }
 }
@@ -6785,7 +6778,11 @@ document.addEventListener('DOMContentLoaded', function(){
         tasks.forEach(st => {
           if (!st.taskId) return;
           const t = (S.tasks || []).find(t => String(t.id) === String(st.taskId));
-          if (t && t.status !== st.status) { t.status = st.status; changed = true; }
+          if (!t || t.status === st.status) return;
+          // מנעול: אם המשתמש שינה את הסטטוס ב-60 השניות האחרונות, אל תדרוס.
+          // זה מונע race condition בו ה-listener רץ לפני שהסנכרון ל-Firestore הסתיים.
+          if (t._lastUserChange && Date.now() - t._lastUserChange < 60000) return;
+          t.status = st.status; changed = true;
         });
         if (changed && typeof renderPage === 'function' &&
             (S.page === 'tasks' || S.page === 'dashboard')) renderPage();

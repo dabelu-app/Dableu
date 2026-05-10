@@ -1,29 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Background: light gray matching the logo -->
-  <rect width="512" height="512" rx="80" fill="#f5f5f7"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Radial gradient background - lighter center, darker edges like the original -->
+    <radialGradient id="bgGrad" cx="50%" cy="45%" r="62%" fx="50%" fy="45%">
+      <stop offset="0%"   stop-color="#9580FF"/>
+      <stop offset="55%"  stop-color="#7B6AFF"/>
+      <stop offset="100%" stop-color="#5E4EE0"/>
+    </radialGradient>
+    <!-- Subtle drop shadow for the W -->
+    <filter id="wShadow" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="6" stdDeviation="14" flood-color="rgba(40,20,120,0.35)"/>
+    </filter>
+  </defs>
 
-  <!-- W logo — three-layer technique for the double-W rounded effect -->
+  <!-- Background with large rounded corners (iOS style ~23%) -->
+  <rect width="1024" height="1024" rx="235" ry="235" fill="url(#bgGrad)"/>
 
-  <!-- Layer 1: Outer thick W arm (purple) -->
-  <path d="M 55,98 L 194,412 L 256,230 L 318,412 L 457,98"
-        stroke="#6B5AFF"
-        stroke-width="122"
+  <!-- W logo: three-layer technique — outer white, purple gap, inner white -->
+
+  <!-- Layer 1: Outer thick W (white) -->
+  <path d="M 108,188 L 392,838 L 512,456 L 632,838 L 916,188"
+        stroke="#ffffff"
+        stroke-width="258"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"
+        filter="url(#wShadow)"/>
+
+  <!-- Layer 2: Purple cutout gap -->
+  <path d="M 108,188 L 392,838 L 512,456 L 632,838 L 916,188"
+        stroke="url(#bgGrad)"
+        stroke-width="152"
         stroke-linecap="round"
         stroke-linejoin="round"
         fill="none"/>
 
-  <!-- Layer 2: Background-color cutout — creates the visible gap between outer and inner W -->
-  <path d="M 55,98 L 194,412 L 256,230 L 318,412 L 457,98"
-        stroke="#f5f5f7"
-        stroke-width="68"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        fill="none"/>
-
-  <!-- Layer 3: Inner W fill (purple) — the inner smaller W visible in the logo -->
-  <path d="M 55,98 L 194,412 L 256,230 L 318,412 L 457,98"
-        stroke="#6B5AFF"
-        stroke-width="46"
+  <!-- Layer 3: Inner W (white) -->
+  <path d="M 108,188 L 392,838 L 512,456 L 632,838 L 916,188"
+        stroke="#ffffff"
+        stroke-width="100"
         stroke-linecap="round"
         stroke-linejoin="round"
         fill="none"/>

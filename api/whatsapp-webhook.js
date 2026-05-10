@@ -1398,10 +1398,10 @@ module.exports = async (req, res) => {
 
   // עדיפות 1: Groq זיהה שם עובד בסיווג → התאמה גמישה
   // עדיפות 2: חיפוש regex בטקסט המלא
+  // אם לא מצוין שם עובד בהודעה — המשימה תיווצר כללית (לא משויכת אוטומטית גם אם יש רק עובד אחד בצוות)
   const aiAssignee  = classified.assignee || null;
   const workerMatch = (aiAssignee ? findWorkerByName(aiAssignee, teamMembers) : null)
-                   || findWorkerMatch(msgText, teamMembers)
-                   || (teamMembers.length === 1 ? teamMembers[0] : null); // עובד יחיד → שיוך אוטומטי
+                   || findWorkerMatch(msgText, teamMembers);
 
   console.log(`👥 assignee from AI: "${aiAssignee}" | matched: ${workerMatch?.name || 'none'}`);
 

@@ -5,7 +5,7 @@ const nodemailer = require('nodemailer');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT  = 'dabelu';
-const SITE_URL          = 'https://cosmic-daifuku-4d8c28.netlify.app';
+const SITE_URL          = 'https://dabelu.web.app/tax_manager_app.html';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

@@ -19,25 +19,25 @@
     "api/payment-webhook.js": {
       "maxDuration": 30
     },
-    "api/trial-expiry-reminder.js": {
+    "api/cron.js": {
       "maxDuration": 60
     }
   },
   "crons": [
     {
-      "path": "/api/check-overdue",
+      "path": "/api/cron?type=overdue",
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/appointment-reminder",
+      "path": "/api/cron?type=appointment",
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/trial-expiry-reminder",
+      "path": "/api/cron?type=trial",
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/task-due-reminder",
+      "path": "/api/cron?type=task-due",
       "schedule": "0 6 * * *"
     }
   ]
