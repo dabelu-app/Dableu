@@ -1219,6 +1219,9 @@ function checkSubscription() {
   // מנוי פעיל (כולל basic ו-business)
   if(['active','basic','business'].indexOf(S.user.subscription) !== -1) return;
 
+  // ── חינמי או קופון (סטטוסים שמוגדרים ע"י האדמין) — אין הגבלה, אין paywall ──
+  if(['free','coupon','employee'].indexOf(S.user.subscription) !== -1) return;
+
   // ניסיון שפג — הצג paywall ישירות ללא בדיקת תאריך
   if(S.user.subscription === 'trial_expired') { showPaywall(); return; }
 
@@ -1338,10 +1341,14 @@ function enterApp(){
   document.getElementById('screen-app').style.display='flex';
   // עדכן badge פעמון + app icon badge
   if(typeof updateNotifBadge==='function') updateNotifBadge();
-  // שמירת session ב-sessionStorage — נמחק כשסוגרים את האפליקציה
-  try{if(S.user&&S.user.uid){sessionStorage.setItem('dabelu_session',JSON.stringify({uid:S.user.uid,name:S.user.name,email:S.user.email,initials:S.user.initials,officeName:S.user.officeName,subscription:S.user.subscription||'trial',role:S.user.role||'',savedAt:Date.now()}));}}catch(e){}
-  // נקה session ישן מ-localStorage (מעבר)
-  try{localStorage.removeItem('dabelu_session');}catch(e){}
+  // שמירת session ב-localStorage — נשאר גם אחרי סגירת הדפדפן/אפליקציה
+  try{
+    if(S.user&&S.user.uid){
+      const sessionData = JSON.stringify({uid:S.user.uid,name:S.user.name,email:S.user.email,initials:S.user.initials,officeName:S.user.officeName,subscription:S.user.subscription||'trial',role:S.user.role||'',savedAt:Date.now()});
+      localStorage.setItem('dabelu_session', sessionData);
+      sessionStorage.setItem('dabelu_session', sessionData); // גם בsessionStorage לתאימות
+    }
+  }catch(e){}
   // update all user elements
   const initials=S.user.initials||'?';
   const name=S.user.name||'משתמש';
@@ -1463,6 +1470,9 @@ function logout(){
   S.reminders=[];S.waMessages=[];S.nextId=10;S.nextMemberId=4;
   S.office={name:'',phone:'',email:'',addr:''};
   try { Object.keys(localStorage).filter(k=>k.startsWith('dabelu_')).forEach(k=>localStorage.removeItem(k)); } catch(e){}
+  try { sessionStorage.removeItem('dabelu_session'); } catch(e){}
+  // התנתק גם מ-Firebase Auth (Google) — אחרת onAuthStateChanged יחזיר אותנו פנימה
+  try { if(typeof window.firebaseSignOut === 'function') window.firebaseSignOut(); } catch(e){}
   S.user=null;
   document.getElementById('screen-app').style.display='none';
   document.getElementById('screen-auth').style.display='flex';
@@ -1618,7 +1628,7 @@ function clearAllNotifs(){
   saveStoredNotifs([]);updateNotifBadge();renderNotifList();
 }
 
-// האזנה להודעות מ-Service Worker (push שהגיע)
+// האזנה להודעות מ-Service Worker (push שהגיע בזמן שהאפליקציה פתוחה)
 if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('message',event=>{
     if(event.data?.type==='PUSH_RECEIVED'){
@@ -1626,6 +1636,49 @@ if('serviceWorker' in navigator){
     }
   });
 }
+
+// טען התראות שהגיעו בזמן שהאפליקציה הייתה סגורה (נשמרו ע"י ה-SW ב-IndexedDB)
+function loadNotifsFromIDB(){
+  try{
+    const req=indexedDB.open('dabelu-notifs',1);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains('notifs')) db.createObjectStore('notifs',{keyPath:'id'});
+    };
+    req.onsuccess=()=>{
+      const db=req.result;
+      const tx=db.transaction('notifs','readwrite');
+      const store=tx.objectStore('notifs');
+      const all=store.getAll();
+      all.onsuccess=()=>{
+        const notifs=all.result||[];
+        if(notifs.length){
+          notifs.forEach(n=>addStoredNotif(n));
+          store.clear(); // נוקה אחרי שהעברנו ללוקאל
+        }
+        tx.oncomplete=()=>db.close();
+      };
+    };
+  }catch(e){}
+}
+// הרץ בעלייה ראשונית
+loadNotifsFromIDB();
+// הרץ גם כשחוזרים לאפליקציה (focus/visibilitychange) — תופס push שנכנסו ברקע
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ loadNotifsFromIDB(); clearSystemNotifs(); }});
+window.addEventListener('focus',()=>{ loadNotifsFromIDB(); clearSystemNotifs(); });
+
+// סגור את כל ההתראות הפעילות במגש המערכת — נקרא כשהאפליקציה נפתחת
+function clearSystemNotifs(){
+  if(!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.getRegistration().then(reg=>{
+    if(!reg) return;
+    reg.getNotifications().then(notifs=>{
+      notifs.forEach(n=>n.close());
+    }).catch(()=>{});
+  }).catch(()=>{});
+}
+// קרא גם בטעינה הראשונה אם האפליקציה נפתחה מתוך לחיצה על התראה
+clearSystemNotifs();
 
 function toggleSidebar(){
   S.sidebarCollapsed=!S.sidebarCollapsed;
@@ -4109,7 +4162,7 @@ async function addMember(){
 
     // שמירת העובד ב-Firestore
     if(window.createInvitedEmployee){
-      try{ await window.createInvitedEmployee(name,email,role,tempCode,officeName); }
+      try{ await window.createInvitedEmployee(name,email,role,tempCode,officeName,S.user?.uid||''); }
       catch(e){ console.error('createInvitedEmployee:',e); }
     }
 
@@ -5757,13 +5810,7 @@ document.addEventListener('DOMContentLoaded', function(){
           body: JSON.stringify({ name, email, phone: phone||'', plan })
         }).then(r=>r.json()).then(d=>{ if(!d?.email?.ok) console.warn('onboarding email issue:',d); })
           .catch(e=>console.error('onboarding fetch error:',e));
-        // תכנית בתשלום — הפניה לדף תשלום Bamit/YoPay
-        if((plan==='basic'||plan==='business') && BAMIT_PAYMENT[plan]) {
-          // שמור uid ותוכנית ב-localStorage לפני המעבר
-          localStorage.setItem('pending_payment', JSON.stringify({uid: result.uid, plan: plan, email: email}));
-          window.location.href = BAMIT_PAYMENT[plan]; // ← URL נקי בלי פרמטרים נוספים
-          return;
-        }
+        // כרגע: ללא תשלום — כל המשתמשים נכנסים ישר לאפליקציה
         enterApp();
       } else {
         showErr('טעינה עדיין בתהליך — נסו שנית עוד שנייה');
@@ -5846,7 +5893,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserSessionPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -5861,8 +5908,10 @@ document.addEventListener('DOMContentLoaded', function(){
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  // סשן תקף רק בזמן שהאפליקציה פתוחה — בפתיחה מחדש מבקש כניסה
-  await setPersistence(auth, browserSessionPersistence);
+  // סשן נשאר גם אחרי סגירת הדפדפן/אפליקציה — המשתמש לא צריך להתחבר כל פעם מחדש
+  await setPersistence(auth, browserLocalPersistence);
+  // חשוף signOut כדי שפונקציית logout (מחוץ למודול) תוכל גם להתנתק מ-Firebase Auth
+  window.firebaseSignOut = () => signOut(auth).catch(()=>{});
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -5901,9 +5950,44 @@ document.addEventListener('DOMContentLoaded', function(){
       existing = await loadUserData(user.uid);
     }
 
+    // ── משתמש חדש לחלוטין שלא רשום — נתב ללשונית הרשמה ולא תיצור חשבון אוטומטי ──
+    if (!existing) {
+      try { await signOut(auth); } catch(e){}
+      if (typeof _showAuthScreen === 'function') _showAuthScreen();
+      if (typeof authShowTab === 'function') authShowTab('reg');
+      const fParts = (user.displayName || '').split(' ');
+      const firstEl = document.getElementById('r-firstname');
+      const lastEl  = document.getElementById('r-lastname');
+      const emailEl = document.getElementById('r-email');
+      if (firstEl) firstEl.value = fParts[0] || '';
+      if (lastEl)  lastEl.value  = fParts.slice(1).join(' ') || '';
+      if (emailEl) emailEl.value = email;
+      const regErr = document.getElementById('reg-err');
+      if (regErr) {
+        regErr.textContent = '👋 ברוכ/ה הבא/ה! יש להירשם תחילה כדי להמשיך';
+        regErr.style.color = '#6B5AFF';
+        regErr.style.display = 'block';
+      }
+      return;
+    }
+
     if(typeof S !== 'undefined') {
+      // ── מנהל: יטען את נתוני המעסיק ──
+      let dataUid = canonicalUid;
+      if (existing && existing.role === 'manager') {
+        let employerUid = existing.employerUid;
+        if (!employerUid && typeof window.findEmployerUidForUser === 'function') {
+          employerUid = await window.findEmployerUidForUser(email);
+          if (employerUid) {
+            try { await updateDoc(doc(db, 'users', canonicalUid), { employerUid }); } catch(e){}
+          }
+        }
+        if (employerUid) dataUid = employerUid;
+      }
+
       S.user = {
-        uid: canonicalUid,
+        uid: dataUid, // ← uid לטעינה ושמירת נתונים
+        managerUid: (existing?.role === 'manager') ? canonicalUid : null,
         name: user.displayName || existing?.name || email.split('@')[0],
         email,
         initials,
@@ -5920,9 +6004,9 @@ document.addEventListener('DOMContentLoaded', function(){
         if(existing.officeAddr)  S.office.addr   = existing.officeAddr;
         if(existing.officeName)  S.office.name   = existing.officeName;
         if(existing.notif)       S.notif         = existing.notif;
-        const tasks    = await window.loadTasksFromDB(canonicalUid);
-        const clients  = await window.loadClientsFromDB(canonicalUid);
-        const teamData = await window.loadTeamFromDB(canonicalUid);
+        const tasks    = await window.loadTasksFromDB(dataUid);
+        const clients  = await window.loadClientsFromDB(dataUid);
+        const teamData = await window.loadTeamFromDB(dataUid);
         // תמיד אפס — מונע דליפת נתונים מסשן קודם
         S.tasks   = tasks   || [];
         S.clients = clients || [];
@@ -6044,8 +6128,24 @@ document.addEventListener('DOMContentLoaded', function(){
       await updateDoc(doc(db, 'users', uDoc.id), { lastLogin: new Date().toISOString() });
       if(typeof S !== 'undefined') {
         const nm = uData.name || em.split('@')[0];
+
+        // ── מנהל: יראה את נתוני המעסיק (אותו דשבורד מלא) ──
+        let dataUid = uDoc.id; // ברירת מחדל — נתוני המשתמש עצמו
+        if (uData.role === 'manager') {
+          let employerUid = uData.employerUid;
+          if (!employerUid && typeof window.findEmployerUidForUser === 'function') {
+            employerUid = await window.findEmployerUidForUser(em);
+            if (employerUid) {
+              // שמור בפעם הראשונה כדי שלא נצטרך לחפש שוב
+              try { await updateDoc(doc(db, 'users', uDoc.id), { employerUid }); } catch(e){}
+            }
+          }
+          if (employerUid) dataUid = employerUid;
+        }
+
         S.user = {
-          uid: uDoc.id,
+          uid: dataUid, // ← uid לטעינה ושמירת נתונים (מנהל = uid המעסיק)
+          managerUid: uData.role === 'manager' ? uDoc.id : null, // ה-uid המקורי של המנהל
           name: nm,
           email: em,
           initials: nm.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),
@@ -6061,10 +6161,10 @@ document.addEventListener('DOMContentLoaded', function(){
         if(uData.officeName) S.office.name = uData.officeName;
         // טעינת הגדרות התראות
         if(uData.notif) S.notif = uData.notif;
-        // טעינת צוות, משימות ולקוחות — תמיד אפס קודם למניעת דליפת נתונים
-        const tasks   = await window.loadTasksFromDB(uDoc.id);
-        const clients = await window.loadClientsFromDB(uDoc.id);
-        const teamData= await window.loadTeamFromDB(uDoc.id);
+        // טעינת צוות, משימות ולקוחות מתוך dataUid (המעסיק במקרה של מנהל)
+        const tasks   = await window.loadTasksFromDB(dataUid);
+        const clients = await window.loadClientsFromDB(dataUid);
+        const teamData= await window.loadTeamFromDB(dataUid);
         S.tasks   = tasks   || [];
         S.clients = clients || [];
         S.team    = teamData?.team || [];
@@ -6084,17 +6184,20 @@ document.addEventListener('DOMContentLoaded', function(){
   };
 
   // ── יצירת עובד מוזמן ב-Firestore ──
-  window.createInvitedEmployee = async function(name, email, role, tempCode, officeName) {
+  window.createInvitedEmployee = async function(name, email, role, tempCode, officeName, employerUid) {
     const em = email.toLowerCase();
     const codeHash = await hashPass(tempCode);
     // אם המשתמש כבר קיים – רק עדכן את קוד ההזמנה
     const existing = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
     if (!existing.empty) {
-      await updateDoc(doc(db, 'users', existing.docs[0].id), {
+      const upd = {
         inviteToken: tempCode,
         passwordHash: codeHash,
-        source: 'invited'
-      });
+        source: 'invited',
+        role: role || existing.docs[0].data().role || 'employee'
+      };
+      if (employerUid) upd.employerUid = employerUid;
+      await updateDoc(doc(db, 'users', existing.docs[0].id), upd);
       return;
     }
     const uid = 'emp_' + Date.now();
@@ -6104,10 +6207,32 @@ document.addEventListener('DOMContentLoaded', function(){
       inviteToken: tempCode,
       officeName: officeName || 'משרד ייעוץ מס',
       role: role || 'employee',
+      employerUid: employerUid || '',
       subscription: 'employee',
       createdAt: new Date().toISOString(),
       source: 'invited'
     });
+  };
+
+  // עוזר: מצא את uid של המעסיק עבור משתמש (מנהל/עובד) — מחפש במכלי הצוות של כל המעסיקים
+  window.findEmployerUidForUser = async function(userEmail) {
+    try {
+      const allUsers = await getDocs(collection(db, 'users'));
+      for (const userDoc of allUsers.docs) {
+        const data = userDoc.data();
+        // דלג על משתמשים שהם עצמם עובדים — רק מעסיקים יש להם team
+        if (data.role === 'employee' || data.role === 'worker' || data.role === 'manager') continue;
+        try {
+          const teamDoc = await getDoc(doc(db, 'users', userDoc.id, 'data', 'team'));
+          if (!teamDoc.exists()) continue;
+          const team = teamDoc.data()?.team || [];
+          if (team.some(m => (m.email||'').toLowerCase() === userEmail.toLowerCase())) {
+            return userDoc.id;
+          }
+        } catch(e) {}
+      }
+    } catch(e) { console.error('findEmployerUidForUser:', e); }
+    return null;
   };
 
   // ── מסך כניסה ראשונה מקישור הזמנה (?email=...&code=...) ──
@@ -6244,12 +6369,8 @@ document.addEventListener('DOMContentLoaded', function(){
     const uid = 'reg_' + Date.now();
     // נרמל טלפון → chatId לזיהוי הודעות וואטסאפ
     const chatId = _normalizePhone(phone);
-    // free=חינמי, basic/business=ממתין לתשלום, אחר=ניסיון
-    const subscription = plan === 'free' ? 'free'
-                       : plan === 'basic' ? 'pending'
-                       : plan === 'business' ? 'pending'
-                       : plan === 'active'   ? 'active'
-                       : 'trial';
+    // כרגע: כל המשתמשים מקבלים גישה מלאה ללא תשלום וללא הגבלה
+    const subscription = 'active';
     await setDoc(doc(db, 'users', uid), {
       name: name,
       email: em,
@@ -6873,22 +6994,7 @@ document.addEventListener('DOMContentLoaded', function(){
         return;
       }
 
-      // ── ממתין לתשלום — הפנה לסליקה ──
-      if (sub === 'pending') {
-        await signOut(auth);
-        btn.innerHTML = originalHTML;
-        btn.style.pointerEvents = '';
-        const plan = userData.plan || 'basic';
-        if (BAMIT_PAYMENT[plan]) {
-          localStorage.setItem('pending_payment', JSON.stringify({ uid, plan, email }));
-          window.location.href = BAMIT_PAYMENT[plan]; // ← URL נקי
-          return;
-        }
-        document.getElementById('aerr').textContent = 'החשבון ממתין לאישור תשלום — צור קשר עמנו';
-        return;
-      }
-
-      // ── רשום ומאושר — כנס לאפליקציה ──
+      // כרגע: ללא תשלום — כל משתמש רשום נכנס ישר לאפליקציה (גם pending)
       await handleAuthSuccess(user);
 
     } catch(err) {
@@ -6916,12 +7022,13 @@ document.addEventListener('DOMContentLoaded', function(){
       return;
     }
 
-    // אין Firebase Auth session — בדוק sessionStorage session (כניסה עם אימייל/סיסמה)
+    // אין Firebase Auth session — בדוק session מקומי (כניסה עם אימייל/סיסמה)
+    // מנסים קודם localStorage (נשמר גם אחרי סגירה), ואז sessionStorage כגיבוי
     try {
-      const raw = sessionStorage.getItem('dabelu_session');
+      const raw = localStorage.getItem('dabelu_session') || sessionStorage.getItem('dabelu_session');
       if(raw) {
         const sess = JSON.parse(raw);
-        if(sess && sess.uid) { // sessionStorage מתאפס כשסוגרים — אין צורך בבדיקת גיל
+        if(sess && sess.uid) {
           if(typeof S !== 'undefined') {
             S.user = { uid:sess.uid, name:sess.name, email:sess.email, initials:sess.initials, officeName:sess.officeName, subscription:sess.subscription||'trial', role:sess.role||'' };
             try {
@@ -6938,9 +7045,10 @@ document.addEventListener('DOMContentLoaded', function(){
             return;
           }
         }
+        localStorage.removeItem('dabelu_session');
         sessionStorage.removeItem('dabelu_session');
       }
-    } catch(e){ sessionStorage.removeItem('dabelu_session'); }
+    } catch(e){ localStorage.removeItem('dabelu_session'); sessionStorage.removeItem('dabelu_session'); }
 
     // אין session כלל — הצג מסך כניסה
     _showAuthScreen();

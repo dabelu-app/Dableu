@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v21';
+const CACHE_NAME = 'dabelu-v29';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -60,11 +60,36 @@ self.addEventListener('fetch', event => {
   );
 });
 
+// ── שמור התראה ב-IndexedDB כדי שתופיע בפעמון גם אם האפליקציה סגורה ──
+function storeNotifInIDB(notif) {
+  return new Promise(resolve => {
+    try {
+      const req = indexedDB.open('dabelu-notifs', 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('notifs')) {
+          db.createObjectStore('notifs', { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('notifs', 'readwrite');
+        tx.objectStore('notifs').put(notif);
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror    = () => { db.close(); resolve(); };
+      };
+      req.onerror = () => resolve();
+    } catch (e) { resolve(); }
+  });
+}
+
 // ── Push notifications ──
 self.addEventListener('push', event => {
   const data = event.data ? event.data.json() : {};
   const notif = {
-    id:    Date.now(),
+    // אם השרת שלח id (כדי לאחד שני subscriptions של אותה התראה) — נשתמש בו.
+    // אחרת נחזור על ברירת המחדל — Date.now().
+    id:    data.id || Date.now(),
     title: data.title || 'Dabelu',
     body:  data.body  || 'יש עדכונים חדשים',
     time:  new Date().toISOString(),
@@ -72,6 +97,7 @@ self.addEventListener('push', event => {
   };
   event.waitUntil(
     Promise.all([
+      storeNotifInIDB(notif),
       self.registration.showNotification(notif.title, {
         body:    notif.body,
         icon:    '/icon-w.png',
@@ -79,8 +105,12 @@ self.addEventListener('push', event => {
         dir:     'rtl',
         lang:    'he',
         vibrate: [200, 100, 200],
-        tag:     'dabelu-notification',
+        // tag ייחודי לכל התראה — כך התראות לא דורסות אחת את השנייה
+        tag:     'dabelu-' + notif.id,
+        // requireInteraction = true → התראה נשארת על המסך עד שהמשתמש לוחץ עליה
         requireInteraction: true,
+        // renotify = true → כל התראה חדשה תרעיד ותצלצל גם אם יש דומות
+        renotify: true,
         data:    { url: data.url || '/tax_manager_app.html' }
       }),
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then(allClients => {

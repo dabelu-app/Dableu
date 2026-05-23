@@ -3,10 +3,11 @@
 // נוצר כדי לחסוך בקבצי serverless functions (מגבלת Vercel Hobby = 12).
 
 const handlers = {
-  'overdue':     require('../lib/cron/check-overdue'),
-  'appointment': require('../lib/cron/appointment-reminder'),
-  'trial':       require('../lib/cron/trial-expiry-reminder'),
-  'task-due':    require('../lib/cron/task-due-reminder'),
+  'overdue':         require('../lib/cron/check-overdue'),
+  'appointment':     require('../lib/cron/appointment-reminder'),
+  'trial':           require('../lib/cron/trial-expiry-reminder'),
+  'task-due':        require('../lib/cron/task-due-reminder'),
+  'reminder-hourly': require('../lib/cron/reminder-hourly'),
 };
 
 module.exports = async (req, res) => {

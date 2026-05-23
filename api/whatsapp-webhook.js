@@ -389,35 +389,86 @@ async function classifyMessage(text) {
       method:'POST',
       headers:{'Content-Type':'application/json', Authorization:`Bearer ${process.env.GROQ_KEY}`},
       body: JSON.stringify({
-        model:'llama-3.1-8b-instant',
+        // Llama 3.3 70B — מודל גדול הרבה יותר חכם מ-8B, מבין עברית טוב יותר.
+        // עדיין חינמי דרך Groq וכמעט באותה מהירות.
+        model:'llama-3.3-70b-versatile',
+        // response_format JSON — Groq תומך בזה, מבטיח שהתשובה תהיה JSON תקין
+        response_format: { type: 'json_object' },
         messages:[
           { role:'system', content:
-`היום הוא ${todayDisplay}. אתה מסווג הודעות בעברית למשרד יעוץ מס.
+`היום הוא ${todayDisplay}. אתה מסווג הודעות בעברית לעו"ד/יועצת מס. צריך להחזיר JSON בלבד.
 
-קטגוריות:
-- "appointment" - בקשה לפגישה / תור / להיפגש / קביעה
-- "task" - כל בקשה, משימה, תזכורת, שאלה, הודעה עם תוכן כלשהו — כולל אם לא ברורה לחלוטין
-- "invalid" - רק הודעות ריקות / ברכות קצרות ללא שום תוכן עבודה ("שלום", "היי", "בוקר טוב", "תודה", "ok", "123", "test")
+═══ קטגוריות ═══
+"appointment" — קביעת פגישה/תור/מפגש *עם אדם מסוים*. סימני זיהוי:
+  • מילים מפורשות: "פגישה", "תור", "להיפגש", "מפגש", "נתראה", "נפגשים"
+  • שאלות: "מתי פנוי/ה?", "אפשר לקבוע?", "יש זמן ב..?"
+  • תבנית: "[שם אדם] ב[יום/שעה]" כשמשתמע מפגש
+  • דרישה: צריך להיות שם של אדם להיפגש איתו
 
-כלל ברזל: כל ספק → "task"!
-סימני פגישה: פגישה, תור, נפגש, להיפגש, קבע, קביעת, מתי פנוי, אפשר לקבוע, נתראה
+"reminder" — *תזכורת לאירוע/פעולה בתאריך ספציפי* ללא מפגש עם לקוח. סימני זיהוי:
+  • מילים מפורשות: "תזכיר/י לי", "להזכיר לי", "תזכורת", "אל תשכח/י"
+  • *כל הודעה עם תאריך + שעה מפורשים* (גם בלי מילים מפורשות) — זו תזכורת
+  • פעולה/אירוע בתאריך עתידי: "שיעור נהיגה מחר ב-09:00", "להגיש מקדמה ב-25/5"
+  • דרישה: חייב להיות תאריך (אחרת זה task)
 
-החזר JSON בלבד:
+"task" — *כל* בקשה אחרת ללא תאריך+שעה ספציפיים. למשל:
+  • הוראה לעובד ללא תאריך מחייב: "תתקשרי לדינה", "שרה תכין דוח"
+  • פעולה ללא תאריך: "להגיש מקדמה", "לשלוח חשבונית", "להעלות מסמך"
+  • שאלה עם תוכן: "מה המצב עם...", "האם טופל..."
+  • הודעה לא ברורה — תמיד "task" (כלל ברזל!)
+
+"invalid" — *רק* ברכות/סטיקרים ריקים: "שלום", "היי", "בוקר טוב", "תודה", "ok", "👍"
+
+═══ דוגמאות ═══
+"פגישה עם דינה ביום שלישי" → appointment, with="דינה"
+"להתקשר לדינה" → task
+"שרה תכין דוח מע"מ" → task, assignee="שרה"
+"מתי אני פנויה השבוע?" → appointment
+
+"תזכיר לי להגיש מקדמה ב-25/5" → reminder, title="להגיש מקדמה"
+"להגיש מקדמה 25/5" → reminder
+"תזכורת: לשלם חשבונית ב-1/6" → reminder, title="לשלם חשבונית"
+"אל תשכחי לשלוח דוח עד יום שלישי" → reminder
+"אל תשכח מחר שיעור נהיגה בשעה 09:00" → reminder, title="שיעור נהיגה"
+"מחר ב-14:00 לשלם ארנונה" → reminder, title="לשלם ארנונה"
+"ביום ראשון ב-10:00 להזכיר לי טיפולים" → reminder, title="טיפולים"
+
+⚠️ כלל ברזל לתזכורות: אם יש *תאריך + שעה ספציפית* בהודעה → תמיד reminder (גם בלי "תזכיר לי")
+
+"להעלות חשבוניות של ישראל" → task (אין תאריך)
+"להזכיר לי להגיש מקדמה" → task (אין תאריך מפורש)
+"היי" → invalid
+
+⚠️ תבנית "משימה ל[שם]":
+"משימה לחיים לעשות דוח" → task, assignee="חיים", title="לעשות דוח"
+"משימה ליוסי: להתקשר לדינה" → task, assignee="יוסי", title="להתקשר לדינה"
+"לחיים תכין דוח" → task, assignee="חיים", title="תכין דוח"
+"חיים: דוח מע\\"מ" → task, assignee="חיים", title="דוח מע\\"מ"
+
+הבחנה חשובה:
+  appointment = יש שם של אדם להיפגש איתו
+  reminder    = יש תאריך אבל אין שם של אדם
+  task        = אין תאריך מפורש או אין משמעות לוח זמנים
+
+═══ פורמט JSON ═══
 {
-  "intent": "appointment"|"task"|"invalid",
-  "date": "YYYY-MM-DD"|null,
-  "time": "HH:MM"|null,
-  "with": "שם הלקוח שהפגישה איתו"|null,
-  "assignee": "שם העובד שהמשימה מיועדת אליו"|null,
-  "title": "תוכן ההודעה המלא בדיוק — ללא שם עובד בלבד מהתחלה"
+  "intent": "appointment" | "reminder" | "task" | "invalid",
+  "date": "YYYY-MM-DD" | null,    // null — מחושב בקוד נפרד
+  "time": "HH:MM" | null,
+  "with": "שם הלקוח" | null,        // רק לappointment, אחרי "עם"
+  "assignee": "שם העובד" | null,   // רק לtask, אם מצוין בתחילת ההודעה
+  "title": "תוכן ההודעה ללא מילות חיבור (תזכיר לי, אל תשכח וכו') ובלי שם העובד אם בהתחלה"
 }
 
-לפגישות: חלץ שעה ושם לקוח (אחרי "עם"). עבור date — החזר null (מחושב בנפרד).
-למשימות: assignee = שם עובד אם מצוין, אחרת null.`
+⚠️ כללים נוספים:
+1. אם בספק בין task ל-appointment — בחר "task"
+2. assignee הוא רק אם השם בתחילת ההודעה ("שרה — תכיני דוח") או אחרי "ש[שם] תעשה"
+3. title צריך להכיל את הפעולה/בקשה, לא להחזיר רק את השם
+4. אל תכלול את התאריך/שעה ב-title — אבל כן שמור הקשר משמעותי`
           },
           { role:'user', content: text }
         ],
-        max_tokens:200, temperature:0
+        max_tokens:250, temperature:0
       })
     });
     const data = await resp.json();
@@ -477,6 +528,28 @@ async function saveAppointment(title, date, time, clientName, chatId, googleEven
         googleEventId:{stringValue: googleEventId||''},
         userId:       {stringValue: userId||''},
         status:       {stringValue: 'confirmed'},
+        type:         {stringValue: 'appointment'},
+        createdAt:    {stringValue: new Date().toISOString()},
+        reminderSent: {booleanValue: false}
+      }})
+    }
+  );
+}
+
+// ── שמירת תזכורת (נרשמת באוסף appointments עם type='reminder' — מופיעה ביומן) ──
+async function saveReminder(title, date, time, chatId, userId) {
+  await fetch(
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/appointments?key=${FIREBASE_API_KEY}`,
+    { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ fields:{
+        title:        {stringValue: title||''},
+        date:         {stringValue: date||''},
+        time:         {stringValue: time||''},
+        clientName:   {stringValue: ''},
+        chatId:       {stringValue: chatId||''},
+        userId:       {stringValue: userId||''},
+        status:       {stringValue: 'confirmed'},
+        type:         {stringValue: 'reminder'},
         createdAt:    {stringValue: new Date().toISOString()},
         reminderSent: {booleanValue: false}
       }})
@@ -642,10 +715,17 @@ function findWorkerMatch(text, team) {
 function cleanTitleFromWorker(title, workerName) {
   if (!workerName || !title) return title;
   const first = workerName.split(' ')[0];
-  return title
-    .replace(new RegExp(`^ל?${workerName}[:\\-,\\s]+`, 'i'), '')
-    .replace(new RegExp(`^ל?${first}[:\\-,\\s]+`,       'i'), '')
-    .trim() || title;
+  // נסיר תחיליות נפוצות כשהשם מופיע בתחילת ההודעה:
+  // "משימה לחיים: ...", "לחיים: ...", "חיים: ...", "חיים - ...", "חיים, ..."
+  // וגם עם השם המלא או השם הפרטי בלבד
+  const cleaned = title
+    .replace(new RegExp(`^משימה ל?${workerName}[:\\-,\\s]+`, 'i'), '')
+    .replace(new RegExp(`^משימה ל?${first}[:\\-,\\s]+`,       'i'), '')
+    .replace(new RegExp(`^ל?${workerName}[:\\-,\\s]+`,        'i'), '')
+    .replace(new RegExp(`^ל?${first}[:\\-,\\s]+`,             'i'), '')
+    .trim();
+  // אם הניקוי "אכל" את כל ההודעה — נחזיר את המקור (כנראה שהתבנית לא הייתה רלוונטית)
+  return cleaned || title;
 }
 
 // שמירת משימה — נשמרת ב-users/{uid}/data/tasks (המקום שהאפליקציה קוראת ממנו)
@@ -1386,6 +1466,26 @@ module.exports = async (req, res) => {
       const list = clients.slice(0,20).map((c,i)=>`${i+1}. ${c.name}`).join('\n');
       await sendWhatsAppReply(chatId, `📅 ${formatDateHebrew(classified.date)} בשעה ${classified.time} ✓\n\nעם מי הפגישה?\n${list||'(שם הלקוח)'}`);
       return res.status(200).send('ok');
+    }
+  }
+
+  // ── תזכורת — נרשמת ביומן ושולחת התראה בתאריך ──
+  if (classified.intent === 'reminder') {
+    const remTitle = (classified.title || msgText).trim();
+    if (!classified.date) {
+      // תזכורת חייבת תאריך — אם אין, ניצור משימה רגילה במקום זה
+      // ניפול לטיפול במשימה למטה
+    } else {
+      try {
+        await saveReminder(remTitle, classified.date, classified.time || '', chatId, userDocId);
+      } catch(e) { console.error('saveReminder error:', e); }
+      if (chatId) {
+        const timeStr = classified.time ? ` בשעה ${classified.time}` : '';
+        await sendWhatsAppReply(chatId,
+          `🔔 תזכורת נרשמה ביומן!\n📅 ${formatDateHebrew(classified.date)}${timeStr}\n📝 ${remTitle}\n\nתקבל/י התראה בטלפון ביום עצמו.`
+        );
+      }
+      return res.status(200).json({ ok:true, type:'reminder', title:remTitle, date:classified.date });
     }
   }
 

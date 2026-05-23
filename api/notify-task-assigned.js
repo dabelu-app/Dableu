@@ -38,6 +38,8 @@ function fmtDate(d) {
 // ── Push Notification לעובד לפי אימייל ──
 async function sendPushToEmail(email, title, body) {
   if (!email) return 0;
+  // id יחיד להתראה — מאחד subscriptions מרובים לאותה רשומה ב-bell
+  const notifId = Date.now() + Math.floor(Math.random() * 1000);
   try {
     const r = await fetch(
       `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
@@ -82,7 +84,7 @@ async function sendPushToEmail(email, title, body) {
       try {
         await webpush.sendNotification(
           { endpoint: f.endpoint?.stringValue, keys: JSON.parse(f.keys?.stringValue || '{}') },
-          JSON.stringify({ title, body, url: '/tax_manager_app.html' })
+          JSON.stringify({ id: notifId, title, body, url: '/tax_manager_app.html' })
         );
         sent++;
       } catch(e) {
