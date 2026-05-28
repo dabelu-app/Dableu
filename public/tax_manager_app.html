@@ -745,14 +745,17 @@ textarea.form-input{resize:vertical}
         <span>פגישות</span>
       </button>
 
-      <!-- לקוחות -->
-      <button class="mob-nav-btn" id="mob-btn-clients"
-        onclick="nav('clients',document.querySelectorAll('.nav-item')[4])">
-        <span class="mob-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M4 20v-1a5 5 0 015-5h6a5 5 0 015 5v1"/>
-        </svg></span>
-        <span>לקוחות</span>
+      <!-- תזכורות -->
+      <button class="mob-nav-btn" id="mob-btn-reminders"
+        onclick="nav('reminders',document.querySelectorAll('.nav-item')[6])">
+        <span class="mob-icon" style="position:relative">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span id="mob-badge-reminders" style="display:none;position:absolute;top:-3px;right:-3px;background:#dc2626;color:#fff;border-radius:50%;min-width:14px;height:14px;font-size:8px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 2px">0</span>
+        </span>
+        <span>תזכורות</span>
       </button>
 
       <!-- הגדרות -->
@@ -1148,6 +1151,7 @@ let S = {
   calMonth: null,
   calView: 'month',
   taskFilter: {assignee:'', type:'', sort:'priority', view:'tabs'},
+  remindersTab: 'tasks',
   clients: [],
   team: [],
   tasks: [],
@@ -1720,9 +1724,19 @@ function updateNavBadge(){
   const open=S.tasks.filter(t=>!t.done).length;
   const nb=document.getElementById('nb-tasks');
   if(nb){nb.textContent=open;nb.style.display=open>0?'':'none';}
-  // עדכן badge במובייל
+  // עדכן badge משימות במובייל
   const mobNb=document.getElementById('mob-badge-tasks');
   if(mobNb){mobNb.textContent=open;mobNb.style.display=open>0?'flex':'none';}
+  // עדכן badge תזכורות במובייל (משימות ללא טיפול 48+ שעות + הגיע מועד)
+  const now=Date.now();
+  const alertCount=(S.tasks||[]).filter(t=>
+    t.status!=='done'&&(hrs(t.createdAt)>=48&&!t.snoozedUntil||t.snoozedUntil&&now>t.snoozedUntil)||
+    (t.status!=='done'&&t.date<=today())
+  ).length;
+  const mobRem=document.getElementById('mob-badge-reminders');
+  if(mobRem){mobRem.textContent=alertCount;mobRem.style.display=alertCount>0?'flex':'none';}
+  // עדכן badge פעמון (הודעות לא נקראו)
+  updateNotifBadge();
 }
 
 // ══════════════════════════════════════
@@ -2812,98 +2826,134 @@ function convertWA(i){ smartConvert(i); }
 // ══════════════════════════════════════
 function renderRemindersPage(){
   if(!S.reminders)S.reminders=[];
-  if(!S.clients)S.clients=[];
   if(!S.tasks)S.tasks=[];
   if(!S.waMessages)S.waMessages=[];
+  if(!S.appointments)S.appointments=[];
   if(!S.team)S.team=[];
   const now=Date.now();
-  // משימות שדורשות תזכורת – 48 שעות ולא טופלו
-  const overdue48=S.tasks.filter(t=>t.status!=='done'&&hrs(t.createdAt)>=48&&!t.snoozedUntil||t.snoozedUntil&&now>t.snoozedUntil&&t.status!=='done');
-  // משימות שהגיע מועד הטיפול שלהן
+  const rt=S.remindersTab||'tasks';
+
+  // ── נתונים ──
+  const overdue48=S.tasks.filter(t=>t.status!=='done'&&(hrs(t.createdAt)>=48&&!t.snoozedUntil||t.snoozedUntil&&now>t.snoozedUntil));
   const dueSoon=S.tasks.filter(t=>t.status!=='done'&&t.date<=today()&&!overdue48.find(x=>x.id===t.id));
-  // משימות חוזרות
   const recurring=S.tasks.filter(t=>t.recurring&&t.status!=='done');
+  const taskAlerts=overdue48.length+dueSoon.length;
 
-  // ביצועי עובדים
-  const workerStats=S.team.map(w=>{
-    const total=S.tasks.filter(t=>t.assignee===w.name).length;
-    const done=S.tasks.filter(t=>t.assignee===w.name&&t.status==='done').length;
-    const overdue=S.tasks.filter(t=>t.assignee===w.name&&t.status!=='done'&&t.date<today()).length;
-    const inprog=S.tasks.filter(t=>t.assignee===w.name&&t.status==='inprogress').length;
-    const rate=total>0?Math.round(done/total*100):0;
-    return {...w,total,done,overdue,inprog,rate};
-  });
+  const apptNow=today();
+  const upcomingAppts=(S.appointments||[]).filter(a=>a.date>=apptNow).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,20);
+  const pastAppts=(S.appointments||[]).filter(a=>a.date<apptNow).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
 
-  return `
-  <!-- מנוע פעיל -->
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;background:var(--success-bg);border:1px solid #bbf7d0;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--success)">
-    <div class="pulse-dot"></div>
-    <strong>מנוע תזכורות פעיל</strong> · בודק כל 30 שניות · תזכורת אוטומטית לאחר 48 שעות
+  // ── כרטיסיות ──
+  const tabBtn=(id,label,count)=>`
+    <button onclick="S.remindersTab='${id}';renderPage()"
+      style="flex:1;padding:9px 6px;border-radius:10px;border:none;font-family:'Heebo',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;
+        background:${rt===id?'var(--surface)':'transparent'};
+        color:${rt===id?'var(--text)':'var(--text2)'};
+        box-shadow:${rt===id?'0 1px 4px rgba(0,0,0,.1)':'none'};
+        display:flex;align-items:center;justify-content:center;gap:5px">
+      ${label}
+      ${count>0?`<span style="background:${rt===id?'var(--accent)':'#e2e8f0'};color:${rt===id?'#fff':'var(--text2)'};border-radius:10px;padding:0 6px;font-size:10px">${count}</span>`:''}
+    </button>`;
+
+  const tabsBar=`
+  <div style="display:flex;gap:0;background:var(--surface3);border-radius:12px;padding:3px;margin-bottom:16px">
+    ${tabBtn('tasks','✅ משימות',taskAlerts)}
+    ${tabBtn('appointments','🤝 פגישות',upcomingAppts.length)}
+    ${tabBtn('alarms','⏰ תזכורות',recurring.length)}
+  </div>`;
+
+  // ── תוכן: משימות ──
+  if(rt==='tasks') return tabsBar+`
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;background:var(--success-bg);border:1px solid #bbf7d0;border-radius:var(--radius);padding:9px 14px;font-size:12px;color:var(--success)">
+    <div class="pulse-dot"></div><strong>מנוע תזכורות פעיל</strong> · תזכורת אוטומטית לאחר 48 שעות
   </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-
-    <!-- 48 שעות -->
-    <div class="s-card">
-      <div class="s-card-title" style="color:var(--danger)">⏰ מעל 48 שעות ללא טיפול (${overdue48.length})</div>
-      ${overdue48.length?overdue48.map(t=>`
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-          <div style="flex:1">
-            <div style="font-size:12px;font-weight:600">${t.title}</div>
-            <div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${t.assignee} · ⏱ ${Math.floor(hrs(t.createdAt))} שעות</div>
-          </div>
-          <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind(${t.id})">📲 שלח</button>
-        </div>`).join('')
-      :'<div class="empty-state" style="padding:16px">אין משימות דחופות 🎉</div>'}
-    </div>
-
-    <!-- הגיע מועד -->
-    <div class="s-card">
-      <div class="s-card-title" style="color:var(--warning)">📅 הגיע מועד הטיפול (${dueSoon.length})</div>
-      ${dueSoon.length?dueSoon.map(t=>`
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-          <div style="flex:1">
-            <div style="font-size:12px;font-weight:600">${t.title}</div>
-            <div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${t.assignee} · 📅 ${fmtD(t.date)}</div>
-          </div>
-          <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind(${t.id})">📲 שלח</button>
-        </div>`).join('')
-      :'<div class="empty-state" style="padding:16px">אין משימות שהגיע מועדן</div>'}
-    </div>
-  </div>
-
-  <!-- תזכורות חוזרות -->
-  <div class="s-card" style="margin-bottom:16px">
-    <div class="s-card-title">🔁 משימות חוזרות – תזכורות מתוזמנות (${recurring.length})</div>
-    ${recurring.length?recurring.map(t=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
-        <span style="font-size:16px">🔁</span>
+  <div class="s-card" style="margin-bottom:14px">
+    <div class="s-card-title" style="color:var(--danger)">⏰ מעל 48 שעות ללא טיפול (${overdue48.length})</div>
+    ${overdue48.length?overdue48.map(t=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div style="flex:1">
-          <div style="font-weight:600">${t.title}</div>
-          <div style="color:var(--text2);margin-top:2px;font-size:11px">
-            ${recLabel(t.recurring.type)} · תזכורת ${t.recurring.remindDaysBefore} ימים לפני
-            · 👤 ${t.assignee}
-          </div>
+          <div style="font-size:12px;font-weight:600">${t.title}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${t.assignee||'—'} · ⏱ ${Math.floor(hrs(t.createdAt))} שעות</div>
         </div>
-        <div style="text-align:left">
-          <div style="font-size:10px;color:var(--text3)">יעד: ${fmtD(t.date)}</div>
-          <button class="btn sm" style="font-size:10px;margin-top:3px" onclick="manualRemind(${t.id})">📲 שלח עכשיו</button>
+        <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind(${t.id})">📲 שלח</button>
+      </div>`).join('')
+    :'<div class="empty-state" style="padding:14px">אין משימות דחופות 🎉</div>'}
+  </div>
+  <div class="s-card">
+    <div class="s-card-title" style="color:var(--warning)">📅 הגיע מועד הטיפול (${dueSoon.length})</div>
+    ${dueSoon.length?dueSoon.map(t=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600">${t.title}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${t.assignee||'—'} · 📅 ${fmtD(t.date)}</div>
+        </div>
+        <button class="btn sm" style="font-size:10px;color:#b45309;border-color:#fcd34d" onclick="manualRemind(${t.id})">📲 שלח</button>
+      </div>`).join('')
+    :'<div class="empty-state" style="padding:14px">אין משימות שהגיע מועדן</div>'}
+  </div>`;
+
+  // ── תוכן: פגישות ──
+  if(rt==='appointments') return tabsBar+`
+  <div class="s-card" style="margin-bottom:14px">
+    <div class="s-card-title">📆 פגישות קרובות (${upcomingAppts.length})</div>
+    ${upcomingAppts.length?upcomingAppts.map(a=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="width:38px;height:38px;border-radius:10px;background:var(--accent-light);color:var(--accent);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">
+          <span style="font-size:14px;line-height:1">${(a.date||'').slice(8,10)}</span>
+          <span>${['','ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ'][(+(a.date||'').slice(5,7))]||''}</span>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${a.title||''}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">${a.time?'🕐 '+a.time:''} ${a.clientName?'· 👤 '+a.clientName:''}</div>
+        </div>
+        ${a.date===apptNow?'<span style="background:#fef9c3;color:#854d0e;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px">היום!</span>':''}
+      </div>`).join('')
+    :'<div class="empty-state" style="padding:16px">אין פגישות קרובות</div>'}
+  </div>
+  <div class="s-card">
+    <div class="s-card-title" style="color:var(--text3)">📋 פגישות אחרונות (${pastAppts.length})</div>
+    ${pastAppts.length?pastAppts.map(a=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);opacity:.7">
+        <div style="width:34px;height:34px;border-radius:8px;background:var(--surface3);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">
+          <span style="font-size:12px;line-height:1">${(a.date||'').slice(8,10)}</span>
+          <span>${['','ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ'][(+(a.date||'').slice(5,7))]||''}</span>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600">${a.title||''}</div>
+          <div style="font-size:11px;color:var(--text3)">${a.clientName?'👤 '+a.clientName:''}</div>
         </div>
       </div>`).join('')
-    :'<div class="empty-state">אין משימות חוזרות פעילות</div>'}
-  </div>
+    :'<div class="empty-state" style="padding:14px">אין פגישות קודמות</div>'}
+  </div>`;
 
-  <!-- היסטוריית תזכורות שנשלחו -->
+  // ── תוכן: תזכורות (שעון מעורר) ──
+  return tabsBar+`
+  <div class="s-card" style="margin-bottom:14px">
+    <div class="s-card-title">🔁 תזכורות חוזרות (${recurring.length})</div>
+    ${recurring.length?recurring.map(t=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <div style="width:38px;height:38px;border-radius:10px;background:#fef3c7;color:#92400e;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⏰</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${t.title}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">
+            🔁 ${recLabel(t.recurring.type)} · ${t.recurring.remindDaysBefore} ימים לפני · 👤 ${t.assignee||'—'}
+          </div>
+          <div style="font-size:10px;color:var(--text3)">יעד: ${fmtD(t.date)}</div>
+        </div>
+        <button class="btn sm" style="font-size:10px" onclick="manualRemind(${t.id})">📲 שלח</button>
+      </div>`).join('')
+    :'<div class="empty-state" style="padding:14px">אין תזכורות חוזרות פעילות</div>'}
+  </div>
   <div class="s-card">
     <div class="s-card-title">📋 היסטוריית תזכורות שנשלחו (${S.reminders.length})</div>
-    ${S.reminders.length?[...S.reminders].reverse().slice(0,15).map(r=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
-        <span style="font-size:16px">${r.auto?'🤖':'📲'}</span>
+    ${S.reminders.length?[...S.reminders].reverse().slice(0,20).map(r=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="font-size:18px">${r.auto?'🤖':'📲'}</span>
         <div style="flex:1">
           <div style="font-weight:600">${r.task}</div>
-          <div style="color:var(--text2);font-size:11px">${r.assignee} · ${r.type}</div>
+          <div style="color:var(--text2);font-size:11px">👤 ${r.assignee} · ${r.type}</div>
         </div>
-        <div style="color:var(--text3);font-size:11px">${r.time}</div>
+        <div style="color:var(--text3);font-size:11px;flex-shrink:0">${r.time}</div>
       </div>`).join('')
     :'<div class="empty-state">עדיין לא נשלחו תזכורות</div>'}
   </div>`;
