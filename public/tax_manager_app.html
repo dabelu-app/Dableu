@@ -828,7 +828,12 @@ textarea.form-input{resize:vertical}
             <div class="form-row" id="rec-day-row">
               <label class="form-label">ביום בחודש</label>
               <select class="form-input" id="nt-recday">
-                ${Array.from({length:28},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+                <option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option>
+                <option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option>
+                <option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option>
+                <option value="26">26</option><option value="27">27</option><option value="28">28</option>
                 <option value="last">יום אחרון</option>
               </select>
             </div>
@@ -2559,6 +2564,16 @@ function deleteTask(id){
     window.deleteSharedTaskFromDB(t.sharedTaskId).catch(()=>{});
   }
   S.tasks=S.tasks.filter(t=>t.id!==id);
+  // שמור ב-blacklist כדי למנוע שה-WhatsApp listener יחזיר את המשימה
+  try{
+    const _delKey='dabelu_del_'+(S.user?.uid||S.user?.email||'');
+    const _delList=JSON.parse(localStorage.getItem(_delKey)||'[]');
+    if(!_delList.includes(String(id))){
+      _delList.push(String(id));
+      if(_delList.length>500) _delList.splice(0,_delList.length-500);
+      localStorage.setItem(_delKey,JSON.stringify(_delList));
+    }
+  }catch(e){}
   _saveTasks();
   renderPage();toast('🗑️ המשימה נמחקה');
 }
@@ -6590,8 +6605,12 @@ document.addEventListener('DOMContentLoaded', function(){
           clientName: taskClientName
         };
       });
+      // סנן משימות שהמשתמש מחק במפורש (blacklist ב-localStorage)
+      const _delKey='dabelu_del_'+uid;
+      const _deletedSet=new Set(JSON.parse(localStorage.getItem(_delKey)||'[]').map(String));
+      const filteredWATasks=waTasks.filter(t=>!_deletedSet.has(String(t.id)));
       S.tasks = S.tasks.filter(t => t.source !== 'whatsapp');
-      S.tasks = [...waTasks, ...S.tasks];
+      S.tasks = [...filteredWATasks, ...S.tasks];
       // נרמל: כל משימה ללא אחראי → בעל העסק
       if(ownerName) S.tasks.forEach(t => { if(!t.assignee || t.assignee==='אני') t.assignee = ownerName; });
       // שמור רק overrides (localStorage) — לא כותבים לFirestore מתוך listener כדי למנוע לולאת כתיבות
