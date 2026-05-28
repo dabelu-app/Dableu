@@ -2015,13 +2015,14 @@ function renderTasksPage(){
     const workers = fa ? allWorkers.filter(m=>m.name===fa) : allWorkers;
     const workerSections = workers.map(w=>{
       const wIsOwner = w.isOwner || isOwnerName(w.name);
-      let wTasks = applyFilters(applySort([...S.tasks].filter(t=>
+      let allWTasks = applyFilters(applySort([...S.tasks].filter(t=>
         t.assignee===w.name||(wIsOwner&&!t.assignee)
       )));
-      if(ft) wTasks=wTasks.filter(t=>t.type===ft);
-      const wp=wTasks.filter(t=>t.status==='pending').length;
-      const wi=wTasks.filter(t=>t.status==='inprogress').length;
-      const wd=wTasks.filter(t=>t.status==='done').length;
+      if(ft) allWTasks=allWTasks.filter(t=>t.type===ft);
+      const wp=allWTasks.filter(t=>t.status==='pending').length;
+      const wi=allWTasks.filter(t=>t.status==='inprogress').length;
+      const wd=allWTasks.filter(t=>t.status==='done').length;
+      const wTasks=allWTasks.filter(t=>t.status===taskTab);
       const [bg,clr]=w.colors||['#dbeafe','#1d4ed8'];
       return `
       <div style="margin-bottom:20px">
@@ -2035,7 +2036,7 @@ function renderTasksPage(){
               <span style="color:#16a34a">● ${wd} טופלו</span>
             </div>
           </div>
-          <span style="font-size:12px;color:var(--text3)">${wTasks.length} סה"כ</span>
+          <span style="font-size:12px;color:var(--text3)">${allWTasks.length} סה"כ</span>
         </div>
         <div style="border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);padding:8px">
           ${wTasks.length
