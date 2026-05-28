@@ -1,0 +1,21 @@
+name: Task Due Reminder — Daily 07:00 Israel
+
+on:
+  schedule:
+    # 04:00 UTC = 07:00 ישראל (UTC+3)
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  task-due-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping task-due-reminder endpoint
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://dabelu.vercel.app/api/cron?type=task-due")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Warning: endpoint returned $STATUS"
+            exit 1
+          fi
