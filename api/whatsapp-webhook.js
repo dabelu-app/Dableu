@@ -1,6 +1,7 @@
 const FormData = require('form-data');
 const fetch    = require('node-fetch');
 const { google } = require('googleapis');
+const { HDate }  = require('@hebcal/core');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT  = 'dabelu';
@@ -274,6 +275,94 @@ async function extractPersonName(text) {
 // ───────────────────────────────────────────
 // סיווג הודעה (Groq)
 // ───────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────
+// המרת גימטריה לספרה (1-30)
+// ─────────────────────────────────────────────────────
+function parseGematriya(s) {
+  const clean = s.replace(/[׳״"']/g, '').trim();
+  if (!clean) return null;
+  const VALS = {'א':1,'ב':2,'ג':3,'ד':4,'ה':5,
+    'ו':6,'ז':7,'ח':8,'ט':9,'י':10,'כ':20,'ל':30};
+  let sum = 0;
+  for (const ch of clean) { if (VALS[ch]===undefined) return null; sum += VALS[ch]; }
+  return (sum >= 1 && sum <= 30) ? sum : null;
+}
+
+// ─────────────────────────────────────────────────────
+// זיהוי תאריך עברי: "כ״ה ניסן", "ה׳ תמוז", "ראש חודש אדר"
+// מחזיר YYYY-MM-DD לועזי, או null
+// ─────────────────────────────────────────────────────
+function extractHebCalDate(t, ilNow) {
+  // שמות חודשים → מספר ב-HDate (1=ניסן)
+  const HEB_MONTHS = [
+    { pat:'אדר א', month:12 }, // אדר א
+    { pat:'אדר ב', month:13 }, // אדר ב
+    { pat:'ניסן',  month: 1 }, // ניסן
+    { pat:'אייר',  month: 2 }, // אייר
+    { pat:'סיון',  month: 3 }, // סיון
+    { pat:'תמוז',  month: 4 }, // תמוז
+    { pat:'אב',              month: 5 }, // אב
+    { pat:'אלול',  month: 6 }, // אלול
+    { pat:'תשרי',  month: 7 }, // תשרי
+    { pat:'מרחשוון', month: 8 }, // מרחשוון
+    { pat:'חשוון', month: 8 }, // חשוון
+    { pat:'כסלו',  month: 9 }, // כסלו
+    { pat:'טבת',        month:10 }, // טבת
+    { pat:'שבט',        month:11 }, // שבט
+    { pat:'אדר',        month:12 }, // אדר
+  ];
+
+  // חיפוש עם גבולות מילה (אות לפני/אחרי לא עברית)
+  function isHeb(c) { return c >= 'א' && c <= 'ת'; }
+  function findWord(str, pat) {
+    let i = 0;
+    while (true) {
+      const p = str.indexOf(pat, i);
+      if (p === -1) return -1;
+      const before = p > 0 ? str[p-1] : ' ';
+      const after  = p + pat.length < str.length ? str[p + pat.length] : ' ';
+      if (!isHeb(before) && !isHeb(after)) return p;
+      i = p + 1;
+    }
+  }
+
+  let foundMonth = null, monthPos = -1, monthLen = 0;
+  for (const { pat, month } of HEB_MONTHS) {
+    const pos = findWord(t, pat);
+    if (pos !== -1) { foundMonth = month; monthPos = pos; monthLen = pat.length; break; }
+  }
+  if (foundMonth === null) return null;
+
+  // ראש חודש = יום א׳ בחודש
+  let hebrewDay;
+  if (t.includes('ראש חודש')) { // ראש חודש
+    hebrewDay = 1;
+  } else {
+    const before = t.slice(0, monthPos).trim();
+    if (!before) return null;
+    const words = before.split(/\s+/);
+    let dayStr = words[words.length - 1] || '';
+    if (dayStr.startsWith('ב')) dayStr = dayStr.slice(1); // הסר ב׳
+    hebrewDay = parseGematriya(dayStr);
+  }
+  if (!hebrewDay) return null;
+
+  try {
+    const todayHeb = new HDate(new Date(ilNow));
+    let hYear = todayHeb.getFullYear();
+    let gd = new HDate(hebrewDay, foundMonth, hYear).greg();
+    // אם התאריך עבר — השנה הבאה
+    if (gd.getTime() < ilNow - 86400000) {
+      gd = new HDate(hebrewDay, foundMonth, hYear + 1).greg();
+    }
+    const y = gd.getFullYear();
+    const mo = String(gd.getMonth()+1).padStart(2,'0');
+    const d  = String(gd.getDate()).padStart(2,'0');
+    return `${y}-${mo}-${d}`;
+  } catch(e) { console.error('[hebcal]', e); return null; }
+}
+
 // ─────────────────────────────────────────────────────
 // זיהוי תאריך ב-JavaScript בלבד — ה-AI לא מחשב ימים!
 //
@@ -355,6 +444,10 @@ function extractDateJS(text) {
     console.log(`[date] numeric -> ${result}`);
     return result;
   }
+
+  // ─── תאריך עברי: "כ״ה ניסן", "ה׳ תמוז", "ראש חודש כסלו" ───
+  const hebDate = extractHebCalDate(t, ilNow);
+  if (hebDate) { console.log('[date] hebrew-cal ->', hebDate); return hebDate; }
 
   console.log('[date] no match');
   return null;
