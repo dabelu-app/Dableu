@@ -2,8 +2,10 @@ name: Reminder Hourly Check
 
 on:
   schedule:
-    # רץ ב-XX:00 כל שעה (UTC) — ראשון עד שישי בלבד (ללא שבת)
+    # רץ ב-XX:00 כל שעה (UTC) — ראשון עד שישי בלבד
     - cron: '0 * * * 0-5'
+    # מוצאי שבת — מ-19:00 UTC (~22:00 ישראל) עד חצות
+    - cron: '0 19-23 * * 6'
   workflow_dispatch:
 
 jobs:
