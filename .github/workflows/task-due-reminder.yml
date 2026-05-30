@@ -2,8 +2,8 @@ name: Task Due Reminder — Daily 07:00 Israel
 
 on:
   schedule:
-    # 04:00 UTC = 07:00 ישראל (UTC+3)
-    - cron: '0 4 * * *'
+    # 04:00 UTC = 07:00 ישראל (UTC+3) — ראשון עד שישי בלבד (ללא שבת)
+    - cron: '0 4 * * 0-5'
   workflow_dispatch:
 
 jobs:

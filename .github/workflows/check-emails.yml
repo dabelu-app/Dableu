@@ -2,7 +2,8 @@ name: Check Emails Every 5 Minutes
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # ראשון עד שישי בלבד (ללא שבת)
+    - cron: '*/5 * * * 0-5'
   workflow_dispatch:
 
 jobs:

@@ -26,19 +26,19 @@
   "crons": [
     {
       "path": "/api/cron?type=overdue",
-      "schedule": "0 6 * * *"
+      "schedule": "0 6 * * 0-5"
     },
     {
       "path": "/api/cron?type=appointment",
-      "schedule": "0 6 * * *"
+      "schedule": "0 6 * * 0-5"
     },
     {
       "path": "/api/cron?type=trial",
-      "schedule": "0 6 * * *"
+      "schedule": "0 6 * * 0-5"
     },
     {
       "path": "/api/cron?type=task-due",
-      "schedule": "0 6 * * *"
+      "schedule": "0 6 * * 0-5"
     }
   ]
 }
