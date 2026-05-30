@@ -278,89 +278,128 @@ async function extractPersonName(text) {
 
 // ─────────────────────────────────────────────────────
 // המרת גימטריה לספרה (1-30)
+// VALS בנוי מ-\uXXXX — אמין ב-encoding כלשהו
 // ─────────────────────────────────────────────────────
 function parseGematriya(s) {
+  // הסר גרש U+05F3, גרשיים U+05F4, ומרכאות ASCII
   const clean = s.replace(/[׳״"']/g, '').trim();
   if (!clean) return null;
-  const VALS = {'א':1,'ב':2,'ג':3,'ד':4,'ה':5,
-    'ו':6,'ז':7,'ח':8,'ט':9,'י':10,'כ':20,'ל':30};
+  // ערכי האותיות — כולן \uXXXX
+  const V = {};
+  V['א']=1; V['ב']=2; V['ג']=3; V['ד']=4; // א ב ג ד
+  V['ה']=5; V['ו']=6; V['ז']=7; V['ח']=8; // ה ו ז ח
+  V['ט']=9; V['י']=10; V['כ']=20; V['ל']=30; // ט י כ ל
   let sum = 0;
-  for (const ch of clean) { if (VALS[ch]===undefined) return null; sum += VALS[ch]; }
-  return (sum >= 1 && sum <= 30) ? sum : null;
+  for (const ch of clean) { if (V[ch]===undefined) return null; sum+=V[ch]; }
+  return (sum>=1 && sum<=30) ? sum : null;
 }
 
 // ─────────────────────────────────────────────────────
-// זיהוי תאריך עברי: "כ״ה ניסן", "ה׳ תמוז", "ראש חודש אדר"
-// מחזיר YYYY-MM-DD לועזי, או null
+// ממיר תאריך עברי → YYYY-MM-DD
+//
+// תיקון חשוב: @hebcal/core מחזיר חצות ישראל (21:00 UTC = UTC+3).
+// getDate() ב-UTC נותן יום אחד לפני! מוסיפים +3h לפני חילוץ.
+//
+// קפיצה לשנה הבאה: משווים תאריכים כ-YYYY-MM-DD (אמינה יותר מ-timestamps)
+// ─────────────────────────────────────────────────────
+function hebDateToGreg(day, month, ilNow) {
+  try {
+    // תאריך עברי של היום בישראל
+    const todayHeb = new HDate(new Date(ilNow));
+    const hYear = todayHeb.getFullYear();
+
+    // HDate.greg() → +3h → YYYY-MM-DD ישראלי
+    function hdToStr(hd) {
+      const gd = hd.greg();
+      const il = new Date(gd.getTime() + 3*60*60*1000);
+      return il.getUTCFullYear()+'-'+String(il.getUTCMonth()+1).padStart(2,'0')+'-'+String(il.getUTCDate()).padStart(2,'0');
+    }
+
+    // תאריך היום בישראל (YYYY-MM-DD)
+    const ilDate   = new Date(ilNow);
+    const todayStr = ilDate.getUTCFullYear()+'-'+String(ilDate.getUTCMonth()+1).padStart(2,'0')+'-'+String(ilDate.getUTCDate()).padStart(2,'0');
+    // לפני 14 ימים (לשם החלטה על שנה הבאה)
+    const il14     = new Date(ilNow - 14*86400000);
+    const cutStr   = il14.getUTCFullYear()+'-'+String(il14.getUTCMonth()+1).padStart(2,'0')+'-'+String(il14.getUTCDate()).padStart(2,'0');
+
+    let dateStr = hdToStr(new HDate(day, month, hYear));
+    // אם עבר יותר מ-14 יום — קח שנה עברית הבאה
+    if (dateStr < cutStr) dateStr = hdToStr(new HDate(day, month, hYear+1));
+
+    console.log(`[hebcal] day=${day} month=${month} year=${hYear} today=${todayStr} cut=${cutStr} -> ${dateStr}`);
+    return dateStr;
+  } catch(e) { console.error('[hebcal]', e.message); return null; }
+}
+
+// ─────────────────────────────────────────────────────
+// זיהוי תאריך עברי בטקסט:
+//   "כ״ה ניסן" | "ה׳ תמוז" | "25 ניסן" | "ראש חודש כסלו" | "כה בסיון"
+// כל ה-patterns העבריים בנויים מ-\uXXXX בלבד.
 // ─────────────────────────────────────────────────────
 function extractHebCalDate(t, ilNow) {
-  // שמות חודשים → מספר ב-HDate (1=ניסן)
-  const HEB_MONTHS = [
-    { pat:'אדר א', month:12 }, // אדר א
-    { pat:'אדר ב', month:13 }, // אדר ב
-    { pat:'ניסן',  month: 1 }, // ניסן
-    { pat:'אייר',  month: 2 }, // אייר
-    { pat:'סיון',  month: 3 }, // סיון
-    { pat:'תמוז',  month: 4 }, // תמוז
-    { pat:'אב',              month: 5 }, // אב
-    { pat:'אלול',  month: 6 }, // אלול
-    { pat:'תשרי',  month: 7 }, // תשרי
-    { pat:'מרחשוון', month: 8 }, // מרחשוון
-    { pat:'חשוון', month: 8 }, // חשוון
-    { pat:'כסלו',  month: 9 }, // כסלו
-    { pat:'טבת',        month:10 }, // טבת
-    { pat:'שבט',        month:11 }, // שבט
-    { pat:'אדר',        month:12 }, // אדר
+  // [pattern, מספר חודש ב-HDate] — אדר א/ב לפני אדר סתם
+  const MONTHS = [
+    ['אדר א', 12], // אדר א
+    ['אדר ב', 13], // אדר ב
+    ['ניסן',   1], // ניסן
+    ['אייר',   2], // אייר
+    ['סיון',   3], // סיון
+    ['תמוז',   4], // תמוז
+    ['אב',               5], // אב
+    ['אלול',   6], // אלול
+    ['תשרי',   7], // תשרי
+    ['מרחשוון', 8], // מרחשוון
+    ['חשוון', 8], // חשוון
+    ['כסלו',   9], // כסלו
+    ['טבת',        10], // טבת
+    ['שבט',        11], // שבט
+    ['אדר',        12], // אדר
   ];
 
-  // חיפוש עם גבולות מילה (אות לפני/אחרי לא עברית)
-  function isHeb(c) { return c >= 'א' && c <= 'ת'; }
-  function findWord(str, pat) {
-    let i = 0;
-    while (true) {
-      const p = str.indexOf(pat, i);
-      if (p === -1) return -1;
-      const before = p > 0 ? str[p-1] : ' ';
-      const after  = p + pat.length < str.length ? str[p + pat.length] : ' ';
-      if (!isHeb(before) && !isHeb(after)) return p;
-      i = p + 1;
+  // U+05D1 = ב (מילית שייכות: "בניסן")
+  const BET = 'ב';
+  // האם תו הוא אות עברית U+05D0–U+05EA
+  function isHebLetter(c) { if(!c) return false; const cp=c.codePointAt(0); return cp>=0x05D0&&cp<=0x05EA; }
+
+  // חיפוש חודש עם גבולות מילה; מאפשר ב׳ שייכות מחוברת (כמו "בניסן")
+  function findMonth(str, pat) {
+    let i=0;
+    while (i+pat.length<=str.length) {
+      const p=str.indexOf(pat,i);
+      if(p===-1) return null;
+      const ca=p+pat.length<str.length?str[p+pat.length]:'';
+      const cb=p>0?str[p-1]:'';
+      if(isHebLetter(ca)){i=p+1;continue;} // לא גבול אחרי
+      if(!isHebLetter(cb)) return {pos:p,len:pat.length}; // גבול נקי
+      if(cb===BET&&!isHebLetter(p>1?str[p-2]:'')) return {pos:p-1,len:pat.length+1}; // ב׳ מחוברת
+      i=p+1;
     }
+    return null;
   }
 
-  let foundMonth = null, monthPos = -1, monthLen = 0;
-  for (const { pat, month } of HEB_MONTHS) {
-    const pos = findWord(t, pat);
-    if (pos !== -1) { foundMonth = month; monthPos = pos; monthLen = pat.length; break; }
+  // חפש איזה חודש מופיע בטקסט
+  let foundMonth=null, monthInfo=null;
+  for(const [pat,month] of MONTHS) {
+    const info=findMonth(t,pat);
+    if(info){foundMonth=month;monthInfo=info;break;}
   }
-  if (foundMonth === null) return null;
+  if(foundMonth===null) return null;
 
-  // ראש חודש = יום א׳ בחודש
-  let hebrewDay;
-  if (t.includes('ראש חודש')) { // ראש חודש
-    hebrewDay = 1;
-  } else {
-    const before = t.slice(0, monthPos).trim();
-    if (!before) return null;
-    const words = before.split(/\s+/);
-    let dayStr = words[words.length - 1] || '';
-    if (dayStr.startsWith('ב')) dayStr = dayStr.slice(1); // הסר ב׳
-    hebrewDay = parseGematriya(dayStr);
-  }
-  if (!hebrewDay) return null;
+  // ראש חודש = א׳ — pattern: ר(05E8)א(05D0)ש(05E9) ח(05D7)ו(05D5)ד(05D3)ש(05E9)
+  const ROSH=String.fromCodePoint(0x05E8,0x05D0,0x05E9,0x0020,0x05D7,0x05D5,0x05D3,0x05E9);
+  if(t.includes(ROSH)) return hebDateToGreg(1,foundMonth,ilNow);
 
-  try {
-    const todayHeb = new HDate(new Date(ilNow));
-    let hYear = todayHeb.getFullYear();
-    let gd = new HDate(hebrewDay, foundMonth, hYear).greg();
-    // אם התאריך עבר — השנה הבאה
-    if (gd.getTime() < ilNow - 86400000) {
-      gd = new HDate(hebrewDay, foundMonth, hYear + 1).greg();
-    }
-    const y = gd.getFullYear();
-    const mo = String(gd.getMonth()+1).padStart(2,'0');
-    const d  = String(gd.getDate()).padStart(2,'0');
-    return `${y}-${mo}-${d}`;
-  } catch(e) { console.error('[hebcal]', e); return null; }
+  // חלץ מספר יום מהטקסט לפני שם החודש
+  const before=t.slice(0,monthInfo.pos).trim();
+  if(!before) return null;
+  const words=before.split(/\s+/);
+  const rawDay=words[words.length-1]||'';
+
+  // מספר ערבי (25 ניסן) או גימטריה (כה ניסן)
+  const am=rawDay.match(/^(\d{1,2})$/);
+  if(am){const n=parseInt(am[1],10);return(n>=1&&n<=30)?hebDateToGreg(n,foundMonth,ilNow):null;}
+  const hd=parseGematriya(rawDay);
+  return hd?hebDateToGreg(hd,foundMonth,ilNow):null;
 }
 
 // ─────────────────────────────────────────────────────
