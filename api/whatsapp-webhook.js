@@ -285,7 +285,7 @@ function parseGematriya(s) {
   // 05F3=׳ 05F4=״ 0022=” 0027=’ 201C=“ 201D=” 2018=‘ 2019=’
   // FF02=＂ FF07=＇ 00B4=´ 0060=`
   // strip ALL quote variants: geresh/gershayim, ASCII, curly double+single, fullwidth
-  const clean = s.replace(/[\u05F3\u05F4\u0022\u0027\u201C\u201D\u2018\u2019\uFF02\uFF07\u00B4\u0060]/g, '').trim();
+  const clean = s.replace(/[^\u05D0-\u05EA]/g, '').trim();
   if (!clean) return null;
   // ערכי האותיות — כולן \uXXXX
   const V = {};
