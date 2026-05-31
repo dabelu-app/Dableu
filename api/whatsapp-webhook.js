@@ -532,8 +532,18 @@ function extractDateJS(text) {
   if (m) {
     const dy = m[1].padStart(2,'0');
     const mo = m[2].padStart(2,'0');
+    const hasExplicitYear = !!m[3];
     const yr = m[3] ? (m[3].length===2 ? '20'+m[3] : m[3]) : String(new Date(ilNow).getUTCFullYear());
-    const result = `${yr}-${mo}-${dy}`;
+    let result = `${yr}-${mo}-${dy}`;
+    // אם לא צוינה שנה מפורשת ותאריך עבר — קדם לשנה הבאה
+    if (!hasExplicitYear) {
+      const _il = new Date(ilNow);
+      const _today = _il.getUTCFullYear()+'-'+String(_il.getUTCMonth()+1).padStart(2,'0')+'-'+String(_il.getUTCDate()).padStart(2,'0');
+      if (result < _today) {
+        result = (parseInt(yr)+1)+'-'+mo+'-'+dy;
+        console.log(`[date] numeric past-date -> advanced to next year: ${result}`);
+      }
+    }
     console.log(`[date] numeric -> ${result}`);
     return result;
   }
@@ -664,6 +674,17 @@ async function classifyMessage(text) {
       const result = JSON.parse(match[0]);
       // ── שלב 2: תאריך JS תמיד מנצח את ה-AI ──
       if (jsDate) result.date = jsDate;
+      // ── שלב 3: אסור להחזיר תאריך מהעבר — רק קדימה! ──
+      if (result.date) {
+        const _il = new Date(Date.now() + 3*60*60*1000);
+        const _today = _il.getUTCFullYear()+'-'+String(_il.getUTCMonth()+1).padStart(2,'0')+'-'+String(_il.getUTCDate()).padStart(2,'0');
+        if (result.date < _today) {
+          // הייתה שנה שגויה (AI חישב שנה ישנה) — דחוף שנה קדימה
+          const _p = result.date.split('-');
+          result.date = (parseInt(_p[0])+1)+'-'+_p[1]+'-'+_p[2];
+          console.log('[date] past-date pushed to next year:', result.date);
+        }
+      }
       return result;
     }
   } catch(err) { console.error('Classify error:', err); }
