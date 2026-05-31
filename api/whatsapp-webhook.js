@@ -281,8 +281,11 @@ async function extractPersonName(text) {
 // VALS בנוי מ-\uXXXX — אמין ב-encoding כלשהו
 // ─────────────────────────────────────────────────────
 function parseGematriya(s) {
-  // הסר גרש U+05F3, גרשיים U+05F4, ומרכאות ASCII
-  const clean = s.replace(/[׳״"']/g, '').trim();
+  // הסר כל סוגי מרכאות/גרשיים — \uXXXX בלבד, בטוח בכל encoding
+  // 05F3=׳ 05F4=״ 0022=” 0027=’ 201C=“ 201D=” 2018=‘ 2019=’
+  // FF02=＂ FF07=＇ 00B4=´ 0060=`
+  // strip ALL quote variants: geresh/gershayim, ASCII, curly double+single, fullwidth
+  const clean = s.replace(/[\u05F3\u05F4\u0022\u0027\u201C\u201D\u2018\u2019\uFF02\uFF07\u00B4\u0060]/g, '').trim();
   if (!clean) return null;
   // ערכי האותיות — כולן \uXXXX
   const V = {};
@@ -461,8 +464,11 @@ function extractHebCalDate(t, ilNow) {
 // ─────────────────────────────────────────────────────
 function extractDateJS(text) {
   if (!text) return null;
+  // נרמל מרכאות מעוגלות → ASCII (לפני כל שאר העיבוד)
+  // WhatsApp/מקלדות חכמות שולחות "כ"ז" עם U+201C/U+201D — נהפוך ל-"
+  const textNorm = text.replace(/[\u201C\u201D\u2018\u2019\u00AB\u00BB\uFF02\uFF07]/g, '"');
   // Strip Hebrew nikud/cantillation U+0591-U+05C7 — using \uXXXX in regex, no Hebrew bytes
-  const t = text.replace(/[֑-ׇ]/g, '').normalize('NFC');
+  const t = textNorm.replace(/[֑-ׇ]/g, '').normalize('NFC');
 
   // Israel time = UTC+3
   const IL_OFFSET = 3 * 60 * 60 * 1000;
