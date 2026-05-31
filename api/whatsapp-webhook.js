@@ -337,23 +337,27 @@ function hebDateToGreg(day, month, ilNow) {
 // כל ה-patterns העבריים בנויים מ-\uXXXX בלבד.
 // ─────────────────────────────────────────────────────
 function extractHebCalDate(t, ilNow) {
-  // [pattern, מספר חודש ב-HDate] — אדר א/ב לפני אדר סתם
+  // [pattern, מספר חודש ב-HDate] — אדר א/ב לפני אדר סתם; כתיבים חלופיים לפני הכתיב הקצר
   const MONTHS = [
-    ['אדר א', 12], // אדר א
-    ['אדר ב', 13], // אדר ב
-    ['ניסן',   1], // ניסן
-    ['אייר',   2], // אייר
-    ['סיון',   3], // סיון
-    ['תמוז',   4], // תמוז
-    ['אב',               5], // אב
-    ['אלול',   6], // אלול
-    ['תשרי',   7], // תשרי
-    ['מרחשוון', 8], // מרחשוון
-    ['חשוון', 8], // חשוון
-    ['כסלו',   9], // כסלו
-    ['טבת',        10], // טבת
-    ['שבט',        11], // שבט
-    ['אדר',        12], // אדר
+    ['אדר א',     12], // אדר א
+    ['אדר ב',     13], // אדר ב
+    ['אדר ראשון', 12], // כינוי נוסף לאדר א
+    ['אדר שני',   13], // כינוי נוסף לאדר ב
+    ['ניסן',       1], // ניסן
+    ['אייר',       2], // אייר
+    ['סיון',       3], // סיון
+    ['תמוז',       4], // תמוז
+    ['אב',         5], // אב
+    ['אלול',       6], // אלול
+    ['תשרי',       7], // תשרי
+    ['מרחשוון',    8], // מרחשוון — כתיב תקני (וו כפול)
+    ['מרחשון',     8], // מרחשון   — כתיב נפוץ (וו בודד)
+    ['חשוון',      8], // חשוון    — כתיב תקני
+    ['חשון',       8], // חשון     — כתיב נפוץ
+    ['כסלו',       9], // כסלו
+    ['טבת',       10], // טבת
+    ['שבט',       11], // שבט
+    ['אדר',       12], // אדר — חייב להיות אחרון (מניעת התאמה מוקדמת של "אדר א/ב")
   ];
 
   // U+05D1 = ב (מילית שייכות: "בניסן")
@@ -377,12 +381,56 @@ function extractHebCalDate(t, ilNow) {
     return null;
   }
 
-  // חפש איזה חודש מופיע בטקסט
+  // ─── מרחק לוונשטיין (לשגיאות כתיב) ───
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    const m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    const dp = [];
+    for (let i = 0; i <= m; i++) { dp[i] = new Array(n+1); dp[i][0] = i; }
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++)
+      for (let j = 1; j <= n; j++)
+        dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+    return dp[m][n];
+  }
+
+  // שלב 1: חיפוש מדויק
   let foundMonth=null, monthInfo=null;
   for(const [pat,month] of MONTHS) {
     const info=findMonth(t,pat);
     if(info){foundMonth=month;monthInfo=info;break;}
   }
+
+  // שלב 2: חיפוש מטושטש (גיבוי לשגיאות כתיב) — רק למילים בנות 4+ תווים
+  if (foundMonth===null) {
+    const wordRe = /\S+/g;
+    let wm;
+    outer: while ((wm=wordRe.exec(t))!==null) {
+      const origWord = wm[0];
+      const wordPos  = wm.index;
+      // הסר ב׳ שייכות מחוברת לצורך ההשוואה
+      const hasBet   = origWord.codePointAt(0)===0x05D1 && origWord.length>1;
+      const wClean   = hasBet ? origWord.slice(1) : origWord;
+      if (wClean.length < 4) continue; // מילים קצרות — סיכוי גבוה ל-false positive
+      for (const [pat,month] of MONTHS) {
+        if (pat.includes(' ')) continue; // רק חודשים חד-מילתיים
+        if (pat.length < 4) continue;
+        // מרחק מקסימלי: 1 עריכה למילים קצרות, 2 עריכות למילים ארוכות (7+)
+        const maxDist = wClean.length >= 7 ? 2 : 1;
+        if (Math.abs(wClean.length - pat.length) > maxDist) continue;
+        const dist = levenshtein(wClean, pat);
+        if (dist <= maxDist) {
+          foundMonth = month;
+          monthInfo  = { pos: wordPos, len: origWord.length };
+          console.log(`[hebcal] fuzzy "${origWord}" → "${pat}" (dist=${dist}, month=${month})`);
+          break outer;
+        }
+      }
+    }
+  }
+
   if(foundMonth===null) return null;
 
   // ראש חודש = א׳ — pattern: ר(05E8)א(05D0)ש(05E9) ח(05D7)ו(05D5)ד(05D3)ש(05E9)
