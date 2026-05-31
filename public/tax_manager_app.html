@@ -3119,6 +3119,11 @@ async function deleteAppointment(apptId, googleEventId){
   }
   // עדכן ממשק מיידית
   S.appointments=(S.appointments||[]).filter(a=>String(a.id)!==String(apptId));
+  // עדכן גם localStorage — אחרת פגישות ידניות (manual=true) חוזרות אחרי לוגין
+  try{
+    const key='dabelu_appts_'+(S.user?.uid||'guest');
+    localStorage.setItem(key, JSON.stringify(S.appointments));
+  }catch(e){}
   renderPage();
   toast('🗑️ הפגישה נמחקה');
 }
