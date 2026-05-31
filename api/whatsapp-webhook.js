@@ -71,7 +71,7 @@ function currentHebMonth(ilNow){
     return 7;
   }catch(e){return null;}
 }
-console.log('[startup] Hebrew calendar: inline math loaded OK');
+console.log('[startup] Hebrew calendar: inline math v3 loaded OK (no @hebcal/core)');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT  = 'dabelu';
