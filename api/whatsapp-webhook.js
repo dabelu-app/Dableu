@@ -443,6 +443,27 @@ function extractHebCalDate(t, ilNow) {
     }
   }
 
+  // שלב 3: גימטריה עם גרשיים בתחילת הטקסט — ללא שם חודש → חודש עברי נוכחי
+  // מטפל במקרה "כ\"ז יומולדת שמוליק" (יום בגימטריה, חודש לא צוין)
+  // מניעת false-positive: בודק רק אם הגימטריה בתחילת הטקסט (לא אמצע משפט)
+  if (foundMonth === null && HDate) {
+    // נרמל ״ (Hebrew gershayim ״) ו-׳ (geresh) ל-" ו-'
+    const tN = t.replace(/״/g, '"').replace(/׳/g, "'");
+    // תבנית: רווחים אופציונליים + 1-2 אותיות עבריות + " + אות עברית + לא-עברית
+    const m3 = /^\s*([א-ת]{1,2})"([א-ת])(?![א-ת])/.exec(tN);
+    if (m3) {
+      const dayNum = parseGematriya(m3[1] + m3[2]);
+      if (dayNum && dayNum >= 1 && dayNum <= 30) {
+        try {
+          const curHebMonth = new HDate(new Date(ilNow)).getMonth();
+          const result = hebDateToGreg(dayNum, curHebMonth, ilNow);
+          console.log('[hebcal] gematria-no-month "' + m3[0].trim() + '" day=' + dayNum + ' heb-month=' + curHebMonth + ' -> ' + result);
+          return result;
+        } catch(e) { console.error('[hebcal] gematria-no-month error:', e.message); }
+      }
+    }
+  }
+
   if(foundMonth===null) return null;
 
   // ראש חודש = א׳ — pattern: ר(05E8)א(05D0)ש(05E9) ח(05D7)ו(05D5)ד(05D3)ש(05E9)
