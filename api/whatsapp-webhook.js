@@ -1,7 +1,15 @@
 const FormData = require('form-data');
 const fetch    = require('node-fetch');
 const { google } = require('googleapis');
-const { HDate }  = require('@hebcal/core');
+
+// @hebcal/core — wrapped in try-catch so the module still loads if missing
+let HDate = null;
+try {
+  HDate = require('@hebcal/core').HDate;
+  console.log('[startup] @hebcal/core OK, HDate loaded');
+} catch(e) {
+  console.error('[startup] @hebcal/core MISSING:', e.message);
+}
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT  = 'dabelu';
@@ -306,6 +314,7 @@ function parseGematriya(s) {
 // קפיצה לשנה הבאה: משווים תאריכים כ-YYYY-MM-DD (אמינה יותר מ-timestamps)
 // ─────────────────────────────────────────────────────
 function hebDateToGreg(day, month, ilNow) {
+  if (!HDate) { console.error('[hebcal] HDate not available'); return null; }
   try {
     // תאריך עברי של היום בישראל
     const todayHeb = new HDate(new Date(ilNow));
