@@ -913,6 +913,18 @@ textarea.form-input{resize:vertical}
   </div>
 </div>
 
+<!-- ══════════ MODAL: CONFIRM (replaces browser confirm()) ══════════ -->
+<div class="modal-overlay" id="m-confirm" onclick="if(event.target===this)closeModal('confirm')">
+  <div class="modal-box" style="max-width:360px;text-align:center">
+    <div class="modal-title" id="confirm-title" style="font-size:18px">אישור מחיקה</div>
+    <div id="confirm-msg" style="color:var(--text2);margin:12px 0 20px;font-size:15px;line-height:1.5"></div>
+    <div class="modal-footer" style="justify-content:center;gap:12px">
+      <button class="btn" onclick="closeModal('confirm')" style="min-width:90px">ביטול</button>
+      <button class="btn" id="confirm-ok-btn" onclick="_confirmOK()" style="min-width:90px;background:#dc2626;color:#fff;border-color:#dc2626">מחק</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ MODAL: ASSIGN CLIENT ══════════ -->
 <div class="modal-overlay" id="m-assign-client" onclick="if(event.target===this)closeModal('assign-client')">
   <div class="modal-box" style="max-width:420px">
@@ -1468,7 +1480,9 @@ function enterApp(){
   }
 }
 function logout(){
-  if(!confirm('להתנתק?'))return;
+  appConfirm('להתנתק מהחשבון?', _doLogout, 'התנתקות');
+}
+function _doLogout(){
   // נקה את כל ה-Firestore listeners לפני ניקוי הסטייט
   if(window._firestoreUnsubs){
     window._firestoreUnsubs.forEach(fn=>{ try{fn();}catch(e){} });
@@ -2554,28 +2568,29 @@ function pinTask(id){
 
 function deleteTask(id){
   const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
-  if(!confirm(`למחוק את המשימה "${t.title}"?`))return;
-  // מחק מ-Firestore tasks collection אם זו משימת ווצאפ
-  if(t.source==='whatsapp' && t.waDocId && typeof window.deleteWATaskFromDB==='function'){
-    window.deleteWATaskFromDB(t.waDocId).catch(()=>{});
-  }
-  // מחק מ-sharedTasks אם משימה הוקצתה לעובד
-  if(t.sharedTaskId && typeof window.deleteSharedTaskFromDB==='function'){
-    window.deleteSharedTaskFromDB(t.sharedTaskId).catch(()=>{});
-  }
-  S.tasks=S.tasks.filter(t=>String(t.id)!==String(id));
-  // שמור ב-blacklist כדי למנוע שה-WhatsApp listener יחזיר את המשימה
-  try{
-    const _delKey='dabelu_del_'+(S.user?.uid||S.user?.email||'');
-    const _delList=JSON.parse(localStorage.getItem(_delKey)||'[]');
-    if(!_delList.includes(String(id))){
-      _delList.push(String(id));
-      if(_delList.length>500) _delList.splice(0,_delList.length-500);
-      localStorage.setItem(_delKey,JSON.stringify(_delList));
+  appConfirm(`למחוק את המשימה "${t.title}"?`, ()=>{
+    // מחק מ-Firestore tasks collection אם זו משימת ווצאפ
+    if(t.source==='whatsapp' && t.waDocId && typeof window.deleteWATaskFromDB==='function'){
+      window.deleteWATaskFromDB(t.waDocId).catch(()=>{});
     }
-  }catch(e){}
-  _saveTasks();
-  renderPage();toast('🗑️ המשימה נמחקה');
+    // מחק מ-sharedTasks אם משימה הוקצתה לעובד
+    if(t.sharedTaskId && typeof window.deleteSharedTaskFromDB==='function'){
+      window.deleteSharedTaskFromDB(t.sharedTaskId).catch(()=>{});
+    }
+    S.tasks=S.tasks.filter(t=>String(t.id)!==String(id));
+    // שמור ב-blacklist כדי למנוע שה-WhatsApp listener יחזיר את המשימה
+    try{
+      const _delKey='dabelu_del_'+(S.user?.uid||S.user?.email||'');
+      const _delList=JSON.parse(localStorage.getItem(_delKey)||'[]');
+      if(!_delList.includes(String(id))){
+        _delList.push(String(id));
+        if(_delList.length>500) _delList.splice(0,_delList.length-500);
+        localStorage.setItem(_delKey,JSON.stringify(_delList));
+      }
+    }catch(e){}
+    _saveTasks();
+    renderPage();toast('🗑️ המשימה נמחקה');
+  });
 }
 
 function urgentWA(id){
@@ -3104,7 +3119,14 @@ function renderAppointmentsPage(){
 }
 
 async function deleteAppointment(apptId, googleEventId){
-  if(!confirm('למחוק את הפגישה? היא תוסר גם מהיומן.')) return;
+  // שמור פרמטרים לשימוש ב-callback
+  _pendingDeleteAppt = {apptId, googleEventId};
+  appConfirm('למחוק את הפגישה? היא תוסר גם מהיומן.', _doDeleteAppointment, 'מחיקת פגישה');
+}
+let _pendingDeleteAppt=null;
+async function _doDeleteAppointment(){
+  const {apptId, googleEventId} = _pendingDeleteAppt||{};
+  if(!apptId) return;
   // מחק מ-Firestore
   if(typeof window.deleteAppointmentFromDB==='function'){
     await window.deleteAppointmentFromDB(apptId).catch(()=>{});
@@ -3283,8 +3305,7 @@ function saveClientModal(){
   document.getElementById('client-modal').style.display='none';
 }
 function confirmDeleteClient(id,name){
-  if(!confirm('למחוק את הלקוח "'+name+'"?'))return;
-  window.deleteWAClient(id);
+  appConfirm('למחוק את הלקוח "'+name+'"?', ()=>window.deleteWAClient(id), 'מחיקת לקוח');
 }
 
 // ══════════════════════════════════════
@@ -4272,10 +4293,11 @@ async function addMember(){
 }
 function removeMember(id){
   const m=S.team.find(t=>t.id===id);if(!m)return;
-  if(!confirm(`להסיר את ${m.name}?`))return;
-  S.team=S.team.filter(t=>t.id!==id);
-  _saveTeam();
-  renderPage();toast(`✓ ${m.name} הוסר`);
+  appConfirm(`להסיר את ${m.name} מהצוות?`, ()=>{
+    S.team=S.team.filter(t=>t.id!==id);
+    _saveTeam();
+    renderPage();toast(`✓ ${m.name} הוסר`);
+  }, 'הסרת עובד');
 }
 
 let editMemberId=null;
@@ -4825,6 +4847,23 @@ function openModal(id){
   if(id==='member')setTimeout(()=>document.getElementById('nm-name').focus(),60);
 }
 function closeModal(id){document.getElementById('m-'+id).classList.remove('open');}
+
+// ── appConfirm: מחליף את browser confirm() שמוחסם ב-PWA/מובייל ──
+let _confirmCallback=null;
+function appConfirm(msg, onOK, title){
+  document.getElementById('confirm-msg').textContent=msg;
+  document.getElementById('confirm-title').textContent=title||'אישור מחיקה';
+  _confirmCallback=onOK;
+  openModal('confirm');
+}
+function _confirmOK(){
+  closeModal('confirm');
+  if(typeof _confirmCallback==='function'){
+    const cb=_confirmCallback;
+    _confirmCallback=null;
+    cb();
+  }
+}
 
 function toggleTaskDetail(id){
   const panel=document.getElementById('tdp-'+id);
@@ -5489,8 +5528,9 @@ ${senderName}`;
 }
 
 function admDelete(uid,name){
-  if(!confirm('למחוק את המשתמש '+name+'?'))return;
-  if(typeof window.deleteAdminUserFromDB==='function') window.deleteAdminUserFromDB(uid);
+  appConfirm('למחוק את המשתמש '+name+'?', ()=>{
+    if(typeof window.deleteAdminUserFromDB==='function') window.deleteAdminUserFromDB(uid);
+  }, 'מחיקת משתמש');
 }
 
 // ══════════════════════════════════════
