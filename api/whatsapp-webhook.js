@@ -2,14 +2,76 @@ const FormData = require('form-data');
 const fetch    = require('node-fetch');
 const { google } = require('googleapis');
 
-// @hebcal/core — wrapped in try-catch so the module still loads if missing
-let HDate = null;
-try {
-  HDate = require('@hebcal/core').HDate;
-  console.log('[startup] @hebcal/core OK, HDate loaded');
-} catch(e) {
-  console.error('[startup] @hebcal/core MISSING:', e.message);
+// ═══════════════════════════════════════════════════════════════════
+// לוח שנה עברי — מימוש מקומי, ללא ספריה חיצונית
+// Month numbering: 7=Tishrei…12=Adar, 1=Nisan…6=Elul (as @hebcal/core)
+// ═══════════════════════════════════════════════════════════════════
+function _hIsLeap(y){return((7*y+1)%19)<7;}
+function _hElapsedDays(y){
+  const m=Math.floor((235*y-234)/19);
+  const p=12084+13753*m;
+  let d=m*29+Math.floor(p/25920);
+  if((3*(d+1))%7<3)d++;
+  return d;
 }
+function _hDaysInYear(y){return _hElapsedDays(y+1)-_hElapsedDays(y);}
+function _hLongCheshvan(y){return _hDaysInYear(y)%10===5;}
+function _hShortKislev(y) {return _hDaysInYear(y)%10===3;}
+function _hDaysInMonth(m,y){
+  if(m===8)return _hLongCheshvan(y)?30:29;
+  if(m===9)return _hShortKislev(y)?29:30;
+  if(m===2||m===4||m===6||m===10||m===13)return 29;
+  if(m===12)return _hIsLeap(y)?30:29;
+  return 30;
+}
+// Hebrew date → absolute day (1 = 1 Tishrei 1 AM)
+function _hDateToAbs(day,month,year){
+  let d=_hElapsedDays(year)+1;
+  const leap=_hIsLeap(year);
+  const order=[7,8,9,10,11,12,...(leap?[13]:[]),1,2,3,4,5,6];
+  for(const m of order){if(m===month)break;d+=_hDaysInMonth(m,year);}
+  return d+day-1;
+}
+// JDN → Gregorian {year,month,day}
+function _jdnToGreg(jdn){
+  const l=jdn+68569,n=Math.floor(4*l/146097);
+  const ll=l-Math.floor((146097*n+3)/4);
+  const i=Math.floor(4000*(ll+1)/1461001);
+  const lll=ll-Math.floor(1461*i/4)+31;
+  const j=Math.floor(80*lll/2447);
+  const day=lll-Math.floor(2447*j/80);
+  const l4=Math.floor(j/11);
+  return{year:100*(n-49)+i+l4,month:j+2-12*l4,day};
+}
+// Gregorian → JDN
+function _gregToJDN(y,m,d){
+  const a=Math.floor((14-m)/12),yy=y+4800-a,mm=m+12*a-3;
+  return d+Math.floor((153*mm+2)/5)+365*yy+Math.floor(yy/4)-Math.floor(yy/100)+Math.floor(yy/400)-32045;
+}
+const _H_EPOCH=347997; // JDN for abs=1 (1 Tishrei 1 AM) — verified against known dates
+
+// find Hebrew year containing absolute day abs
+function _hYearFromAbs(abs){
+  let y=Math.floor(abs/365.25)+1;
+  while(_hElapsedDays(y+1)<abs)y++;
+  while(_hElapsedDays(y)>=abs)y--;
+  return y;
+}
+// current Hebrew month for a given Israel-time epoch (ms)
+function currentHebMonth(ilNow){
+  try{
+    const d=new Date(ilNow);
+    const jdn=_gregToJDN(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate());
+    const abs=jdn-_H_EPOCH;
+    const y=_hYearFromAbs(abs);
+    const leap=_hIsLeap(y);
+    const order=[7,8,9,10,11,12,...(leap?[13]:[]),1,2,3,4,5,6];
+    let rem=abs-_hElapsedDays(y);
+    for(const m of order){const dm=_hDaysInMonth(m,y);if(rem<=dm)return m;rem-=dm;}
+    return 7;
+  }catch(e){return null;}
+}
+console.log('[startup] Hebrew calendar: inline math loaded OK');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT  = 'dabelu';
@@ -306,41 +368,26 @@ function parseGematriya(s) {
 }
 
 // ─────────────────────────────────────────────────────
-// ממיר תאריך עברי → YYYY-MM-DD
-//
-// תיקון חשוב: @hebcal/core מחזיר חצות ישראל (21:00 UTC = UTC+3).
-// getDate() ב-UTC נותן יום אחד לפני! מוסיפים +3h לפני חילוץ.
-//
-// קפיצה לשנה הבאה: משווים תאריכים כ-YYYY-MM-DD (אמינה יותר מ-timestamps)
+// ממיר תאריך עברי (יום+חודש) → YYYY-MM-DD (לוח ישראלי)
+// מימוש מקומי — ללא @hebcal/core
+// אם התאריך עבר יותר מ-14 יום → קח שנה עברית הבאה
 // ─────────────────────────────────────────────────────
 function hebDateToGreg(day, month, ilNow) {
-  if (!HDate) { console.error('[hebcal] HDate not available'); return null; }
   try {
-    // תאריך עברי של היום בישראל
-    const todayHeb = new HDate(new Date(ilNow));
-    const hYear = todayHeb.getFullYear();
+    const ilDate = new Date(ilNow);
+    const jdnToday = _gregToJDN(ilDate.getUTCFullYear(), ilDate.getUTCMonth()+1, ilDate.getUTCDate());
+    const absToday = jdnToday - _H_EPOCH;
+    const hYear = _hYearFromAbs(absToday);
 
-    // HDate.greg() → +3h → YYYY-MM-DD ישראלי
-    function hdToStr(hd) {
-      const gd = hd.greg();
-      const il = new Date(gd.getTime() + 3*60*60*1000);
-      return il.getUTCFullYear()+'-'+String(il.getUTCMonth()+1).padStart(2,'0')+'-'+String(il.getUTCDate()).padStart(2,'0');
-    }
+    let absTarget = _hDateToAbs(day, month, hYear);
+    // אם עבר יותר מ-14 יום → קח שנה עברית הבאה
+    if (absTarget < absToday - 14) absTarget = _hDateToAbs(day, month, hYear + 1);
 
-    // תאריך היום בישראל (YYYY-MM-DD)
-    const ilDate   = new Date(ilNow);
-    const todayStr = ilDate.getUTCFullYear()+'-'+String(ilDate.getUTCMonth()+1).padStart(2,'0')+'-'+String(ilDate.getUTCDate()).padStart(2,'0');
-    // לפני 14 ימים (לשם החלטה על שנה הבאה)
-    const il14     = new Date(ilNow - 14*86400000);
-    const cutStr   = il14.getUTCFullYear()+'-'+String(il14.getUTCMonth()+1).padStart(2,'0')+'-'+String(il14.getUTCDate()).padStart(2,'0');
-
-    let dateStr = hdToStr(new HDate(day, month, hYear));
-    // אם עבר יותר מ-14 יום — קח שנה עברית הבאה
-    if (dateStr < cutStr) dateStr = hdToStr(new HDate(day, month, hYear+1));
-
-    console.log(`[hebcal] day=${day} month=${month} year=${hYear} today=${todayStr} cut=${cutStr} -> ${dateStr}`);
+    const g = _jdnToGreg(absTarget + _H_EPOCH);
+    const dateStr = g.year+'-'+String(g.month).padStart(2,'0')+'-'+String(g.day).padStart(2,'0');
+    console.log('[hebcal] day='+day+' month='+month+' hYear='+hYear+' -> '+dateStr);
     return dateStr;
-  } catch(e) { console.error('[hebcal]', e.message); return null; }
+  } catch(e) { console.error('[hebcal] inline error:', e.message); return null; }
 }
 
 // ─────────────────────────────────────────────────────
@@ -446,7 +493,7 @@ function extractHebCalDate(t, ilNow) {
   // שלב 3: גימטריה עם גרשיים בתחילת הטקסט — ללא שם חודש → חודש עברי נוכחי
   // מטפל במקרה "כ\"ז יומולדת שמוליק" (יום בגימטריה, חודש לא צוין)
   // מניעת false-positive: בודק רק אם הגימטריה בתחילת הטקסט (לא אמצע משפט)
-  if (foundMonth === null && HDate) {
+  if (foundMonth === null) {
     // נרמל ״ (Hebrew gershayim ״) ו-׳ (geresh) ל-" ו-'
     const tN = t.replace(/״/g, '"').replace(/׳/g, "'");
     // תבנית: רווחים אופציונליים + 1-2 אותיות עבריות + " + אות עברית + לא-עברית
@@ -455,7 +502,7 @@ function extractHebCalDate(t, ilNow) {
       const dayNum = parseGematriya(m3[1] + m3[2]);
       if (dayNum && dayNum >= 1 && dayNum <= 30) {
         try {
-          const curHebMonth = new HDate(new Date(ilNow)).getMonth();
+          const curHebMonth = currentHebMonth(ilNow);
           const result = hebDateToGreg(dayNum, curHebMonth, ilNow);
           console.log('[hebcal] gematria-no-month "' + m3[0].trim() + '" day=' + dayNum + ' heb-month=' + curHebMonth + ' -> ' + result);
           return result;
