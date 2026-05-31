@@ -505,6 +505,12 @@ function extractDateJS(text) {
   if (t.includes(S_TODAY))    { console.log('[date]->today');    return shift(0); }
   if (t.includes(S_TOMORROW)) { console.log('[date]->tomorrow'); return shift(1); }
 
+  // ─── תאריך עברי (כ"ז סיון וכו') — נבדק לפני שמות ימים! ───
+  // חובה: "שני" = יום שני אבל גם = "שני" כמספר סידורי ("יומולדת שני").
+  // תאריך עברי מלא (יום+חודש) הוא ספציפי יותר ועדיף.
+  const hebDateEarly = extractHebCalDate(t, ilNow);
+  if (hebDateEarly) { console.log('[date] hebrew-cal (early) ->', hebDateEarly); return hebDateEarly; }
+
   // ─── weekday names ───
   // JS week: 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
   // Hebrew weekdays (all built from hex code points, no Hebrew source bytes):
@@ -557,10 +563,7 @@ function extractDateJS(text) {
     return result;
   }
 
-  // ─── תאריך עברי: "כ״ה ניסן", "ה׳ תמוז", "ראש חודש כסלו" ───
-  const hebDate = extractHebCalDate(t, ilNow);
-  if (hebDate) { console.log('[date] hebrew-cal ->', hebDate); return hebDate; }
-
+  // (extractHebCalDate already ran above, before weekday check)
   console.log('[date] no match');
   return null;
 }
