@@ -203,18 +203,20 @@ module.exports = async (req, res) => {
   if (doEmail && workerEmail) {
     const emailSubject = isReminder ? `תזכורת: ${taskTitle}` : `משימה חדשה: ${taskTitle}`;
 
-    // פונקציה: אייקון outline — עיגול עם תו Unicode — עובד בכל email client
-    const icon = (ch, color) =>
-      `<span style="display:inline-block;width:28px;height:28px;border:1.5px solid ${color};border-radius:50%;text-align:center;line-height:26px;font-size:14px;color:${color};font-family:Arial,sans-serif;vertical-align:middle">${ch}</span>`;
+    // אייקוני outline בסגנון האפליקציה — base64 SVG ב-<img> (עובד ב-Gmail, Apple Mail)
+    const img = (b64, alt) => `<img src="${b64}" width="22" height="22" alt="${alt}" style="vertical-align:middle;display:inline-block">`;
+    const icoClipboard = img('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2RjRDRkMiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik05IDVIN2EyIDIgMCAwIDAtMiAydjEyYTIgMiAwIDAgMCAyIDJoMTBhMiAyIDAgMCAwIDItMlY3YTIgMiAwIDAgMC0yLTJoLTIiLz48cmVjdCB4PSI5IiB5PSIzIiB3aWR0aD0iNiIgaGVpZ2h0PSI0IiByeD0iMSIvPjxsaW5lIHgxPSI5IiB5MT0iMTIiIHgyPSIxNSIgeTI9IjEyIi8+PGxpbmUgeDE9IjkiIHkxPSIxNiIgeDI9IjEzIiB5Mj0iMTYiLz48L3N2Zz4=', '📋');
+    const icoCal        = img('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4ODgiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHg9IjMiIHk9IjQiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiLz48bGluZSB4MT0iMTYiIHkxPSIyIiB4Mj0iMTYiIHkyPSI2Ii8+PGxpbmUgeDE9IjgiIHkxPSIyIiB4Mj0iOCIgeTI9IjYiLz48bGluZSB4MT0iMyIgeTE9IjEwIiB4Mj0iMjEiIHkyPSIxMCIvPjwvc3ZnPg==', '📅');
+    const icoUser       = img('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4ODgiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMCAyMXYtMmE0IDQgMCAwIDAtNC00SDhhNCA0IDAgMCAwLTQgNHYyIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+PC9zdmc+', '👤');
+    const icoCheck      = img('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2RjRDRkMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSIyMCA2IDkgMTcgNCAxMiIvPjwvc3ZnPg==', '✓');
+    const icoBellW      = img('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0xOCA4QTYgNiAwIDAgMCA2IDhjMCA3LTMgOS0zIDloMThzLTMtMi0zLTkiLz48cGF0aCBkPSJNMTMuNzMgMjFhMiAyIDAgMCAxLTMuNDYgMCIvPjwvc3ZnPg==', '🔔');
+    const icoTaskW      = img('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik05IDVIN2EyIDIgMCAwIDAtMiAydjEyYTIgMiAwIDAgMCAyIDJoMTBhMiAyIDAgMCAwIDItMlY3YTIgMiAwIDAgMC0yLTJoLTIiLz48cmVjdCB4PSI5IiB5PSIzIiB3aWR0aD0iNiIgaGVpZ2h0PSI0IiByeD0iMSIvPjxsaW5lIHgxPSI5IiB5MT0iMTIiIHgyPSIxNSIgeTI9IjEyIi8+PGxpbmUgeDE9IjkiIHkxPSIxNiIgeDI9IjEzIiB5Mj0iMTYiLz48L3N2Zz4=', '📋');
 
-    const icoTask  = icon('&#9744;', '#6F4CFC');   // ☐ checkbox outline
-    const icoCal   = icon('&#9711;', '#888');        // ○ calendar / date
-    const icoUser  = icon('&#9900;', '#888');        // ◌ person
-    const icoCheck = icon('&#10003;', '#6F4CFC');   // ✓ done
-    const icoBell  = icon('&#9825;', '#6F4CFC');    // ♡→bell-like / reminder
+    // הגדרות ישנות (למניעת שגיאות)
+    const icoTask = icoClipboard;
 
     const headerText = isReminder ? 'תזכורת לביצוע משימה' : (isReassign ? 'משימה הועברה אליך' : 'משימה חדשה');
-    const headerIco  = isReminder ? icoBell : icoTask;
+    const headerIco  = isReminder ? icoBellW : icoTaskW;
     const duePart    = dueDate
       ? `<tr><td style="padding:10px 20px;border-bottom:1px solid #f3f0ff">
            <table cellpadding="0" cellspacing="0"><tr>
@@ -251,7 +253,7 @@ module.exports = async (req, res) => {
       <!-- שם משימה -->
       <tr><td style="padding:14px 18px;border-bottom:1px solid #f0eeff">
         <table cellpadding="0" cellspacing="0"><tr>
-          <td style="padding-left:10px">${icoTask}</td>
+          <td style="padding-left:10px">${icoClipboard}</td>
           <td style="padding-right:10px;font-size:15px;font-weight:bold;color:#222">&nbsp;${taskTitle}</td>
         </tr></table>
       </td></tr>
