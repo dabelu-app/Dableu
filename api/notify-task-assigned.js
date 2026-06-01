@@ -16,8 +16,12 @@ async function sendWhatsApp(chatId, message) {
       body: JSON.stringify({ chatId, message })
     }
   );
-  if (!r.ok) throw new Error(`Green API error: ${r.status}`);
-  return r.json();
+  const body = await r.json();
+  console.log('[sendWhatsApp] chatId:', chatId, 'status:', r.status, 'response:', JSON.stringify(body));
+  // GreenAPI מחזיר HTTP 200 גם על שגיאות — צריך לבדוק את גוף התשובה
+  if (!r.ok) throw new Error(`Green API HTTP error: ${r.status}`);
+  if (body.idMessage) return body; // הצלחה — יש idMessage
+  throw new Error(`Green API error: ${JSON.stringify(body)}`);
 }
 
 // ── נרמול מספר טלפון לפורמט 972XXXXXXXXX ──
@@ -154,6 +158,7 @@ module.exports = async (req, res) => {
   // fallback: אם אין העדפה ויש טלפון — שלח WA
   const sendWAFallback = !notifyPref && !!workerPhone;
 
+  console.log(`[notify-task-assigned] workerName="${workerName}" phone="${workerPhone}" email="${workerEmail}" pref="${pref}" isReminder=${!!isReminder} sendWA=${sendWA||sendWAFallback} sendPush=${sendPush}`);
   let waSent  = false;
   let pushSent = 0;
 
