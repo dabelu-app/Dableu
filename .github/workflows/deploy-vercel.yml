@@ -1,0 +1,20 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy API to Vercel (dabelu)
+        run: |
+          npx vercel deploy --prod --yes \
+            --token ${{ secrets.VERCEL_TOKEN }} \
+            --scope sh0548501483-4792s-projects \
+            --project dabelu
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
