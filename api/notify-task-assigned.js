@@ -206,9 +206,9 @@ module.exports = async (req, res) => {
     // אייקוני outline עם מסגרת סגולה — מאוחסנים ב-Firebase (HTTPS — עובד ב-Gmail)
     const CDN = 'https://dabelu.web.app/icons';
     const iconBox = (name, alt) =>
-      `<table cellpadding="0" cellspacing="0" style="display:inline-table;vertical-align:middle"><tr><td style="border:1.5px solid #6F4CFC;border-radius:8px;padding:5px;line-height:0"><img src="${CDN}/${name}.svg" width="20" height="20" alt="${alt}" style="display:block"></td></tr></table>`;
+      `<img src="${CDN}/${name}.svg" width="22" height="22" alt="${alt}" style="vertical-align:middle;display:inline-block">`;
     const iconBoxHeader = (name, alt) =>
-      `<table cellpadding="0" cellspacing="0" style="display:inline-table;vertical-align:middle"><tr><td style="background:#5a3dd4;border-radius:8px;padding:5px;line-height:0"><img src="${CDN}/${name}-white.svg" width="20" height="20" alt="${alt}" style="display:block"></td></tr></table>`;
+      `<img src="${CDN}/${name}-white.svg" width="22" height="22" alt="${alt}" style="vertical-align:middle;display:inline-block">`;
 
     const icoClipboard = iconBox('task',     '📋');
     const icoCal       = iconBox('calendar', '📅');
