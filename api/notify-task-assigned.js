@@ -158,18 +158,20 @@ module.exports = async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Missing required fields' });
   }
 
-  const dueLine = dueDate ? `\n📅 תאריך יעד: ${fmtDate(dueDate)}` : '';
+  const dueLine = dueDate ? `\n◷ *תאריך יעד:* ${fmtDate(dueDate)}` : '';
 
   // ── בנה גוף ההודעה לפי סוג ──
+  // סמלי Unicode נקיים (ללא emoji צבעוניים):
+  // ◻ משימה  ◷ תאריך  ◌ שולח  ◈ Dabelu  ─── מפריד
   let msgBody, pushTitle, pushBody;
   if (isReminder) {
-    msgBody   = `📋 *תזכורת לביצוע משימה*\n\nשלום ${workerName || ''},\nתזכורת על משימה דחופה לביצוע:\n\n📝 *${taskTitle}*${dueLine}\n\n👤 מאת: ${employerName || 'המעסיק'}\n\nאנא טפל/י בהקדם ✅`;
-    pushTitle = `📋 תזכורת: ${taskTitle}`;
+    msgBody   = `*─── תזכורת לביצוע משימה ───*\n\nשלום ${workerName || ''},\n\n◻ *משימה:* ${taskTitle}${dueLine}\n◌ *מאת:* ${employerName || 'המעסיק'}\n\n_אנא טפל/י בהקדם ועדכן/י סטטוס באפליקציה_\n\n◈ _Dabelu Task Manager_`;
+    pushTitle = `תזכורת: ${taskTitle}`;
     pushBody  = `תזכורת על משימה דחופה לביצוע — ${employerName || 'המעסיק'}`;
   } else {
     const action = isReassign ? 'הועברה אליך' : 'שובצה אליך';
-    msgBody   = `📋 *משימה חדשה ${action}!*\n\n📝 ${taskTitle}${dueLine}\n👤 ${isReassign ? 'הועבר' : 'הוקצה'} על ידי: ${employerName || 'המעסיק'}\n\nפתח את האפליקציה לצפייה ✅`;
-    pushTitle = `📋 משימה חדשה: ${taskTitle}`;
+    msgBody   = `*─── משימה ${action} ───*\n\n◻ *משימה:* ${taskTitle}${dueLine}\n◌ *מאת:* ${employerName || 'המעסיק'}\n\n_פתח/י את האפליקציה לצפייה ועדכון_\n\n◈ _Dabelu Task Manager_`;
+    pushTitle = `משימה חדשה: ${taskTitle}`;
     pushBody  = `שובצה אליך על ידי ${employerName || 'המעסיק'}${dueDate ? ' · ' + fmtDate(dueDate) : ''}`;
   }
 
