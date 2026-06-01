@@ -140,9 +140,9 @@ module.exports = async (req, res) => {
   // ── בנה גוף ההודעה לפי סוג ──
   let msgBody, pushTitle, pushBody;
   if (isReminder) {
-    msgBody   = `🚨 *תזכורת דחופה!*\n\nשלום ${workerName || ''},\nהמשימה *"${taskTitle}"* טרם טופלה ודורשת טיפול מיידי!${dueLine}\n👤 מאת: ${employerName || 'המעסיק'}\n\nאנא עדכן סטטוס בהקדם ✅`;
-    pushTitle = `🚨 תזכורת: ${taskTitle}`;
-    pushBody  = `המשימה טרם טופלה — ${employerName || 'המעסיק'} ממתין לעדכון`;
+    msgBody   = `📋 *תזכורת לביצוע משימה*\n\nשלום ${workerName || ''},\nתזכורת על משימה דחופה לביצוע:\n\n📝 *${taskTitle}*${dueLine}\n\n👤 מאת: ${employerName || 'המעסיק'}\n\nאנא טפל/י בהקדם ✅`;
+    pushTitle = `📋 תזכורת: ${taskTitle}`;
+    pushBody  = `תזכורת על משימה דחופה לביצוע — ${employerName || 'המעסיק'}`;
   } else {
     const action = isReassign ? 'הועברה אליך' : 'שובצה אליך';
     msgBody   = `📋 *משימה חדשה ${action}!*\n\n📝 ${taskTitle}${dueLine}\n👤 ${isReassign ? 'הועבר' : 'הוקצה'} על ידי: ${employerName || 'המעסיק'}\n\nפתח את האפליקציה לצפייה ✅`;
