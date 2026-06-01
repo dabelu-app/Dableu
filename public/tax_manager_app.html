@@ -1350,13 +1350,17 @@ function enterApp(){
   // בדיקת מנוי / ניסיון
   checkSubscription();
 
-  // הודעת ברוכים הבאים למשתמש חדש
-  if(!S.user.welcomeShown) {
-    S.user.welcomeShown = true;
-    setTimeout(function(){
-      toast('👋 ברוכה הבאה! עברי להגדרות כדי להוסיף מספר וואטסאפ ומייל');
-    }, 1500);
-  }
+  // הודעת ברוכים הבאים — רק בשתי הכניסות הראשונות (נספר ונשמר ב-localStorage לפי משתמש)
+  try {
+    var _wKey = 'welcomeCount_' + (S.user.uid || 'guest');
+    var _wCount = parseInt(localStorage.getItem(_wKey) || '0', 10);
+    if (_wCount < 2) {
+      localStorage.setItem(_wKey, String(_wCount + 1));
+      setTimeout(function(){
+        toast('👋 ברוכה הבאה! עברי להגדרות כדי להוסיף מספר וואטסאפ ומייל');
+      }, 1500);
+    }
+  } catch(e) {}
   document.getElementById('screen-auth').style.display='none';
   document.getElementById('screen-app').style.display='flex';
   // עדכן badge פעמון + app icon badge
