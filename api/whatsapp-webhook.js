@@ -599,13 +599,26 @@ function extractDateJS(text) {
     { name:'shabbat', pat:String.fromCodePoint(0x05E9,0x05D1,0x05EA),               num:6 },
   ];
 
+  // ─── "שבוע הבא" / "[יום] הבא" → היום המבוקש בשבוע (ראשון–שבת) שאחרי הנוכחי ───
+  //   שבוע = ש(05E9) ב(05D1) ו(05D5) ע(05E2) ; הבא = ה(05D4) ב(05D1) א(05D0)
+  //   דורשים ש-"הבא" יופיע אחרי "שבוע" או אחרי שם יום — כדי לא לתפוס "הבא" במובן "תביא".
+  const S_SHAVUA = String.fromCodePoint(0x05E9,0x05D1,0x05D5,0x05E2);
+  const S_HABA   = String.fromCodePoint(0x05D4,0x05D1,0x05D0);
+  const nextWeek = new RegExp('(?:' + S_SHAVUA + '|' + DAYS.map(d => d.pat).join('|') + ')\\s+' + S_HABA).test(t);
+
   for (const { name, pat, num } of DAYS) {
     if (t.includes(pat)) {
-      let diff = num - todayDay;
-      if (diff < 0) diff += 7;   // past weekday → schedule next week
-      // diff==0 means today (same weekday) → schedule today
+      let diff;
+      if (nextWeek) {
+        // היום המבוקש בשבוע שאחרי הנוכחי (השבוע מתחיל בראשון)
+        diff = (7 - todayDay) + num;
+      } else {
+        diff = num - todayDay;
+        if (diff < 0) diff += 7;   // past weekday → schedule next week
+        // diff==0 means today (same weekday) → schedule today
+      }
       const result = shift(diff);
-      console.log(`[date] matched ${name}(day=${num}) todayDay=${todayDay} diff=${diff} -> ${result}`);
+      console.log(`[date] matched ${name}(day=${num}) todayDay=${todayDay} diff=${diff} nextWeek=${nextWeek} -> ${result}`);
       return result;
     }
   }
