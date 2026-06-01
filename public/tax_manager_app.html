@@ -2595,12 +2595,53 @@ function deleteTask(id){
 
 function urgentWA(id){
   const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
+  const member=(S.team||[]).find(m=>m.name===t.assignee);
+
+  // בדיקה: לעובד יש פרטי קשר?
+  const rawDigits=(member?.phone||'').replace(/[^\d]/g,'');
+  const cleanPhone=rawDigits.length>=9?member.phone:'';
+  const cleanEmail=member?.email||'';
+  const notifyPref=member?.notify||'whatsapp';
+
+  if(!cleanPhone && !cleanEmail){
+    toast(`⚠️ חסרים פרטי קשר ל${t.assignee} — ערכי את העובד בניהול צוות`);
+    return;
+  }
+
   t.remindedAt=Date.now();
-  const msg=`🚨 *הודעה דחופה*\nשלום ${t.assignee},\nהמשימה *"${t.title}"* דחופה ודורשת טיפול מיידי!\nתאריך יעד: ${fmtD(t.date)}\nאנא עדכן סטטוס בהקדם.`;
-  S.waMessages.push({text:msg,time:timeStr(),converted:false,auto:false,urgent:true});
   S.reminders.push({task:t.title,assignee:t.assignee,time:timeStr(),type:'🚨 דחוף',auto:false});
   _saveTasks();
-  renderPage();toast(`🚨 וואטסאפ דחוף נשלח ל${t.assignee}!`);
+  renderPage();
+
+  // שלח בפועל דרך ה-API לפי העדפת העובד
+  const body={
+    workerPhone:  (notifyPref==='whatsapp'||notifyPref==='both') ? cleanPhone : '',
+    workerEmail:  (notifyPref==='email'   ||notifyPref==='both') ? cleanEmail : '',
+    workerName:   t.assignee,
+    taskTitle:    t.title,
+    employerName: S.user?.name||'',
+    dueDate:      t.date||'',
+    isReminder:   true,
+    notifyPref:   notifyPref
+  };
+  // fallback: אם העדפה=whatsapp אבל אין טלפון — נסה email
+  if(!body.workerPhone && !body.workerEmail){
+    body.workerPhone=cleanPhone;
+    body.workerEmail=cleanEmail;
+  }
+
+  const channel=notifyPref==='email'?'מייל/Push':notifyPref==='both'?'וואטסאפ + Push':'וואטסאפ';
+  toast(`📤 שולח תזכורת ב${channel} ל${t.assignee}...`);
+
+  fetch('https://dabelu.vercel.app/api/notify-task-assigned',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  }).then(r=>r.json()).then(d=>{
+    if(d.waSent)       toast(`✅ תזכורת נשלחה ל${t.assignee} בוואטסאפ!`);
+    else if(d.pushSent>0) toast(`✅ תזכורת נשלחה ל${t.assignee} כהתראה!`);
+    else               toast(`⚠️ שליחה נכשלה ל${t.assignee} — בדקי את הגדרות הצוות`);
+  }).catch(()=>toast(`⚠️ שגיאת רשת — תזכורת לא נשלחה`));
 }
 
 // ══════════════════════════════════════

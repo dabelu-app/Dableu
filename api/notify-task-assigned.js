@@ -122,24 +122,45 @@ module.exports = async (req, res) => {
     taskTitle,     // שם המשימה
     employerName,  // שם המעסיק
     dueDate,       // תאריך יעד (YYYY-MM-DD, אופציונלי)
-    isReassign     // true = העברה מעובד אחר, false/undefined = שיוך חדש
+    isReassign,    // true = העברה מעובד אחר, false/undefined = שיוך חדש
+    isReminder,    // true = תזכורת דחופה (לא שיוך חדש)
+    notifyPref     // 'whatsapp' | 'email' | 'both' — העדפת העובד
   } = req.body || {};
 
   if (!taskTitle || (!workerPhone && !workerEmail)) {
     return res.status(400).json({ ok: false, error: 'Missing required fields' });
   }
 
-  const dueLine  = dueDate ? `\n📅 תאריך יעד: ${fmtDate(dueDate)}` : '';
-  const action   = isReassign ? 'הועברה אליך' : 'שובצה אליך';
-  const msgBody  = `📋 *משימה חדשה ${action}!*\n\n📝 ${taskTitle}${dueLine}\n👤 ${isReassign ? 'הועבר' : 'הוקצה'} על ידי: ${employerName || 'המעסיק'}\n\nפתח את האפליקציה לצפייה ✅`;
+  const dueLine = dueDate ? `\n📅 תאריך יעד: ${fmtDate(dueDate)}` : '';
+
+  // ── בנה גוף ההודעה לפי סוג ──
+  let msgBody, pushTitle, pushBody;
+  if (isReminder) {
+    msgBody   = `🚨 *תזכורת דחופה!*\n\nשלום ${workerName || ''},\nהמשימה *"${taskTitle}"* טרם טופלה ודורשת טיפול מיידי!${dueLine}\n👤 מאת: ${employerName || 'המעסיק'}\n\nאנא עדכן סטטוס בהקדם ✅`;
+    pushTitle = `🚨 תזכורת: ${taskTitle}`;
+    pushBody  = `המשימה טרם טופלה — ${employerName || 'המעסיק'} ממתין לעדכון`;
+  } else {
+    const action = isReassign ? 'הועברה אליך' : 'שובצה אליך';
+    msgBody   = `📋 *משימה חדשה ${action}!*\n\n📝 ${taskTitle}${dueLine}\n👤 ${isReassign ? 'הועבר' : 'הוקצה'} על ידי: ${employerName || 'המעסיק'}\n\nפתח את האפליקציה לצפייה ✅`;
+    pushTitle = `📋 משימה חדשה: ${taskTitle}`;
+    pushBody  = `שובצה אליך על ידי ${employerName || 'המעסיק'}${dueDate ? ' · ' + fmtDate(dueDate) : ''}`;
+  }
+
+  // ── קבע אם לשלוח WA / Push לפי העדפה ──
+  // notifyPref: 'whatsapp'=רק WA, 'email'=רק Push, 'both'=שניהם, undefined=WA אם יש טלפון
+  const pref = notifyPref || 'whatsapp';
+  const sendWA   = (pref === 'whatsapp' || pref === 'both') && !!workerPhone;
+  const sendPush = (pref === 'email'    || pref === 'both') && !!workerEmail;
+  // fallback: אם אין העדפה ויש טלפון — שלח WA
+  const sendWAFallback = !notifyPref && !!workerPhone;
 
   let waSent  = false;
   let pushSent = 0;
 
   // ── שלח WhatsApp ──
-  if (workerPhone) {
+  if (sendWA || sendWAFallback) {
     const normalized = normalizePhone(workerPhone);
-    console.log(`[notify-task-assigned] phone raw="${workerPhone}" normalized="${normalized}"`);
+    console.log(`[notify-task-assigned] WA phone raw="${workerPhone}" normalized="${normalized}" isReminder=${!!isReminder}`);
     if (normalized) {
       try {
         await sendWhatsApp(normalized + '@c.us', msgBody);
@@ -151,18 +172,12 @@ module.exports = async (req, res) => {
     } else {
       console.warn('[notify-task-assigned] phone normalization failed — skipping WA');
     }
-  } else {
-    console.log('[notify-task-assigned] no phone provided — skipping WA');
   }
 
   // ── שלח Push Notification ──
-  if (workerEmail) {
+  if (sendPush || (!notifyPref && !!workerEmail && !workerPhone)) {
     try {
-      pushSent = await sendPushToEmail(
-        workerEmail,
-        `📋 משימה חדשה: ${taskTitle}`,
-        `שובצה אליך על ידי ${employerName || 'המעסיק'}${dueDate ? ' · ' + fmtDate(dueDate) : ''}`
-      );
+      pushSent = await sendPushToEmail(workerEmail, pushTitle, pushBody);
       console.log(`[notify-task-assigned] Push sent: ${pushSent}`);
     } catch(e) {
       console.error('[notify-task-assigned] Push error:', e.message);
