@@ -3860,13 +3860,22 @@ function manualRemind(id){
   const channel=notifyPref==='email'?'Push':notifyPref==='both'?'וואטסאפ+Push':'וואטסאפ';
   toast(`📤 שולח תזכורת ב${channel} ל${t.assignee}...`);
 
+  console.log('[manualRemind] sending:', JSON.stringify({...body, workerPhone: body.workerPhone||'(none)', workerEmail: body.workerEmail||'(none)'}));
+
   fetch('https://dabelu.vercel.app/api/notify-task-assigned',{
     method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
-  }).then(r=>r.json()).then(d=>{
+  }).then(r=>{
+    console.log('[manualRemind] HTTP status:', r.status);
+    return r.json();
+  }).then(d=>{
+    console.log('[manualRemind] API response:', JSON.stringify(d));
     if(d.waSent)         toast(`✅ תזכורת נשלחה ל${t.assignee} בוואטסאפ!`);
     else if(d.pushSent>0)toast(`✅ תזכורת נשלחה ל${t.assignee} כהתראה!`);
-    else                 toast(`⚠️ שליחה נכשלה — בדקי מספר טלפון של ${t.assignee}`);
-  }).catch(()=>toast(`⚠️ שגיאת רשת — תזכורת לא נשלחה`));
+    else                 toast(`⚠️ שליחה נכשלה (waSent=false) — בדקי מספר טלפון של ${t.assignee}`);
+  }).catch(e=>{
+    console.error('[manualRemind] fetch error:', e);
+    toast(`⚠️ שגיאת רשת — תזכורת לא נשלחה`);
+  });
 }
 let recurringOn=false;
 function toggleRecurring(){
