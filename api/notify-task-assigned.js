@@ -203,68 +203,85 @@ module.exports = async (req, res) => {
   if (doEmail && workerEmail) {
     const emailSubject = isReminder ? `תזכורת: ${taskTitle}` : `משימה חדשה: ${taskTitle}`;
 
-    // SVG outline icons (black, no fill) — Outlook safe via <img alt>
-    const svgTask   = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6F4CFC" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>`;
-    const svgCalendar = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
-    const svgUser   = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
-    const svgCheck  = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6F4CFC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-    const svgBell   = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6F4CFC" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`;
+    // פונקציה: אייקון outline — עיגול עם תו Unicode — עובד בכל email client
+    const icon = (ch, color) =>
+      `<span style="display:inline-block;width:28px;height:28px;border:1.5px solid ${color};border-radius:50%;text-align:center;line-height:26px;font-size:14px;color:${color};font-family:Arial,sans-serif;vertical-align:middle">${ch}</span>`;
 
-    const headerIcon = isReminder ? svgBell : svgTask;
+    const icoTask  = icon('&#9744;', '#6F4CFC');   // ☐ checkbox outline
+    const icoCal   = icon('&#9711;', '#888');        // ○ calendar / date
+    const icoUser  = icon('&#9900;', '#888');        // ◌ person
+    const icoCheck = icon('&#10003;', '#6F4CFC');   // ✓ done
+    const icoBell  = icon('&#9825;', '#6F4CFC');    // ♡→bell-like / reminder
+
     const headerText = isReminder ? 'תזכורת לביצוע משימה' : (isReassign ? 'משימה הועברה אליך' : 'משימה חדשה');
-    const duePart   = dueDate ? `<tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0"><table><tr><td style="padding-left:10px">${svgCalendar}</td><td style="padding-right:10px;color:#555;font-size:14px">תאריך יעד: <strong>${fmtDate(dueDate)}</strong></td></tr></table></td></tr>` : '';
+    const headerIco  = isReminder ? icoBell : icoTask;
+    const duePart    = dueDate
+      ? `<tr><td style="padding:10px 20px;border-bottom:1px solid #f3f0ff">
+           <table cellpadding="0" cellspacing="0"><tr>
+             <td style="padding-left:10px">${icoCal}</td>
+             <td style="padding-right:10px;font-size:14px;color:#555">תאריך יעד:&nbsp;<strong>${fmtDate(dueDate)}</strong></td>
+           </tr></table>
+         </td></tr>` : '';
 
     const emailHtml = `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f8f8fb;font-family:'Segoe UI',Arial,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f8fb;padding:30px 0">
-    <tr><td align="center">
-      <table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.07);overflow:hidden">
-        <!-- Header -->
-        <tr><td style="background:#6F4CFC;padding:24px 30px">
-          <table><tr>
-            <td style="vertical-align:middle">${headerIcon.replace(/stroke="#6F4CFC"/g,'stroke="#fff"').replace(/stroke="#555"/g,'stroke="#fff"')}</td>
-            <td style="padding-right:12px;color:#fff;font-size:20px;font-weight:700">${headerText}</td>
-          </tr></table>
-        </td></tr>
-        <!-- Greeting -->
-        <tr><td style="padding:24px 30px 10px;font-size:16px;color:#222">שלום <strong>${workerName || ''}</strong>,</td></tr>
-        <tr><td style="padding:0 30px 20px;font-size:15px;color:#444">
-          ${isReminder ? 'קיבלת תזכורת על משימה דחופה לביצוע:' : 'שובצה אליך משימה חדשה:'}
-        </td></tr>
-        <!-- Task card -->
-        <tr><td style="padding:0 30px 24px">
-          <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #e8e4ff;border-radius:10px;overflow:hidden">
-            <tr><td style="padding:16px 20px;border-bottom:1px solid #f0f0f0">
-              <table><tr>
-                <td style="padding-left:10px">${svgTask}</td>
-                <td style="padding-right:10px;font-size:15px;font-weight:700;color:#222">${taskTitle}</td>
-              </tr></table>
-            </td></tr>
-            ${duePart}
-            <tr><td style="padding:8px 0">
-              <table><tr>
-                <td style="padding-left:10px">${svgUser}</td>
-                <td style="padding-right:10px;color:#555;font-size:14px">מאת: <strong>${employerName || 'המעסיק'}</strong></td>
-              </tr></table>
-            </td></tr>
-          </table>
-        </td></tr>
-        <!-- CTA -->
-        <tr><td style="padding:0 30px 28px">
-          <table><tr>
-            <td style="padding-left:8px">${svgCheck}</td>
-            <td style="padding-right:8px;font-size:14px;color:#6F4CFC;font-weight:600">אנא טפל/י בהקדם ופתח/י את האפליקציה לעדכון סטטוס</td>
-          </tr></table>
-        </td></tr>
-        <!-- Footer -->
-        <tr><td style="background:#fafafa;padding:14px 30px;border-top:1px solid #f0f0f0">
-          <p style="margin:0;font-size:11px;color:#aaa;text-align:center">נשלח מ-Dabelu Task Manager</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
+<body style="margin:0;padding:0;background:#f5f4fb;font-family:Arial,'Segoe UI',sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f5f4fb" style="padding:32px 0">
+<tr><td align="center">
+<table width="520" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-radius:14px;border:1px solid #e8e4ff">
+
+  <!-- כותרת -->
+  <tr><td bgcolor="#6F4CFC" style="padding:22px 28px;border-radius:14px 14px 0 0">
+    <table cellpadding="0" cellspacing="0"><tr>
+      <td style="vertical-align:middle">${headerIco.replace(/color:#6F4CFC/g,'color:#fff').replace(/border:1.5px solid #6F4CFC/g,'border:1.5px solid #fff')}</td>
+      <td style="padding-right:12px;color:#ffffff;font-size:19px;font-weight:bold">&nbsp;${headerText}</td>
+    </tr></table>
+  </td></tr>
+
+  <!-- פנייה -->
+  <tr><td style="padding:22px 28px 8px;font-size:15px;color:#222">שלום <strong>${workerName || ''}</strong>,</td></tr>
+  <tr><td style="padding:0 28px 18px;font-size:14px;color:#555">
+    ${isReminder ? 'קיבלת תזכורת על משימה דחופה לביצוע:' : 'שובצה אליך משימה חדשה:'}
+  </td></tr>
+
+  <!-- כרטיס משימה -->
+  <tr><td style="padding:0 28px 22px">
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #e8e4ff;border-radius:10px">
+      <!-- שם משימה -->
+      <tr><td style="padding:14px 18px;border-bottom:1px solid #f0eeff">
+        <table cellpadding="0" cellspacing="0"><tr>
+          <td style="padding-left:10px">${icoTask}</td>
+          <td style="padding-right:10px;font-size:15px;font-weight:bold;color:#222">&nbsp;${taskTitle}</td>
+        </tr></table>
+      </td></tr>
+      ${duePart}
+      <!-- שולח -->
+      <tr><td style="padding:12px 18px">
+        <table cellpadding="0" cellspacing="0"><tr>
+          <td style="padding-left:10px">${icoUser}</td>
+          <td style="padding-right:10px;font-size:14px;color:#555">מאת:&nbsp;<strong>${employerName || 'המעסיק'}</strong></td>
+        </tr></table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- קריאה לפעולה -->
+  <tr><td style="padding:0 28px 26px">
+    <table cellpadding="0" cellspacing="0"><tr>
+      <td>${icoCheck}</td>
+      <td style="padding-right:10px;font-size:14px;color:#6F4CFC;font-weight:bold">&nbsp;אנא טפל/י בהקדם ועדכן/י סטטוס באפליקציה</td>
+    </tr></table>
+  </td></tr>
+
+  <!-- פוטר -->
+  <tr><td bgcolor="#fafafa" style="padding:12px 28px;border-top:1px solid #f0eeff;border-radius:0 0 14px 14px">
+    <p style="margin:0;font-size:11px;color:#bbb;text-align:center">נשלח מ-Dabelu Task Manager</p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
 </body></html>`;
 
     emailSent = await sendEmail(workerEmail, emailSubject, emailHtml);
