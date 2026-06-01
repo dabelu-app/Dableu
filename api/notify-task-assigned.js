@@ -1,5 +1,4 @@
 const fetch    = require('node-fetch');
-const nodemailer = require('nodemailer');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT = 'dabelu';
@@ -110,6 +109,7 @@ async function sendPushToEmail(email, title, body) {
 async function sendEmail(to, subject, htmlBody) {
   if (!to || !process.env.ZOHO_PASS) return false;
   try {
+    const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
       host: 'smtp.zoho.com', port: 587, secure: false,
       auth: { user: 'tasks@dabelu.pro', pass: process.env.ZOHO_PASS }
