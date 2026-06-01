@@ -225,6 +225,14 @@ footer{padding:36px 48px;text-align:center;border-top:1px solid var(--border);ba
 #app-banner{display:none;align-items:center;gap:12px;justify-content:center;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:11px 40px 11px 16px;font-size:14px;font-weight:600;position:relative;z-index:250}
 #app-banner a{background:#fff;color:var(--p3);padding:7px 16px;border-radius:20px;text-decoration:none;font-weight:700;white-space:nowrap}
 #app-banner .ab-close{position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:0;color:#fff;font-size:18px;cursor:pointer;opacity:.85;line-height:1}
+#install-prompt{display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:#fff;border-top:1px solid var(--border);box-shadow:0 -8px 30px rgba(0,0,0,.14);padding:13px 16px;align-items:center;gap:12px}
+#install-prompt.show{display:flex}
+#install-prompt img{width:44px;height:44px;border-radius:11px;flex-shrink:0}
+#install-prompt .ip-txt{flex:1;min-width:0}
+#install-prompt .ip-txt strong{display:block;font-size:14px;color:var(--text);font-weight:700}
+#install-prompt .ip-txt span{font-size:12px;color:var(--text2)}
+#install-prompt .ip-btn{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:0;padding:10px 18px;border-radius:22px;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;font-family:inherit;flex-shrink:0}
+#install-prompt .ip-close{background:none;border:0;color:var(--text2);font-size:20px;cursor:pointer;padding:2px 4px;line-height:1;flex-shrink:0}
 html,body{overflow-x:hidden}
 .nav-logo-mobile{display:none}
 .hero-logo{height:190px;object-fit:contain}
@@ -244,6 +252,32 @@ html,body{overflow-x:hidden}
   <span>📱 האפליקציה מותקנת במכשיר שלך</span>
   <a href="tax_manager_app.html">פתח באפליקציה ←</a>
   <button class="ab-close" aria-label="סגור" onclick="dismissAppBanner()">✕</button>
+</div>
+
+<!-- באנר התקנת אפליקציה (כשלא מותקנת) -->
+<div id="install-prompt">
+  <img src="/icon-w.png" alt="Dabelu"/>
+  <div class="ip-txt">
+    <strong>התקינו את אפליקציית Dabelu</strong>
+    <span>גישה מהירה ממסך הבית — לחצו כאן להתקנה</span>
+  </div>
+  <button class="ip-btn" onclick="doInstall()">להתקנה</button>
+  <button class="ip-close" aria-label="סגור" onclick="dismissInstall()">✕</button>
+</div>
+
+<!-- הוראות התקנה לאייפון (אין beforeinstallprompt ב-iOS) -->
+<div id="ios-install-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:700;align-items:center;justify-content:center;backdrop-filter:blur(6px)" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:20px;padding:28px;width:340px;max-width:90vw;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.2)">
+    <button onclick="document.getElementById('ios-install-overlay').style.display='none'" style="position:absolute;top:12px;left:12px;background:var(--bg);border:1px solid var(--border);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;color:var(--text2)">×</button>
+    <div style="text-align:center;font-size:34px;margin-bottom:6px">📲</div>
+    <div style="text-align:center;font-size:17px;font-weight:800;color:var(--text);margin-bottom:14px">התקנת אפליקציית Dabelu</div>
+    <div style="font-size:14px;line-height:2.1;color:var(--text)">
+      1️⃣ פתחו את הדף ב-<strong>Safari</strong><br>
+      2️⃣ לחצו על כפתור <strong>השיתוף</strong> ⎙ בתחתית המסך<br>
+      3️⃣ גללו ובחרו <strong>"הוסף למסך הבית"</strong><br>
+      4️⃣ לחצו <strong>הוסף</strong> בפינה העליונה
+    </div>
+  </div>
 </div>
 
 <nav>
@@ -768,6 +802,36 @@ function dismissAppBanner(){
       var b=document.getElementById('app-banner'); if(b) b.style.display='flex';
     }
   }).catch(function(){});
+})();
+
+// ── באנר התקנה למי שהאפליקציה לא מותקנת אצלו ──
+var deferredInstall=null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredInstall=e;          // אנדרואיד: ניתן להתקנה → הצג באנר
+  showInstallPrompt();
+});
+function showInstallPrompt(){
+  try{ if(sessionStorage.getItem('dabeluInstallHidden')) return; }catch(e){}
+  var p=document.getElementById('install-prompt'); if(p) p.classList.add('show');
+}
+function dismissInstall(){
+  var p=document.getElementById('install-prompt'); if(p) p.classList.remove('show');
+  try{ sessionStorage.setItem('dabeluInstallHidden','1'); }catch(e){}
+}
+function doInstall(){
+  if(deferredInstall){
+    deferredInstall.prompt();   // אנדרואיד: חלון התקנה מקורי
+    deferredInstall.userChoice.then(function(){ deferredInstall=null; dismissInstall(); });
+  } else {
+    document.getElementById('ios-install-overlay').style.display='flex';  // iOS: הוראות ידניות
+  }
+}
+// iOS לא יורה beforeinstallprompt — נציג ידנית אם לא רץ כבר כאפליקציה
+(function(){
+  var isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isStandalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+  if(isIos && !isStandalone){ setTimeout(showInstallPrompt, 1200); }
 })();
 </script>
 </body>
