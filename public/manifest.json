@@ -4,6 +4,10 @@
   "description": "מערכת ניהול משימות, פגישות ולקוחות למשרד ייעוץ מס",
   "start_url": "/tax_manager_app.html",
   "scope": "/",
+  "related_applications": [
+    { "platform": "webapp", "url": "https://dabelu.web.app/manifest.json" }
+  ],
+  "prefer_related_applications": false,
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",

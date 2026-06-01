@@ -214,9 +214,27 @@ footer{padding:36px 48px;text-align:center;border-top:1px solid var(--border);ba
   .cta-sec{padding:60px 20px}
   .cta-sec h2{font-size:32px}
 }
+
+/* ── תפריט המבורגר (מובייל) + באנר אפליקציה ── */
+.nav-burger{display:none;background:none;border:0;font-size:26px;line-height:1;color:var(--dark);cursor:pointer;padding:4px 10px}
+.mobile-menu{display:none}
+.mobile-menu.open{display:flex;flex-direction:column;gap:2px;position:fixed;top:0;right:0;left:0;z-index:300;background:#fff;border-bottom:1px solid var(--border);box-shadow:0 10px 30px rgba(0,0,0,.12);padding:64px 22px 22px}
+.mobile-menu a{padding:15px 6px;font-size:16px;font-weight:600;color:var(--text);text-decoration:none;border-bottom:1px solid var(--border)}
+.mobile-menu a:last-child{border-bottom:0;color:var(--p);font-weight:700}
+.mm-close{position:absolute;top:14px;left:18px;font-size:26px;background:none;border:0;color:var(--text2);cursor:pointer;line-height:1}
+#app-banner{display:none;align-items:center;gap:12px;justify-content:center;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:11px 40px 11px 16px;font-size:14px;font-weight:600;position:relative;z-index:250}
+#app-banner a{background:#fff;color:var(--p3);padding:7px 16px;border-radius:20px;text-decoration:none;font-weight:700;white-space:nowrap}
+#app-banner .ab-close{position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:0;color:#fff;font-size:18px;cursor:pointer;opacity:.85;line-height:1}
+@media(max-width:768px){ .nav-burger{display:inline-flex} }
 </style>
 </head>
 <body>
+
+<div id="app-banner">
+  <span>📱 האפליקציה מותקנת במכשיר שלך</span>
+  <a href="tax_manager_app.html">פתח באפליקציה ←</a>
+  <button class="ab-close" aria-label="סגור" onclick="dismissAppBanner()">✕</button>
+</div>
 
 <nav>
   <div class="nav-logo" style="font-size:13px;font-weight:700;color:#1a1a2e;letter-spacing:0.5px">בסיעתא דישמיא</div>
@@ -227,7 +245,17 @@ footer{padding:36px 48px;text-align:center;border-top:1px solid var(--border);ba
     <a href="#" onclick="openContact();return false;">צור קשר</a>
   </div>
   <a href="tax_manager_app.html" class="nav-cta" style="margin-right:auto">להתחברות</a>
+  <button class="nav-burger" aria-label="תפריט" onclick="toggleMobileMenu()">☰</button>
 </nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <button class="mm-close" aria-label="סגור" onclick="closeMobileMenu()">✕</button>
+  <a href="#features" onclick="closeMobileMenu()">יתרונות</a>
+  <a href="#pricing" onclick="closeMobileMenu()">מחירים</a>
+  <a href="#testimonials" onclick="closeMobileMenu()">לקוחות</a>
+  <a href="#" onclick="openContact();closeMobileMenu();return false;">צור קשר</a>
+  <a href="tax_manager_app.html">להתחברות ←</a>
+</div>
 
 <!-- HERO -->
 <section class="hero">
@@ -710,6 +738,26 @@ async function submitContactModal(){
 document.getElementById('contact-overlay').addEventListener('click',function(e){
   if(e.target===this) this.style.display='none';
 });
+
+// ── תפריט המבורגר (מובייל) ──
+function toggleMobileMenu(){ document.getElementById('mobileMenu').classList.toggle('open'); }
+function closeMobileMenu(){ document.getElementById('mobileMenu').classList.remove('open'); }
+
+// ── זיהוי אם ה-PWA כבר מותקנת במכשיר → באנר "פתח באפליקציה" ──
+function dismissAppBanner(){
+  var b=document.getElementById('app-banner'); if(b) b.style.display='none';
+  try{ sessionStorage.setItem('dabeluAppBannerHidden','1'); }catch(e){}
+}
+(function(){
+  try{ if(sessionStorage.getItem('dabeluAppBannerHidden')) return; }catch(e){}
+  // נתמך באנדרואיד/דסקטופ Chrome; ב-iOS פשוט לא יעשה כלום
+  if(!('getInstalledRelatedApps' in navigator)) return;
+  navigator.getInstalledRelatedApps().then(function(apps){
+    if(apps && apps.length>0){
+      var b=document.getElementById('app-banner'); if(b) b.style.display='flex';
+    }
+  }).catch(function(){});
+})();
 </script>
 </body>
 </html>
