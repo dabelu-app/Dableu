@@ -203,27 +203,19 @@ module.exports = async (req, res) => {
   if (doEmail && workerEmail) {
     const emailSubject = isReminder ? `תזכורת: ${taskTitle}` : `משימה חדשה: ${taskTitle}`;
 
-    // אייקון במסגרת סגולה מרובעת (כמו אפליקציה) — עובד בכל email client
-    // SVG base64 בתוך תא עם border סגול
-    const iconBox = (svgB64, alt, borderColor) => {
-      const c = borderColor || '#6F4CFC';
-      return `<table cellpadding="0" cellspacing="0" style="display:inline-table"><tr><td style="border:1.5px solid ${c};border-radius:8px;padding:5px;vertical-align:middle;line-height:0"><img src="data:image/svg+xml;base64,${svgB64}" width="20" height="20" alt="${alt}" style="display:block"></td></tr></table>`;
-    };
+    // אייקוני outline עם מסגרת סגולה — מאוחסנים ב-Firebase (HTTPS — עובד ב-Gmail)
+    const CDN = 'https://dabelu.web.app/icons';
+    const iconBox = (name, alt) =>
+      `<table cellpadding="0" cellspacing="0" style="display:inline-table;vertical-align:middle"><tr><td style="border:1.5px solid #6F4CFC;border-radius:8px;padding:5px;line-height:0"><img src="${CDN}/${name}.svg" width="20" height="20" alt="${alt}" style="display:block"></td></tr></table>`;
+    const iconBoxHeader = (name, alt) =>
+      `<table cellpadding="0" cellspacing="0" style="display:inline-table;vertical-align:middle"><tr><td style="background:#5a3dd4;border-radius:8px;padding:5px;line-height:0"><img src="${CDN}/${name}-white.svg" width="20" height="20" alt="${alt}" style="display:block"></td></tr></table>`;
 
-    // base64 SVGs — outline style matching app icons
-    const B_CLIPBOARD = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2RjRDRkMiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik05IDVIN2EyIDIgMCAwIDAtMiAydjEyYTIgMiAwIDAgMCAyIDJoMTBhMiAyIDAgMCAwIDItMlY3YTIgMiAwIDAgMC0yLTJoLTIiLz48cmVjdCB4PSI5IiB5PSIzIiB3aWR0aD0iNiIgaGVpZ2h0PSI0IiByeD0iMSIvPjxsaW5lIHgxPSI5IiB5MT0iMTIiIHgyPSIxNSIgeTI9IjEyIi8+PGxpbmUgeDE9IjkiIHkxPSIxNiIgeDI9IjEzIiB5Mj0iMTYiLz48L3N2Zz4=';
-    const B_CALENDAR  = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2RjRDRkMiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHg9IjMiIHk9IjQiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiLz48bGluZSB4MT0iMTYiIHkxPSIyIiB4Mj0iMTYiIHkyPSI2Ii8+PGxpbmUgeDE9IjgiIHkxPSIyIiB4Mj0iOCIgeTI9IjYiLz48bGluZSB4MT0iMyIgeTE9IjEwIiB4Mj0iMjEiIHkyPSIxMCIvPjwvc3ZnPg==';
-    const B_USER      = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2RjRDRkMiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMCAyMXYtMmE0IDQgMCAwIDAtNC00SDhhNCA0IDAgMCAwLTQgNHYyIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+PC9zdmc+';
-    const B_CHECK     = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2RjRDRkMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSIyMCA2IDkgMTcgNCAxMiIvPjwvc3ZnPg==';
-    const B_BELL_W    = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0xOCA4QTYgNiAwIDAgMCA2IDhjMCA3LTMgOS0zIDloMThzLTMtMi0zLTkiLz48cGF0aCBkPSJNMTMuNzMgMjFhMiAyIDAgMCAxLTMuNDYgMCIvPjwvc3ZnPg==';
-    const B_TASK_W    = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik05IDVIN2EyIDIgMCAwIDAtMiAydjEyYTIgMiAwIDAgMCAyIDJoMTBhMiAyIDAgMCAwIDItMlY3YTIgMiAwIDAgMC0yLTJoLTIiLz48cmVjdCB4PSI5IiB5PSIzIiB3aWR0aD0iNiIgaGVpZ2h0PSI0IiByeD0iMSIvPjxsaW5lIHgxPSI5IiB5MT0iMTIiIHgyPSIxNSIgeTI9IjEyIi8+PGxpbmUgeDE9IjkiIHkxPSIxNiIgeDI9IjEzIiB5Mj0iMTYiLz48L3N2Zz4=';
-
-    const icoClipboard = iconBox(B_CLIPBOARD, '📋');
-    const icoCal       = iconBox(B_CALENDAR,  '📅');
-    const icoUser      = iconBox(B_USER,      '👤');
-    const icoCheck     = iconBox(B_CHECK,     '✓');
-    const icoBellW     = `<table cellpadding="0" cellspacing="0" style="display:inline-table"><tr><td style="background:#5a3dd4;border-radius:8px;padding:5px;vertical-align:middle;line-height:0"><img src="data:image/svg+xml;base64,${B_BELL_W}" width="20" height="20" alt="🔔" style="display:block"></td></tr></table>`;
-    const icoTaskW     = `<table cellpadding="0" cellspacing="0" style="display:inline-table"><tr><td style="background:#5a3dd4;border-radius:8px;padding:5px;vertical-align:middle;line-height:0"><img src="data:image/svg+xml;base64,${B_TASK_W}" width="20" height="20" alt="📋" style="display:block"></td></tr></table>`;
+    const icoClipboard = iconBox('task',     '📋');
+    const icoCal       = iconBox('calendar', '📅');
+    const icoUser      = iconBox('user',     '👤');
+    const icoCheck     = iconBox('check',    '✓');
+    const icoBellW     = iconBoxHeader('bell',  '🔔');
+    const icoTaskW     = iconBoxHeader('task',  '📋');
     const icoTask = icoClipboard;
 
     const headerText = isReminder ? 'תזכורת לביצוע משימה' : (isReassign ? 'משימה הועברה אליך' : 'משימה חדשה');
