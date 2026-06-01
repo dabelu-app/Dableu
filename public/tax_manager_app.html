@@ -3846,7 +3846,8 @@ function manualRemind(id){
     taskTitle:    t.title,
     employerName: S.user?.name||'',
     dueDate:      t.date||'',
-    isReminder:   true
+    isReminder:   true,
+    notifyPref:   member.notify||'whatsapp'
   };
   console.log('[manualRemind] sending to API:', JSON.stringify(body));
   fetch('https://dabelu.vercel.app/api/notify-task-assigned',{
@@ -3993,7 +3994,8 @@ function notifyWorkerTaskAssigned(workerName, taskTitle, dueDate, isReassign){
     taskTitle:    taskTitle,
     employerName: S.user?.name   || '',
     dueDate:      dueDate        || '',
-    isReassign:   !!isReassign
+    isReassign:   !!isReassign,
+    notifyPref:   member.notify  || 'whatsapp'
   };
   console.log('[notify-task] שולח התראה:', {cleanPhone, cleanEmail, workerName, taskTitle});
   // שלח ברקע — לא חוסם את ה-UI

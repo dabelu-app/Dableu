@@ -1,4 +1,5 @@
-const fetch = require('node-fetch');
+const fetch    = require('node-fetch');
+const nodemailer = require('nodemailer');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT = 'dabelu';
@@ -105,6 +106,28 @@ async function sendPushToEmail(email, title, body) {
   } catch(e) { console.error('sendPushToEmail error:', e); return 0; }
 }
 
+// ── שליחת מייל אמיתי לעובד ──
+async function sendEmail(to, subject, htmlBody) {
+  if (!to || !process.env.ZOHO_PASS) return false;
+  try {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.zoho.com', port: 587, secure: false,
+      auth: { user: 'tasks@dabelu.pro', pass: process.env.ZOHO_PASS }
+    });
+    await transporter.sendMail({
+      from: '"Dabelu Tasks" <tasks@dabelu.pro>',
+      to,
+      subject,
+      html: htmlBody
+    });
+    console.log(`[notify-task-assigned] email sent to ${to}`);
+    return true;
+  } catch(e) {
+    console.error('[notify-task-assigned] email error:', e.message);
+    return false;
+  }
+}
+
 // ═══════════════════════════════════════════
 // Handler ראשי
 // ═══════════════════════════════════════════
@@ -150,22 +173,21 @@ module.exports = async (req, res) => {
     pushBody  = `שובצה אליך על ידי ${employerName || 'המעסיק'}${dueDate ? ' · ' + fmtDate(dueDate) : ''}`;
   }
 
-  // ── קבע אם לשלוח WA / Push לפי העדפה ──
-  // notifyPref: 'whatsapp'=רק WA, 'email'=רק Push, 'both'=שניהם, undefined=WA אם יש טלפון
-  const pref = notifyPref || 'whatsapp';
-  const sendWA   = (pref === 'whatsapp' || pref === 'both') && !!workerPhone;
-  const sendPush = (pref === 'email'    || pref === 'both') && !!workerEmail;
-  // fallback: אם אין העדפה ויש טלפון — שלח WA
-  const sendWAFallback = !notifyPref && !!workerPhone;
+  // ── קבע ערוצי שליחה לפי העדפת העובד ──
+  // notifyPref: 'whatsapp'=רק WA, 'email'=רק מייל, 'both'=שניהם
+  const pref = notifyPref || (workerPhone ? 'whatsapp' : 'email');
+  const doWA    = (pref === 'whatsapp' || pref === 'both') && !!workerPhone;
+  const doEmail = (pref === 'email'    || pref === 'both') && !!workerEmail;
 
-  console.log(`[notify-task-assigned] workerName="${workerName}" phone="${workerPhone}" email="${workerEmail}" pref="${pref}" isReminder=${!!isReminder} sendWA=${sendWA||sendWAFallback} sendPush=${sendPush}`);
-  let waSent  = false;
-  let pushSent = 0;
+  console.log(`[notify-task-assigned] worker="${workerName}" pref="${pref}" doWA=${doWA} doEmail=${doEmail} isReminder=${!!isReminder}`);
+
+  let waSent    = false;
+  let emailSent = false;
+  let pushSent  = 0;
 
   // ── שלח WhatsApp ──
-  if (sendWA || sendWAFallback) {
+  if (doWA) {
     const normalized = normalizePhone(workerPhone);
-    console.log(`[notify-task-assigned] WA phone raw="${workerPhone}" normalized="${normalized}" isReminder=${!!isReminder}`);
     if (normalized) {
       try {
         await sendWhatsApp(normalized + '@c.us', msgBody);
@@ -174,20 +196,27 @@ module.exports = async (req, res) => {
       } catch(e) {
         console.error('[notify-task-assigned] WA error:', e.message);
       }
-    } else {
-      console.warn('[notify-task-assigned] phone normalization failed — skipping WA');
     }
   }
 
-  // ── שלח Push Notification ──
-  if (sendPush || (!notifyPref && !!workerEmail && !workerPhone)) {
+  // ── שלח מייל אמיתי + Push ──
+  if (doEmail && workerEmail) {
+    // מייל HTML
+    const emailSubject = isReminder ? `📋 תזכורת: ${taskTitle}` : `📋 משימה חדשה: ${taskTitle}`;
+    const emailHtml = `
+      <div dir="rtl" style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:20px">
+        <h2 style="color:#6F4CFC">${isReminder ? '📋 תזכורת לביצוע משימה' : '📋 משימה חדשה'}</h2>
+        <p style="font-size:16px">${msgBody.replace(/\n/g,'<br>').replace(/\*/g,'')}</p>
+        <hr style="border:1px solid #eee;margin:20px 0"/>
+        <p style="color:#888;font-size:12px">נשלח מ-Dabelu Task Manager</p>
+      </div>`;
+    emailSent = await sendEmail(workerEmail, emailSubject, emailHtml);
+
+    // Push notification (בנוסף למייל)
     try {
       pushSent = await sendPushToEmail(workerEmail, pushTitle, pushBody);
-      console.log(`[notify-task-assigned] Push sent: ${pushSent}`);
-    } catch(e) {
-      console.error('[notify-task-assigned] Push error:', e.message);
-    }
+    } catch(e) { console.error('[notify-task-assigned] Push error:', e.message); }
   }
 
-  return res.status(200).json({ ok: true, waSent, pushSent });
+  return res.status(200).json({ ok: true, waSent, emailSent, pushSent });
 };
