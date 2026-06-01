@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v30';
+const CACHE_NAME = 'dabelu-v31';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -97,9 +97,9 @@ self.addEventListener('push', event => {
   };
   // בחר אייקון לפי סוג ההתראה
   const iconUrl = data.type === 'reminder'
-    ? 'https://dabelu.web.app/icons/bell.svg'
+    ? 'https://dabelu.web.app/icons/bell.png'
     : data.type === 'task'
-    ? 'https://dabelu.web.app/icons/task.svg'
+    ? 'https://dabelu.web.app/icons/check.png'
     : '/icon-w.png';
 
   event.waitUntil(
