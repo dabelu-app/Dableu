@@ -40,7 +40,7 @@ function fmtDate(d) {
 }
 
 // ── Push Notification לעובד לפי אימייל ──
-async function sendPushToEmail(email, title, body) {
+async function sendPushToEmail(email, title, body, type) {
   if (!email) return 0;
   // id יחיד להתראה — מאחד subscriptions מרובים לאותה רשומה ב-bell
   const notifId = Date.now() + Math.floor(Math.random() * 1000);
@@ -88,7 +88,7 @@ async function sendPushToEmail(email, title, body) {
       try {
         await webpush.sendNotification(
           { endpoint: f.endpoint?.stringValue, keys: JSON.parse(f.keys?.stringValue || '{}') },
-          JSON.stringify({ id: notifId, title, body, url: '/tax_manager_app.html' })
+          JSON.stringify({ id: notifId, title, body, type: type || 'task', url: '/tax_manager_app.html' })
         );
         sent++;
       } catch(e) {
@@ -293,7 +293,7 @@ module.exports = async (req, res) => {
 
     // Push notification (בנוסף למייל)
     try {
-      pushSent = await sendPushToEmail(workerEmail, pushTitle, pushBody);
+      pushSent = await sendPushToEmail(workerEmail, pushTitle, pushBody, isReminder ? 'reminder' : 'task');
     } catch(e) { console.error('[notify-task-assigned] Push error:', e.message); }
   }
 

@@ -98,9 +98,16 @@ self.addEventListener('push', event => {
   event.waitUntil(
     Promise.all([
       storeNotifInIDB(notif),
+      // בחר אייקון לפי סוג ההתראה
+      const iconUrl = data.type === 'reminder'
+        ? 'https://dabelu.web.app/icons/bell.svg'
+        : data.type === 'task'
+        ? 'https://dabelu.web.app/icons/task.svg'
+        : '/icon-w.png';
+
       self.registration.showNotification(notif.title, {
         body:    notif.body,
-        icon:    '/icon-w.png',
+        icon:    iconUrl,
         badge:   '/icon-w.png',
         dir:     'rtl',
         lang:    'he',
