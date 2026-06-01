@@ -3820,60 +3820,45 @@ function toggleTask(id){
 }
 function manualRemind(id){
   const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
-
-  // אל תשלח לבעל המשרד עצמו
-  if(isOwnerName(t.assignee)){
-    toast('ℹ️ זו משימה שלך — אין צורך בתזכורת לעצמך');
-    return;
+  if(!t.assignee || isOwnerName(t.assignee)){
+    toast('ℹ️ זו משימה שלך — אין צורך בתזכורת לעצמך');return;
   }
-
   const member=(S.team||[]).find(m=>m.name===t.assignee);
-  const rawDigits=(member?.phone||'').replace(/[^\d]/g,'');
+  if(!member){
+    toast(`⚠️ ${t.assignee} לא נמצא בניהול צוות — הוסיפי אותו`);return;
+  }
+  const rawDigits=(member.phone||'').replace(/[^\d]/g,'');
   const cleanPhone=rawDigits.length>=9?member.phone:'';
-  const cleanEmail=member?.email||'';
-  const notifyPref=member?.notify||'whatsapp';
-
-  if(!cleanPhone && !cleanEmail){
-    toast(`⚠️ חסרים פרטי קשר ל${t.assignee} — ערכי את העובד בניהול צוות`);
-    return;
+  const cleanEmail=member.email||'';
+  if(!cleanPhone&&!cleanEmail){
+    toast(`⚠️ חסר מספר וואטסאפ ל${t.assignee} — ערכי את העובד בניהול צוות`);return;
   }
 
   t.remindedAt=Date.now();
   S.reminders.push({task:t.title,assignee:t.assignee,time:timeStr(),type:'ידנית',auto:false});
-  _saveTasks();
-  renderPage();
+  _saveTasks();renderPage();
 
-  // שלח בפועל לפי העדפת העובד
+  // בדיוק אותה שיטה כמו notifyWorkerTaskAssigned שעובדת
   const body={
-    workerPhone:  (notifyPref==='whatsapp'||notifyPref==='both')?cleanPhone:'',
-    workerEmail:  (notifyPref==='email'   ||notifyPref==='both')?cleanEmail:'',
+    workerPhone:  cleanPhone,
+    workerEmail:  cleanEmail,
     workerName:   t.assignee,
     taskTitle:    t.title,
     employerName: S.user?.name||'',
     dueDate:      t.date||'',
-    isReminder:   true,
-    notifyPref:   notifyPref
+    isReminder:   true
   };
-  // fallback: אם לא הוגדרה העדפה — שלח למה שיש
-  if(!body.workerPhone && !body.workerEmail){ body.workerPhone=cleanPhone; body.workerEmail=cleanEmail; }
-
-  const channel=notifyPref==='email'?'Push':notifyPref==='both'?'וואטסאפ+Push':'וואטסאפ';
-  toast(`📤 שולח תזכורת ב${channel} ל${t.assignee}...`);
-
-  console.log('[manualRemind] sending:', JSON.stringify({...body, workerPhone: body.workerPhone||'(none)', workerEmail: body.workerEmail||'(none)'}));
-
+  console.log('[manualRemind] sending to API:', JSON.stringify(body));
   fetch('https://dabelu.vercel.app/api/notify-task-assigned',{
     method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
-  }).then(r=>{
-    console.log('[manualRemind] HTTP status:', r.status);
-    return r.json();
-  }).then(d=>{
-    console.log('[manualRemind] API response:', JSON.stringify(d));
+  }).then(r=>r.json()).then(d=>{
+    console.log('[manualRemind] API result:', JSON.stringify(d));
     if(d.waSent)         toast(`✅ תזכורת נשלחה ל${t.assignee} בוואטסאפ!`);
     else if(d.pushSent>0)toast(`✅ תזכורת נשלחה ל${t.assignee} כהתראה!`);
-    else                 toast(`⚠️ שליחה נכשלה (waSent=false) — בדקי מספר טלפון של ${t.assignee}`);
+    else if(!cleanPhone) toast(`⚠️ חסר מספר וואטסאפ ל${t.assignee}`);
+    else                 toast(`⚠️ שליחה נכשלה — בדקי חיבור הבוט בהגדרות`);
   }).catch(e=>{
-    console.error('[manualRemind] fetch error:', e);
+    console.error('[manualRemind] error:', e);
     toast(`⚠️ שגיאת רשת — תזכורת לא נשלחה`);
   });
 }
