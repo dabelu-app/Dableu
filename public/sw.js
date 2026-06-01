@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v29';
+const CACHE_NAME = 'dabelu-v30';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -95,16 +95,16 @@ self.addEventListener('push', event => {
     time:  new Date().toISOString(),
     read:  false
   };
+  // בחר אייקון לפי סוג ההתראה
+  const iconUrl = data.type === 'reminder'
+    ? 'https://dabelu.web.app/icons/bell.svg'
+    : data.type === 'task'
+    ? 'https://dabelu.web.app/icons/task.svg'
+    : '/icon-w.png';
+
   event.waitUntil(
     Promise.all([
       storeNotifInIDB(notif),
-      // בחר אייקון לפי סוג ההתראה
-      const iconUrl = data.type === 'reminder'
-        ? 'https://dabelu.web.app/icons/bell.svg'
-        : data.type === 'task'
-        ? 'https://dabelu.web.app/icons/task.svg'
-        : '/icon-w.png';
-
       self.registration.showNotification(notif.title, {
         body:    notif.body,
         icon:    iconUrl,
