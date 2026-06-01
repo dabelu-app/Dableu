@@ -1,9 +1,7 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch:   # הופעל ידנית בלבד — בוטל ה-trigger האוטומטי שיצר מיילי כשל
 
 permissions:
   contents: read
