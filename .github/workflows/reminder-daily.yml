@@ -1,0 +1,23 @@
+name: Daily Reminders Summary — 07:00 Israel
+
+on:
+  schedule:
+    # 04:00 UTC = 07:00 ישראל (UTC+3) — ראשון עד שישי
+    - cron: '0 4 * * 0-5'
+    # מוצאי שבת — 19:00 UTC (~22:00 ישראל)
+    - cron: '0 19 * * 6'
+  workflow_dispatch:
+
+jobs:
+  reminder-daily:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping reminder-daily endpoint
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://dabelu.vercel.app/api/cron?type=reminder-daily")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Warning: endpoint returned $STATUS"
+            exit 1
+          fi

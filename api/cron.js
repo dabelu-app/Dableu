@@ -8,6 +8,7 @@ const handlers = {
   'trial':           require('../lib/cron/trial-expiry-reminder'),
   'task-due':        require('../lib/cron/task-due-reminder'),
   'reminder-hourly': require('../lib/cron/reminder-hourly'),
+  'reminder-daily':  require('../lib/cron/reminder-daily'),
 };
 
 module.exports = async (req, res) => {
