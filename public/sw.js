@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v35';
+const CACHE_NAME = 'dabelu-v36';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -97,16 +97,17 @@ self.addEventListener('push', event => {
     time:  new Date().toISOString(),
     read:  false
   };
-  // לוגו דבליו בכל ההתראות (כמו שכל אפליקציה מציגה את הלוגו שלה בצד)
+  // אייקון גדול = לוגו דבליו; סמל הסוג מופיע כאימוג'י בתחילת הכותרת (🔔 תזכורת/פגישה, ✅ משימה)
   const iconUrl = 'https://dabelu.web.app/icon-w.png';
+  const typeEmoji = data.type === 'reminder' ? '🔔 ' : data.type === 'task' ? '✅ ' : '';
 
   event.waitUntil(
     Promise.all([
       storeNotifInIDB(notif),
-      self.registration.showNotification(notif.title, {
+      self.registration.showNotification(typeEmoji + notif.title, {
         body:    notif.body,
         icon:    iconUrl,
-        badge:   '/icon-w.png',
+        badge:   'https://dabelu.web.app/icon-w.png',
         dir:     'rtl',
         lang:    'he',
         vibrate: [200, 100, 200],
