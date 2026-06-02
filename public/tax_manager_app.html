@@ -7173,17 +7173,24 @@ document.addEventListener('DOMContentLoaded', function(){
     await handleAuthSuccess(user);
   }).catch(e => { if(e.code !== 'auth/no-auth-event') console.error('redirectResult:', e); });
 
-  // ── כניסה עם Google (Redirect — אמין בכל הדפדפנים) ──
+  // ── כניסה עם Google (Popup — לא תלוי ב-cookies של צד-שלישי; נפילה ל-Redirect אם החלון נחסם) ──
   window.signInWithGoogle = async function() {
     const aerr = document.getElementById('aerr');
     const btn  = document.getElementById('btn-google');
     try {
-      if(aerr){ aerr.textContent = '⏳ מעביר לדף Google...'; aerr.style.color = '#6B5AFF'; }
+      if(aerr){ aerr.textContent = '⏳ פותח חלון Google...'; aerr.style.color = '#6B5AFF'; }
       if(btn){ btn.style.pointerEvents = 'none'; }
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
+      // onAuthStateChanged יזהה את המשתמש ויכניס אותו לאפליקציה
     } catch(err) {
       console.error('Google sign-in error:', err);
       if(btn){ btn.style.pointerEvents = ''; }
+      // המשתמש סגר את החלון — לא שגיאה
+      if (err && err.code === 'auth/popup-closed-by-user') { if(aerr){ aerr.textContent=''; } return; }
+      // החלון נחסם / לא נתמך — ננסה Redirect כגיבוי
+      if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/operation-not-supported-in-environment')) {
+        try { if(aerr){ aerr.textContent='⏳ מעביר לדף Google...'; } await signInWithRedirect(auth, provider); return; } catch(e2){ console.error('redirect fallback:', e2); }
+      }
       if(aerr){ aerr.textContent = 'שגיאה בכניסה עם Google — נסי שנית'; aerr.style.color = '#ef4444'; }
     }
   };
