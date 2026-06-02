@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v33';
+const CACHE_NAME = 'dabelu-v34';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -29,9 +29,11 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // דלג על בקשות חיצוניות
+  // דלג על בקשות חיצוניות + נתיבי Firebase Auth (/__/auth/handler, iframe וכו')
+  // ה-SW אסור שיחטוף את הנתיבים האלה — אחרת כניסה עם Google (signInWithRedirect) נשברת
   if (
     url.hostname !== self.location.hostname ||
+    url.pathname.startsWith('/__/') ||
     url.pathname.startsWith('/api/') ||
     event.request.method !== 'GET'
   ) return;
