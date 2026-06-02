@@ -97,14 +97,17 @@ self.addEventListener('push', event => {
     time:  new Date().toISOString(),
     read:  false
   };
-  // אייקון גדול = לוגו דבליו; סמל הסוג מופיע כאימוג'י בתחילת הכותרת (🔔 תזכורת/פגישה, ✅ משימה)
+  // אייקון גדול = לוגו דבליו; סמל הסוג כאימוג'י בתחילת הכותרת (🔔 תזכורת/פגישה, ✅ משימה)
   const iconUrl = 'https://dabelu.web.app/icon-w.png';
-  const typeEmoji = data.type === 'reminder' ? '🔔 ' : data.type === 'task' ? '✅ ' : '';
+  const typeEmoji = data.type === 'reminder' ? '🔔' : data.type === 'task' ? '✅' : '';
+  // הוסף אימוג'י רק אם הכותרת לא כבר מתחילה בסמל/אימוג'י (למנוע כפילות)
+  const startsWithLetter = /^[\p{L}]/u.test((notif.title || '').trim());
+  const displayTitle = (typeEmoji && startsWithLetter) ? typeEmoji + ' ' + notif.title : notif.title;
 
   event.waitUntil(
     Promise.all([
       storeNotifInIDB(notif),
-      self.registration.showNotification(typeEmoji + notif.title, {
+      self.registration.showNotification(displayTitle, {
         body:    notif.body,
         icon:    iconUrl,
         badge:   'https://dabelu.web.app/icon-w.png',
