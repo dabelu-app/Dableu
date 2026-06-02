@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v34';
+const CACHE_NAME = 'dabelu-v35';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -97,12 +97,8 @@ self.addEventListener('push', event => {
     time:  new Date().toISOString(),
     read:  false
   };
-  // בחר אייקון לפי סוג ההתראה
-  const iconUrl = data.type === 'reminder'
-    ? 'https://dabelu.web.app/icons/bell.png'
-    : data.type === 'task'
-    ? 'https://dabelu.web.app/icons/check.png'
-    : '/icon-w.png';
+  // לוגו דבליו בכל ההתראות (כמו שכל אפליקציה מציגה את הלוגו שלה בצד)
+  const iconUrl = 'https://dabelu.web.app/icon-w.png';
 
   event.waitUntil(
     Promise.all([
