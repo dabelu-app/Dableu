@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v40';
+const CACHE_NAME = 'dabelu-v41';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -99,6 +99,8 @@ self.addEventListener('push', event => {
   };
   // אייקון שקוף — כדי שלא יופיע עיגול אפור עם האות D (ברירת מחדל של כרום)
   const iconUrl = 'https://dabelu.web.app/transparent.png';
+  // badge = האייקון הקטן בפינה → לוגו דבליו (W). אנדרואיד צובע אותו לצללית מונוכרום.
+  const badgeUrl = 'https://dabelu.web.app/icon-w.png';
   const typeEmoji = data.type === 'reminder' ? '🔔' : data.type === 'task' ? '✅' : '';
   // הוסף אימוג'י רק אם הכותרת לא כבר מתחילה בסמל/אימוג'י (למנוע כפילות)
   const startsWithLetter = /^[\p{L}]/u.test((notif.title || '').trim());
@@ -110,6 +112,7 @@ self.addEventListener('push', event => {
       self.registration.showNotification(displayTitle, {
         body:    notif.body,
         icon:    iconUrl,
+        badge:   badgeUrl,
         dir:     'rtl',
         lang:    'he',
         vibrate: [200, 100, 200],
