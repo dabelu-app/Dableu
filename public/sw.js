@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v36';
+const CACHE_NAME = 'dabelu-v37';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -97,8 +97,13 @@ self.addEventListener('push', event => {
     time:  new Date().toISOString(),
     read:  false
   };
-  // אייקון גדול = לוגו דבליו; סמל הסוג כאימוג'י בתחילת הכותרת (🔔 תזכורת/פגישה, ✅ משימה)
-  const iconUrl = 'https://dabelu.web.app/icon-w.png';
+  // אייקון = עיגול סגול עם סמל לבן לפי סוג (פעמון לתזכורת/פגישה, וי למשימה) — בלי לוגו ה-W
+  const iconUrl = data.type === 'task'
+    ? 'https://dabelu.web.app/icons/check-purple.png'
+    : 'https://dabelu.web.app/icons/bell-purple.png';
+  const badgeUrl = data.type === 'task'
+    ? 'https://dabelu.web.app/icons/check.png'
+    : 'https://dabelu.web.app/icons/bell.png';
   const typeEmoji = data.type === 'reminder' ? '🔔' : data.type === 'task' ? '✅' : '';
   // הוסף אימוג'י רק אם הכותרת לא כבר מתחילה בסמל/אימוג'י (למנוע כפילות)
   const startsWithLetter = /^[\p{L}]/u.test((notif.title || '').trim());
@@ -110,7 +115,7 @@ self.addEventListener('push', event => {
       self.registration.showNotification(displayTitle, {
         body:    notif.body,
         icon:    iconUrl,
-        badge:   'https://dabelu.web.app/icon-w.png',
+        badge:   badgeUrl,
         dir:     'rtl',
         lang:    'he',
         vibrate: [200, 100, 200],
