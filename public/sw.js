@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v39';
+const CACHE_NAME = 'dabelu-v40';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -97,7 +97,8 @@ self.addEventListener('push', event => {
     time:  new Date().toISOString(),
     read:  false
   };
-  // ללא אייקון בצד — המשתמשת ביקשה להסיר אותו
+  // אייקון שקוף — כדי שלא יופיע עיגול אפור עם האות D (ברירת מחדל של כרום)
+  const iconUrl = 'https://dabelu.web.app/transparent.png';
   const typeEmoji = data.type === 'reminder' ? '🔔' : data.type === 'task' ? '✅' : '';
   // הוסף אימוג'י רק אם הכותרת לא כבר מתחילה בסמל/אימוג'י (למנוע כפילות)
   const startsWithLetter = /^[\p{L}]/u.test((notif.title || '').trim());
@@ -108,6 +109,7 @@ self.addEventListener('push', event => {
       storeNotifInIDB(notif),
       self.registration.showNotification(displayTitle, {
         body:    notif.body,
+        icon:    iconUrl,
         dir:     'rtl',
         lang:    'he',
         vibrate: [200, 100, 200],
