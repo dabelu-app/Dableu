@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="wGrad" cx="50%" cy="45%" r="62%" fx="50%" fy="45%">
+      <stop offset="0%"   stop-color="#9580FF"/>
+      <stop offset="55%"  stop-color="#7B6AFF"/>
+      <stop offset="100%" stop-color="#5E4EE0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Inverted: white background -->
+  <rect width="1024" height="1024" rx="235" ry="235" fill="#ffffff"/>
+
+  <!-- W logo: outer purple, white gap, inner purple -->
+  <path d="M 108,188 L 392,838 L 512,456 L 632,838 L 916,188"
+        stroke="url(#wGrad)" stroke-width="258"
+        stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M 108,188 L 392,838 L 512,456 L 632,838 L 916,188"
+        stroke="#ffffff" stroke-width="152"
+        stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M 108,188 L 392,838 L 512,456 L 632,838 L 916,188"
+        stroke="url(#wGrad)" stroke-width="100"
+        stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
