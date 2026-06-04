@@ -5228,11 +5228,20 @@ async function saveSection(id){
       const _src=(waPhone||phone||'').replace(/[^\d]/g,'');
       let _newChatId='';
       if(_src) _newChatId = _src.startsWith('972') ? _src : (_src.startsWith('0') ? '972'+_src.slice(1) : '972'+_src);
+      const _oldChatId = S.user.chatId||'';
       const _profile={name,phone,waPhone,role,officeName:S.user.officeName};
       if(_newChatId){ S.user.chatId=_newChatId; _profile.chatId=_newChatId; }
       _saveToLocalStorage();
       if(S.user?.uid && window.saveUserProfileToDB){
         await window.saveUserProfileToDB(S.user.uid,_profile);
+      }
+      // אם מספר הוואטסאפ באמת השתנה — שלח הודעת ברכה למספר החדש דרך הבוט
+      if(_newChatId && _newChatId !== _oldChatId){
+        const _fn=(name||'').split(' ')[0]||'';
+        try{
+          fetch('https://dabelu.vercel.app/api/cron?type=notify-number-change&chatId='+encodeURIComponent(_newChatId)+'&name='+encodeURIComponent(_fn),{mode:'no-cors'});
+          toast('📲 נשלחה הודעת אישור למספר החדש');
+        }catch(_){}
       }
     }
     if(id==='office'){
