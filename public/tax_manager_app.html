@@ -6241,7 +6241,11 @@ document.addEventListener('DOMContentLoaded', function(){
     let existing     = null;
 
     // חיפוש לפי מייל — הדרך הבטוחה ביותר למנוע כפל חשבונות
-    const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+    let emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+    if (emailSnap.empty) {
+      // נסה לפי מייל קודם (אם המשתמש שינה מייל) — מונע נעילת משתמשי Google בחוץ
+      emailSnap = await getDocs(query(collection(db, 'users'), where('prevEmail', '==', email)));
+    }
     if (!emailSnap.empty) {
       // השתמש תמיד בחשבון הקיים לפי מייל — אף פעם לא יווצרו שני חשבונות לאותו מייל
       canonicalUid = emailSnap.docs[0].id;
@@ -7285,7 +7289,11 @@ document.addEventListener('DOMContentLoaded', function(){
     if (!result || !result.user) return;
     const user  = result.user;
     const email = (user.email || '').toLowerCase();
-    const snap  = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+    let snap  = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+    if (snap.empty) {
+      // המשתמש אולי שינה מייל — חפש לפי המייל הקודם כדי לא לנעול בחוץ (במיוחד כניסת Google)
+      snap = await getDocs(query(collection(db, 'users'), where('prevEmail', '==', email)));
+    }
     if (snap.empty) {
       await signOut(auth);
       authShowTab('reg');
