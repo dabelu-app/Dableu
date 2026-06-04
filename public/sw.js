@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v50';
+const CACHE_NAME = 'dabelu-v51';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
@@ -100,9 +100,9 @@ self.addEventListener('push', event => {
   // אייקון גדול לפי סוג ההתראה: משימה=וי, פגישה=יומן, תזכורת=פעמון (עיגול סגול)
   const ICONS = 'https://dabelu.web.app/icons/';
   let iconUrl;
-  if (data.type === 'task')                                     iconUrl = ICONS + 'check-purple.png';
-  else if (data.type === 'meeting' || data.type === 'appointment') iconUrl = ICONS + 'calendar-purple.png';
-  else                                                          iconUrl = ICONS + 'bell-purple.png'; // reminder / ברירת מחדל
+  if (data.type === 'task')                                     iconUrl = ICONS + 'task-icon.png';      // יומן + וי
+  else if (data.type === 'meeting' || data.type === 'appointment') iconUrl = ICONS + 'meeting-icon.png';   // שני אנשים
+  else                                                          iconUrl = ICONS + 'reminder-icon.png';  // פעמון (תזכורת / ברירת מחדל)
   // אייקון קטן (badge) — סגול, תואם לסוג
   const badgeUrl = iconUrl;
   const typeEmoji = data.type === 'reminder' ? '🔔' : data.type === 'task' ? '✅' : '';
