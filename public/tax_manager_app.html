@@ -951,7 +951,7 @@ textarea.form-input{resize:vertical}
 <!-- ══════════ MODAL: ADD APPOINTMENT ══════════ -->
 <div class="modal-overlay" id="m-add-appt" onclick="if(event.target===this)closeModal('add-appt')">
   <div class="modal-box" style="max-width:420px">
-    <div class="modal-title">🤝 הוספת פגישה</div>
+    <div class="modal-title" id="add-appt-title">🤝 הוספת פגישה</div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <div class="form-row"><label class="form-label">שם לקוח / נושא *</label><input class="form-input" id="appt-client" placeholder="אור נשר"/></div>
       <div class="form-row"><label class="form-label">כותרת הפגישה</label><input class="form-input" id="appt-title" placeholder="פגישה עם לקוח"/></div>
@@ -963,7 +963,7 @@ textarea.form-input{resize:vertical}
     </div>
     <div class="modal-footer" style="margin-top:12px">
       <button class="btn" onclick="closeModal('add-appt')">ביטול</button>
-      <button class="btn primary" onclick="saveAddAppointment()">שמור פגישה</button>
+      <button class="btn primary" id="add-appt-save" onclick="saveAddAppointment()">שמור פגישה</button>
     </div>
   </div>
 </div>
@@ -3102,6 +3102,10 @@ function renderAppointmentsPage(){
         <div style="font-size:11px;padding:3px 8px;border-radius:20px;background:${isPast?'var(--surface3)':'var(--success-bg)'};color:${isPast?'var(--text3)':'var(--success)'}">
           ${isPast?'עבר':'מאושר'}
         </div>
+        <button onclick="openEditAppointmentModal('${safeId}')"
+          title="ערוך פגישה"
+          style="background:none;border:1.5px solid var(--accent);border-radius:8px;padding:4px 8px;cursor:pointer;color:var(--accent);font-size:14px;line-height:1;transition:background .15s"
+          onmouseenter="this.style.background='var(--accent-light)'" onmouseleave="this.style.background='none'">✏️</button>
         <button onclick="deleteAppointment('${safeId}','${safeEventId}')"
           title="מחק פגישה"
           style="background:none;border:1.5px solid #fca5a5;border-radius:8px;padding:4px 8px;cursor:pointer;color:#dc2626;font-size:14px;line-height:1;transition:background .15s"
@@ -4209,6 +4213,10 @@ function confirmAssignClient(){
 //  ADD APPOINTMENT MANUALLY
 // ══════════════════════════════════════
 function openAddAppointmentModal(){
+  S._editingApptId=null;
+  // החזר את המודאל למצב "הוספה"
+  const t=document.getElementById('add-appt-title'); if(t) t.textContent='🤝 הוספת פגישה';
+  const b=document.getElementById('add-appt-save'); if(b) b.textContent='שמור פגישה';
   const d=new Date();d.setDate(d.getDate()+1);
   document.getElementById('appt-date').value=d.toISOString().slice(0,10);
   document.getElementById('appt-time').value='09:00';
@@ -4218,18 +4226,58 @@ function openAddAppointmentModal(){
   openModal('add-appt');
   setTimeout(()=>document.getElementById('appt-client').focus(),80);
 }
+function openEditAppointmentModal(id){
+  const a=(S.appointments||[]).find(x=>String(x.id)===String(id));
+  if(!a){toast('⚠️ הפגישה לא נמצאה');return;}
+  S._editingApptId=String(id);
+  // העבר את המודאל למצב "עריכה"
+  const t=document.getElementById('add-appt-title'); if(t) t.textContent='✏️ עריכת פגישה';
+  const b=document.getElementById('add-appt-save'); if(b) b.textContent='שמור שינויים';
+  document.getElementById('appt-client').value=a.clientName||'';
+  document.getElementById('appt-title').value=a.title||'';
+  document.getElementById('appt-date').value=a.date||'';
+  document.getElementById('appt-time').value=a.time||'';
+  document.getElementById('appt-notes').value=a.notes||'';
+  openModal('add-appt');
+  setTimeout(()=>document.getElementById('appt-client').focus(),80);
+}
 function saveAddAppointment(){
   const client=(document.getElementById('appt-client').value||'').trim();
   const dateVal=document.getElementById('appt-date').value||'';
   if(!client){toast('⚠️ יש להזין שם לקוח');return;}
   if(!dateVal){toast('⚠️ יש לבחור תאריך');return;}
+  const title=(document.getElementById('appt-title').value||'').trim() || 'פגישה עם '+client;
+  const time=document.getElementById('appt-time').value||'';
+  const notes=document.getElementById('appt-notes').value||'';
+
+  // ── מצב עריכה: עדכון פגישה קיימת (בלי למחוק/ליצור מחדש) ──
+  if(S._editingApptId){
+    const a=(S.appointments||[]).find(x=>String(x.id)===String(S._editingApptId));
+    if(a){
+      a.clientName=client; a.title=title; a.date=dateVal; a.time=time; a.notes=notes;
+      S.appointments.sort((x,y)=>(x.date||'').localeCompare(y.date||''));
+      // עדכן ב-Firestore רק את השדות שהשתנו (שומר googleEventId, type, chatId וכו')
+      if(window.updateAppointmentInDB) window.updateAppointmentInDB(a.id,{clientName:client,title,date:dateVal,time,notes});
+      try{
+        const key='dabelu_appts_'+(S.user?.uid||'guest');
+        localStorage.setItem(key,JSON.stringify(S.appointments));
+      }catch(e){}
+    }
+    S._editingApptId=null;
+    closeModal('add-appt');
+    renderPage();
+    toast(`✏️ הפגישה עודכנה`);
+    return;
+  }
+
+  // ── מצב הוספה ──
   const appt={
     id: Date.now(),
     clientName: client,
-    title: (document.getElementById('appt-title').value||'').trim() || 'פגישה עם '+client,
+    title: title,
     date: dateVal,
-    time: document.getElementById('appt-time').value||'',
-    notes: document.getElementById('appt-notes').value||'',
+    time: time,
+    notes: notes,
     createdAt: Date.now(),
     manual: true,
     userId: S.user?.uid || '',
@@ -6800,6 +6848,14 @@ document.addEventListener('DOMContentLoaded', function(){
       const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
       await setDoc(doc(db,'appointments',String(appt.id)), appt);
     }catch(e){ console.warn('saveAppointmentToDB:', e); }
+  };
+
+  // עדכון שדות נבחרים של פגישה קיימת (עריכה) — שומר על שאר השדות
+  window.updateAppointmentInDB = async function(apptId, fields){
+    try{
+      const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      await updateDoc(doc(db,'appointments',String(apptId)), fields);
+    }catch(e){ console.warn('updateAppointmentInDB:', e); }
   };
 
   // אם הלקוח המוזמן הוא גם משתמש Dabelu — שמור לו פגישה ביומן שלו
