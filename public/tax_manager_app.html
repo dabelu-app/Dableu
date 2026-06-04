@@ -3083,8 +3083,8 @@ function renderAppointmentsPage(){
   function apptCard(a){
     const d=new Date((a.date||'2000-01-01')+'T12:00:00');
     const isPast=(a.date||'')<now;
-    const safeId=(a.id||'').replace(/'/g,"\\'");
-    const safeEventId=(a.googleEventId||'').replace(/'/g,"\\'");
+    const safeId=String(a.id||'').replace(/'/g,"\\'");
+    const safeEventId=String(a.googleEventId||'').replace(/'/g,"\\'");
     return `<div style="background:var(--surface);border:1.5px solid ${isPast?'var(--border)':'var(--accent)'};border-radius:var(--radius-lg);padding:14px 16px;display:flex;align-items:flex-start;gap:12px;opacity:${isPast?.7:1}">
       <div style="width:44px;height:44px;border-radius:10px;background:${isPast?'var(--surface3)':'var(--accent-light)'};display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
         <div style="font-size:15px;font-weight:700;color:${isPast?'var(--text2)':'var(--accent)'};line-height:1">${(a.date||'').slice(8,10)}</div>
