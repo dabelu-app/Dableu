@@ -6818,7 +6818,9 @@ document.addEventListener('DOMContentLoaded', function(){
         const timeVal = raw.time||raw.meetingTime||raw.appointmentTime||raw.hour||'';
         const titleVal = raw.title||raw.name||raw.subject||raw.description||'פגישה';
         const clientVal = raw.clientName||raw.client||raw.name||raw.with||'';
-        return { id: d.id, ...raw, date: dateStr, time: timeVal,
+        // id חייב להיות מזהה המסמך האמיתי ב-Firestore (אחרי ...raw כדי ש-id פנימי לא ידרוס אותו)
+        // אחרת עדכון/מחיקה פוגעים במסמך הלא נכון ונוצרת כפילות
+        return { ...raw, id: d.id, date: dateStr, time: timeVal,
           title: titleVal, clientName: clientVal };
       });
       // מיזוג: פגישות Firestore + פגישות ידניות שעוד לא שמורות בFirestore (מניעת כפולות)
