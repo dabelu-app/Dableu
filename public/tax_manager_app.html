@@ -3462,7 +3462,7 @@ function renderOfficeSettings(){
     <div class="s-card-title">לוגו ופרטי משרד</div>
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
       <div class="logo-upload-zone" onclick="document.getElementById('lf').click()" title="לחץ להעלאת לוגו">
-        <span id="logo-emoji-s">📋</span><img id="logo-img-s" style="display:none"/>
+        <span id="logo-emoji-s" style="display:${S.office&&S.office.logo?'none':'inline'}">📋</span><img id="logo-img-s" src="${(S.office&&S.office.logo)||''}" style="display:${S.office&&S.office.logo?'block':'none'}"/>
       </div>
       <input type="file" id="lf" accept="image/*" style="display:none" onchange="prevLogo(this)"/>
       <div style="font-size:11px;color:var(--text2)">לחץ להעלאת לוגו המשרד<br/>PNG / JPG · 200×200px מומלץ</div>
@@ -5052,9 +5052,31 @@ function prevLogo(input){
   const f=input.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=e=>{
-    const img=document.getElementById('logo-img-s');
-    if(img){img.src=e.target.result;img.style.display='block';const em=document.getElementById('logo-emoji-s');if(em)em.style.display='none';}
-  };r.readAsDataURL(f);
+    const tmp=new Image();
+    tmp.onload=()=>{
+      // הקטנה ל-256px מקס' + דחיסה — כדי שהלוגו יהיה קטן ולא יחרוג ממגבלת Firestore
+      const max=256; let w=tmp.width||max, h=tmp.height||max;
+      if(w>h && w>max){h=Math.round(h*max/w); w=max;}
+      else if(h>=w && h>max){w=Math.round(w*max/h); h=max;}
+      let dataUrl;
+      try{
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(tmp,0,0,w,h);
+        dataUrl=c.toDataURL('image/png');
+      }catch(_){ dataUrl=e.target.result; }
+      // תצוגה
+      const img=document.getElementById('logo-img-s');
+      if(img){img.src=dataUrl;img.style.display='block';const em=document.getElementById('logo-emoji-s');if(em)em.style.display='none';}
+      // שמירה: state + מקומי + Firestore (מיד, כדי שיישמר גם בלי 'שמור')
+      if(!S.office) S.office={};
+      S.office.logo=dataUrl;
+      try{ _saveToLocalStorage(); }catch(_){}
+      if(S.user?.uid && window.saveUserProfileToDB){ window.saveUserProfileToDB(S.user.uid,{officeLogo:dataUrl}); }
+      toast('✅ הלוגו נשמר');
+    };
+    tmp.src=e.target.result;
+  };
+  r.readAsDataURL(f);
 }
 // ── שמירת overrides: שינויים ידניים למשימות WA (אחראי/סטטוס/הצמדה) ──
 function _taskOverridesKey(){
@@ -5171,6 +5193,7 @@ function _loadFromLocalStorage(){
       if(d.office.phone) S.office.phone=d.office.phone;
       if(d.office.email) S.office.email=d.office.email;
       if(d.office.addr) S.office.addr=d.office.addr;
+      if(d.office.logo) S.office.logo=d.office.logo;
     }
     if(d.notif) S.notif=d.notif;
   }catch(e){}
@@ -5219,7 +5242,8 @@ async function saveSection(id){
       _saveToLocalStorage();
       if(S.user?.uid && window.saveUserProfileToDB){
         await window.saveUserProfileToDB(S.user.uid,{
-          officeName,officePhone,officeEmail,officeAddr
+          officeName,officePhone,officeEmail,officeAddr,
+          officeLogo: (S.office&&S.office.logo)||''
         });
       }
     }
@@ -6242,6 +6266,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if(existing.officeEmail) S.office.email  = existing.officeEmail;
         if(existing.officeAddr)  S.office.addr   = existing.officeAddr;
         if(existing.officeName)  S.office.name   = existing.officeName;
+        if(existing.officeLogo)  S.office.logo   = existing.officeLogo;
         if(existing.notif)       S.notif         = existing.notif;
         const tasks    = await window.loadTasksFromDB(dataUid);
         const clients  = await window.loadClientsFromDB(dataUid);
@@ -6323,6 +6348,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if(adminData?.officeEmail) S.office.email = adminData.officeEmail;
         if(adminData?.officeAddr) S.office.addr = adminData.officeAddr;
         if(adminData?.officeName) S.office.name = adminData.officeName;
+        if(adminData?.officeLogo) S.office.logo = adminData.officeLogo;
         if(adminData?.notif) S.notif = adminData.notif;
         // טעינת משימות, צוות ולקוחות מ-Firestore לפני כניסה לאפליקציה
         try {
@@ -6399,6 +6425,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if(uData.officeEmail) S.office.email = uData.officeEmail;
         if(uData.officeAddr) S.office.addr = uData.officeAddr;
         if(uData.officeName) S.office.name = uData.officeName;
+        if(uData.officeLogo) S.office.logo = uData.officeLogo;
         // טעינת הגדרות התראות
         if(uData.notif) S.notif = uData.notif;
         // טעינת צוות, משימות ולקוחות מתוך dataUid (המעסיק במקרה של מנהל)
