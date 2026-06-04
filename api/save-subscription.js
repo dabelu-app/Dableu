@@ -1,4 +1,5 @@
-const fetch = require('node-fetch');
+const fetch  = require('node-fetch');
+const crypto = require('crypto');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT = 'dabelu';
@@ -11,12 +12,16 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { subscription, userId } = req.body;
-  if (!subscription) return res.status(400).json({ error: 'missing subscription' });
+  if (!subscription || !subscription.endpoint) return res.status(400).json({ error: 'missing subscription' });
+
+  // מזהה דטרמיניסטי לפי ה-endpoint → שמירה חוזרת מעדכנת את אותה רשומה (upsert)
+  // ובכך נמנעת כפילות רישומים לאותו מכשיר.
+  const docId = crypto.createHash('sha1').update(subscription.endpoint).digest('hex');
 
   await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/pushSubscriptions?key=${FIREBASE_API_KEY}`,
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/pushSubscriptions/${docId}?key=${FIREBASE_API_KEY}`,
     {
-      method: 'POST',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fields: {
