@@ -5223,9 +5223,16 @@ async function saveSection(id){
       S.user.waPhone=waPhone;
       S.user.role=role;
       S.user.initials=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      // נרמל את מספר הוואטסאפ ל-chatId (972XXXXXXXXX) כדי שהבוט יזהה הודעות מהמספר החדש.
+      // משתמשים במספר הוואטסאפ; אם ריק — נופלים למספר הנייד.
+      const _src=(waPhone||phone||'').replace(/[^\d]/g,'');
+      let _newChatId='';
+      if(_src) _newChatId = _src.startsWith('972') ? _src : (_src.startsWith('0') ? '972'+_src.slice(1) : '972'+_src);
+      const _profile={name,phone,waPhone,role,officeName:S.user.officeName};
+      if(_newChatId){ S.user.chatId=_newChatId; _profile.chatId=_newChatId; }
       _saveToLocalStorage();
       if(S.user?.uid && window.saveUserProfileToDB){
-        await window.saveUserProfileToDB(S.user.uid,{name,phone,waPhone,role,officeName:S.user.officeName});
+        await window.saveUserProfileToDB(S.user.uid,_profile);
       }
     }
     if(id==='office'){
