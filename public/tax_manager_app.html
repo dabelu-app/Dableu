@@ -3499,7 +3499,7 @@ function renderPersonalSettings(){
       <div class="form-row"><label class="form-label">שם פרטי</label><input class="form-input" id="ps-firstname" value="${nameParts[0]||''}"/></div>
       <div class="form-row"><label class="form-label">שם משפחה</label><input class="form-input" id="ps-lastname" value="${nameParts.slice(1).join(' ')||''}"/></div>
       <div class="form-row"><label class="form-label">טלפון נייד</label><input class="form-input" id="ps-phone" type="tel" placeholder="050-0000000" dir="ltr" value="${S.user?.phone||''}"/></div>
-      <div class="form-row"><label class="form-label">אימייל</label><input class="form-input" id="ps-email" type="email" value="${S.user?.email||''}" dir="ltr"/></div>
+      <div class="form-row"><label class="form-label">אימייל לקשר/התראות</label><input class="form-input" id="ps-email" type="email" value="${S.user?.contactEmail||S.user?.email||''}" dir="ltr"/><span class="form-hint">ההתחברות נשארת עם המייל שאיתו נפתח החשבון</span></div>
       <div class="form-row"><label class="form-label">תפקיד</label>
         <select class="form-input" id="ps-role">
           <option ${(S.user?.role||'')==='owner'?'selected':''}>בעל/ת משרד</option>
@@ -5263,29 +5263,27 @@ async function saveSection(id){
           toast('📲 נשלחה הודעת אישור למספר החדש');
         }catch(_){}
       }
-      // ── שינוי כתובת מייל ──
+      // ── עדכון כתובת מייל לקשר/התראות (לא משנה את מייל ההתחברות) ──
       const _newEmail=(document.getElementById('ps-email')?.value||'').trim().toLowerCase();
-      const _oldEmail=(S.user.email||'').trim().toLowerCase();
-      if(_newEmail && _newEmail!==_oldEmail){
+      const _curEmail=(S.user.contactEmail||S.user.email||'').trim().toLowerCase();
+      const _loginEmail=(S.user.email||'').trim();
+      if(_newEmail && _newEmail!==_curEmail){
         if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(_newEmail)){
           toast('⚠️ כתובת מייל לא תקינה');
-        } else if(S.user?.uid && window.changeUserEmail){
-          const _er=await window.changeUserEmail(S.user.uid,_newEmail,_oldEmail);
-          if(_er && _er.ok){
-            S.user.email=_newEmail;
-            _saveToLocalStorage();
-            try{
-              fetch('https://dabelu.vercel.app/api/cron?type=notify-email-change&newEmail='+encodeURIComponent(_newEmail)+'&oldEmail='+encodeURIComponent(_oldEmail)+'&name='+encodeURIComponent((name||'').split(' ')[0]||''),{mode:'no-cors'});
-            }catch(_){}
-            appAlert(
-              'כתובת המייל עודכנה ל-<b>'+_newEmail+'</b>.<br><br>מעכשיו ההתחברות והכניסה לאתר ולאפליקציה הן עם המייל החדש.<br><span style="font-size:13px;color:var(--text3)">(נשלחה הודעת אישור למייל החדש והתראה למייל הישן.)</span>',
-              'המייל עודכן בהצלחה ✅'
-            );
-          } else if(_er && _er.error==='email-taken'){
-            toast('⚠️ כתובת המייל הזו כבר בשימוש');
-          } else {
-            toast('⚠️ עדכון המייל נכשל');
+        } else {
+          S.user.contactEmail=_newEmail;
+          _saveToLocalStorage();
+          if(S.user?.uid && window.saveUserProfileToDB){
+            await window.saveUserProfileToDB(S.user.uid,{contactEmail:_newEmail});
           }
+          try{
+            fetch('https://dabelu.vercel.app/api/cron?type=notify-email-change&newEmail='+encodeURIComponent(_newEmail)+'&oldEmail='+encodeURIComponent(_curEmail)+'&name='+encodeURIComponent((name||'').split(' ')[0]||''),{mode:'no-cors'});
+          }catch(_){}
+          appAlert(
+            'כתובת המייל לקשר עודכנה ל-<b>'+_newEmail+'</b>.<br><br>'+
+            '<span style="color:#991b1b;font-weight:600">שימו לב:</span> ה<b>התחברות</b> לאתר ולאפליקציה תמשיך תמיד עם כתובת המייל שאיתה נפתח החשבון'+(_loginEmail?(' (<b>'+_loginEmail+'</b>)'):'')+'.<br>הכתובת החדשה משמשת ל<b>התראות וקשר עם הבוט</b> בלבד.',
+            'כתובת המייל לקשר עודכנה ✅'
+          );
         }
       }
     }
@@ -6326,6 +6324,7 @@ document.addEventListener('DOMContentLoaded', function(){
       if(existing) {
         if(existing.phone)       S.user.phone   = existing.phone;
         if(existing.waPhone)     S.user.waPhone = existing.waPhone;
+        if(existing.contactEmail)S.user.contactEmail = existing.contactEmail;
         if(existing.role)        S.user.role    = existing.role;
         if(existing.officePhone) S.office.phone  = existing.officePhone;
         if(existing.officeEmail) S.office.email  = existing.officeEmail;
@@ -6483,7 +6482,8 @@ document.addEventListener('DOMContentLoaded', function(){
           role: uData.role || 'employer',
           subscription: uData.subscription || 'trial',
           phone: uData.phone || '',
-          waPhone: uData.waPhone || ''
+          waPhone: uData.waPhone || '',
+          contactEmail: uData.contactEmail || ''
         };
         // טעינת פרטי משרד
         if(uData.officePhone) S.office.phone = uData.officePhone;
