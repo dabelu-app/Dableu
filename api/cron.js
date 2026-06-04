@@ -10,6 +10,7 @@ const handlers = {
   'reminder-hourly': require('../lib/cron/reminder-hourly'),
   'reminder-daily':  require('../lib/cron/reminder-daily'),
   'notify-number-change': require('../lib/cron/notify-number-change'),
+  'notify-email-change':  require('../lib/cron/notify-email-change'),
 };
 
 module.exports = async (req, res) => {

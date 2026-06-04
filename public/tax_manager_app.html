@@ -5243,6 +5243,28 @@ async function saveSection(id){
           toast('📲 נשלחה הודעת אישור למספר החדש');
         }catch(_){}
       }
+      // ── שינוי כתובת מייל ──
+      const _newEmail=(document.getElementById('ps-email')?.value||'').trim().toLowerCase();
+      const _oldEmail=(S.user.email||'').trim().toLowerCase();
+      if(_newEmail && _newEmail!==_oldEmail){
+        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(_newEmail)){
+          toast('⚠️ כתובת מייל לא תקינה');
+        } else if(S.user?.uid && window.changeUserEmail){
+          const _er=await window.changeUserEmail(S.user.uid,_newEmail,_oldEmail);
+          if(_er && _er.ok){
+            S.user.email=_newEmail;
+            _saveToLocalStorage();
+            try{
+              fetch('https://dabelu.vercel.app/api/cron?type=notify-email-change&newEmail='+encodeURIComponent(_newEmail)+'&oldEmail='+encodeURIComponent(_oldEmail)+'&name='+encodeURIComponent((name||'').split(' ')[0]||''),{mode:'no-cors'});
+            }catch(_){}
+            toast('✅ המייל עודכן ונשלחה הודעת אישור');
+          } else if(_er && _er.error==='email-taken'){
+            toast('⚠️ כתובת המייל הזו כבר בשימוש');
+          } else {
+            toast('⚠️ עדכון המייל נכשל');
+          }
+        }
+      }
     }
     if(id==='office'){
       // קריאה ישירה מהשדות
@@ -6684,6 +6706,18 @@ document.addEventListener('DOMContentLoaded', function(){
     try {
       await setDoc(doc(db, 'users', uid), data, { merge: true });
     } catch(e) { console.error('saveUserProfile:', e); }
+  };
+
+  // ── שינוי כתובת מייל (כולל בדיקת ייחודיות) ──
+  window.changeUserEmail = async function(uid, newEmailLower, oldEmail) {
+    try {
+      const snap = await getDocs(query(collection(db, 'users'), where('email', '==', newEmailLower)));
+      let taken = false;
+      snap.forEach(d => { if (d.id !== uid) taken = true; });
+      if (taken) return { ok: false, error: 'email-taken' };
+      await setDoc(doc(db, 'users', uid), { email: newEmailLower, prevEmail: oldEmail || '' }, { merge: true });
+      return { ok: true };
+    } catch(e) { return { ok: false, error: e.message }; }
   };
 
   // ── שינוי סיסמה ──
