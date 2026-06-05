@@ -1371,19 +1371,6 @@ module.exports = async (req, res) => {
     }
   }
 
-  // ── אבחון זמני: שמור כל הודעה שאינה טקסט (כדי לראות אם איש קשר מגיע ומה מבנהו) ──
-  if (msgType && msgType !== 'textMessage') {
-    fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/admin_main/data/lastIncoming?key=${FIREBASE_API_KEY}`,
-      { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: {
-          raw:   { stringValue: JSON.stringify(messageData || {}).slice(0, 6000) },
-          type:  { stringValue: msgType || '' },
-          phone: { stringValue: sharedPhone || '' },
-          from:  { stringValue: phone || '' },
-          at:    { stringValue: new Date().toISOString() }
-        }})
-      }).catch(()=>{});
-  }
 
   // ── שלוף מסמך משתמש (כולל pending ו-calId) ──
   let userDoc = null;
