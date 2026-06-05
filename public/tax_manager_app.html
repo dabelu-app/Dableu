@@ -3480,6 +3480,7 @@ function renderOfficeSettings(){
       <div style="font-size:11px;color:var(--text2)">לחץ להעלאת לוגו המשרד<br/>PNG / JPG · 200×200px מומלץ</div>
     </div>
     <div class="form-grid">
+      <div class="form-row full"><label class="form-label">מייל התחברות (קבוע)</label><input class="form-input" value="${S.user?.email||''}" dir="ltr" readonly disabled style="background:var(--surface3);color:var(--text2);cursor:not-allowed"/><span class="form-hint">זהו המייל שאיתו נפתח החשבון ומתחברים — לא ניתן לשינוי. לעדכון מייל לקשר/התראות: מידע אישי.</span></div>
       <div class="form-row"><label class="form-label">שם המשרד</label><input class="form-input" id="of-name" value="${S.office.name||''}"/></div>
       <div class="form-row"><label class="form-label">מספר רישיון</label><input class="form-input" placeholder="000000000"/></div>
       <div class="form-row"><label class="form-label">טלפון ראשי</label><input class="form-input" id="of-phone" type="tel" value="${S.office.phone||''}" dir="ltr"/></div>
@@ -6407,7 +6408,7 @@ document.addEventListener('DOMContentLoaded', function(){
         const adminName = adminData?.name || 'שנית';
         const adminOfficeName = adminData?.officeName || 'ניהול';
         S.user = { uid: adminUid, name: adminName, email: em, initials: adminName.slice(0,2).toUpperCase(), officeName: adminOfficeName,
-          phone: adminData?.phone||'', waPhone: adminData?.waPhone||'', role: adminData?.role||'' };
+          phone: adminData?.phone||'', waPhone: adminData?.waPhone||'', role: adminData?.role||'', contactEmail: adminData?.contactEmail||'' };
         if(adminData?.officePhone) S.office.phone = adminData.officePhone;
         if(adminData?.officeEmail) S.office.email = adminData.officeEmail;
         if(adminData?.officeAddr) S.office.addr = adminData.officeAddr;
