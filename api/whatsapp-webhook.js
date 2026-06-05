@@ -1350,6 +1350,21 @@ module.exports = async (req, res) => {
   const phone      = chatId ? chatId.replace('@c.us','').replace('@g.us','') : '';
   const inText     = msgType === 'textMessage' ? (messageData.textMessageData?.textMessage || '').trim() : '';
 
+  // ── תמיכה בשיתוף איש קשר (vCard): חילוץ מספר טלפון ושם מכרטיס הקשר ──
+  let sharedPhone = '', sharedContactName = '';
+  if (msgType === 'contactMessage' || msgType === 'contactMessageContact') {
+    const cd = messageData.contactMessageData || messageData.contactMessageContactData || {};
+    sharedContactName = (cd.displayName || '').trim();
+    const vcard = cd.vcard || '';
+    const waidM = vcard.match(/waid=(\d+)/);              // המספר הנקי של וואטסאפ
+    if (waidM) {
+      sharedPhone = waidM[1];
+    } else {
+      const telM = vcard.match(/TEL[^:]*:\s*([+\d\s\-().]+)/i);
+      if (telM) sharedPhone = telM[1].replace(/[^\d]/g, '');
+    }
+  }
+
   // ── שלוף מסמך משתמש (כולל pending ו-calId) ──
   let userDoc = null;
   try { userDoc = await getUserDoc(phone); } catch(err) { console.error('getUserDoc:', err); }
@@ -1583,6 +1598,14 @@ module.exports = async (req, res) => {
 
     // ── שלב: פרטי קשר של לקוח (מייל / ווצאפ / ללא) ──
     if (pending.step === 'ask_contact') {
+      // אם שותף איש קשר (כרטיס vCard) — השתמש במספר שלו ישירות
+      if (sharedPhone && /^\d{9,15}$/.test(sharedPhone)) {
+        const sp = sharedPhone.startsWith('972') ? sharedPhone : '972' + sharedPhone.replace(/^0/, '');
+        await upsertClient(pending.withName, '', sp, userDocId);
+        await sendInviteWithConfirmation(sp, pending.ownerName || ownerName, pending.date, pending.time, chatId, userDocName, pending.withName || '');
+        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
+        return res.status(200).send('ok');
+      }
       const txt = inText.trim();
 
       // ללא זימון
