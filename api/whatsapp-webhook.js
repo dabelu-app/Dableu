@@ -1368,17 +1368,21 @@ module.exports = async (req, res) => {
         const telM = mdStr.match(/TEL[^:]*:\s*([+\d\s\-().]{8,})/i);
         if (telM) sharedPhone = telM[1].replace(/[^\d]/g, '');
       }
-      // רשת ביטחון לאבחון: שמור את מבנה ההודעה המדויק (נמחק אחרי שנוודא שעובד)
-      fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/debug/lastContact?key=${FIREBASE_API_KEY}`,
-        { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fields: {
-            raw:   { stringValue: mdStr.slice(0, 5000) },
-            type:  { stringValue: msgType || '' },
-            phone: { stringValue: sharedPhone || '' },
-            at:    { stringValue: new Date().toISOString() }
-          }})
-        }).catch(()=>{});
     }
+  }
+
+  // ── אבחון זמני: שמור כל הודעה שאינה טקסט (כדי לראות אם איש קשר מגיע ומה מבנהו) ──
+  if (msgType && msgType !== 'textMessage') {
+    fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/admin_main/data/lastIncoming?key=${FIREBASE_API_KEY}`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: {
+          raw:   { stringValue: JSON.stringify(messageData || {}).slice(0, 6000) },
+          type:  { stringValue: msgType || '' },
+          phone: { stringValue: sharedPhone || '' },
+          from:  { stringValue: phone || '' },
+          at:    { stringValue: new Date().toISOString() }
+        }})
+      }).catch(()=>{});
   }
 
   // ── שלוף מסמך משתמש (כולל pending ו-calId) ──
