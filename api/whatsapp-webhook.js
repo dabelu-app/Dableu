@@ -1442,7 +1442,7 @@ module.exports = async (req, res) => {
   // ══════════════════════════════════════════
   // עיבוד שלבי קביעת פגישה
   // ══════════════════════════════════════════
-  if (pending && inText) {
+  if (pending && (inText || sharedPhone)) {
 
     // ── שלב: אישור/ביטול פגישה (כאשר המוזמן הוא משתמש מערכת) ──
     if (pending.step === 'confirm_appointment') {
