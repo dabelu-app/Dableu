@@ -7384,6 +7384,22 @@ document.addEventListener('DOMContentLoaded', function(){
         if(sess && sess.uid) {
           if(typeof S !== 'undefined') {
             S.user = { uid:sess.uid, name:sess.name, email:sess.email, initials:sess.initials, officeName:sess.officeName, subscription:sess.subscription||'trial', role:sess.role||'' };
+            // ה-session המקומי מינימלי — נטען את הפרופיל המלא מ-Firestore (מייל-קשר, טלפונים, פרטי משרד, לוגו)
+            try {
+              const ud = await loadUserData(sess.uid);
+              if(ud){
+                if(ud.contactEmail) S.user.contactEmail = ud.contactEmail;
+                if(ud.phone)        S.user.phone        = ud.phone;
+                if(ud.waPhone)      S.user.waPhone      = ud.waPhone;
+                if(ud.chatId)       S.user.chatId       = ud.chatId;
+                if(ud.officePhone)  S.office.phone       = ud.officePhone;
+                if(ud.officeEmail)  S.office.email       = ud.officeEmail;
+                if(ud.officeAddr)   S.office.addr        = ud.officeAddr;
+                if(ud.officeName)   S.office.name        = ud.officeName;
+                if(ud.officeLogo)   S.office.logo        = ud.officeLogo;
+                if(ud.notif)        S.notif              = ud.notif;
+              }
+            } catch(_){}
             try {
               const tasks   = await window.loadTasksFromDB(sess.uid);
               const clients = await window.loadClientsFromDB(sess.uid);
