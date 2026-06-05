@@ -1493,7 +1493,7 @@ function enterApp(){
   }
 }
 function logout(){
-  appConfirm('להתנתק מהחשבון?', _doLogout, 'התנתקות');
+  appConfirm('להתנתק מהחשבון?', _doLogout, 'התנתקות', 'יציאה', false);
 }
 function _doLogout(){
   // נקה את כל ה-Firestore listeners לפני ניקוי הסטייט
@@ -4991,9 +4991,17 @@ function closeModal(id){document.getElementById('m-'+id).classList.remove('open'
 
 // ── appConfirm: מחליף את browser confirm() שמוחסם ב-PWA/מובייל ──
 let _confirmCallback=null;
-function appConfirm(msg, onOK, title){
+function appConfirm(msg, onOK, title, okText, danger){
   document.getElementById('confirm-msg').textContent=msg;
   document.getElementById('confirm-title').textContent=title||'אישור מחיקה';
+  const okBtn=document.getElementById('confirm-ok-btn');
+  if(okBtn){
+    okBtn.textContent=okText||'מחק';
+    const isDanger=(danger!==false); // ברירת מחדל: אדום (מחיקה)
+    okBtn.style.background=isDanger?'#dc2626':'var(--accent)';
+    okBtn.style.borderColor=isDanger?'#dc2626':'var(--accent)';
+    okBtn.style.color='#fff';
+  }
   _confirmCallback=onOK;
   openModal('confirm');
 }
