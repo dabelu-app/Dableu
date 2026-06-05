@@ -1350,18 +1350,24 @@ module.exports = async (req, res) => {
   const phone      = chatId ? chatId.replace('@c.us','').replace('@g.us','') : '';
   const inText     = msgType === 'textMessage' ? (messageData.textMessageData?.textMessage || '').trim() : '';
 
-  // ── תמיכה בשיתוף איש קשר (vCard): חילוץ מספר טלפון ושם מכרטיס הקשר ──
+  // ── תמיכה בשיתוף איש קשר (vCard): חילוץ מספר טלפון ושם — חסין לכל מבנה ──
   let sharedPhone = '', sharedContactName = '';
-  if (msgType === 'contactMessage' || msgType === 'contactMessageContact') {
-    const cd = messageData.contactMessageData || messageData.contactMessageContactData || {};
-    sharedContactName = (cd.displayName || '').trim();
-    const vcard = cd.vcard || '';
-    const waidM = vcard.match(/waid=(\d+)/);              // המספר הנקי של וואטסאפ
-    if (waidM) {
-      sharedPhone = waidM[1];
-    } else {
-      const telM = vcard.match(/TEL[^:]*:\s*([+\d\s\-().]+)/i);
-      if (telM) sharedPhone = telM[1].replace(/[^\d]/g, '');
+  {
+    const mdStr = JSON.stringify(messageData || {});
+    if (/contact/i.test(msgType || '') || /vcard|waid=/i.test(mdStr)) {
+      const cd = messageData.contactMessageData
+              || messageData.contactMessageContactData
+              || (messageData.contactsArrayMessageData && (messageData.contactsArrayMessageData.contacts || [])[0])
+              || {};
+      sharedContactName = (cd.displayName || '').trim();
+      // עדיפות ל-waid (מספר וואטסאפ נקי), אחרת TEL מתוך ה-vCard
+      const waidM = mdStr.match(/waid=(\d{8,15})/);
+      if (waidM) {
+        sharedPhone = waidM[1];
+      } else {
+        const telM = mdStr.match(/TEL[^:]*:\s*([+\d\s\-().]{8,})/i);
+        if (telM) sharedPhone = telM[1].replace(/[^\d]/g, '');
+      }
     }
   }
 
