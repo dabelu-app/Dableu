@@ -93,13 +93,13 @@ async function sendWhatsAppReply(chatId, message) {
 // ───────────────────────────────────────────
 // Firestore — משתמשים
 // ───────────────────────────────────────────
-async function queryFirestoreByChatId(phone) {
+async function queryFirestoreByField(field, value) {
   const resp = await fetch(
     `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
     { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ structuredQuery:{
         from:[{collectionId:'users'}],
-        where:{ fieldFilter:{ field:{fieldPath:'chatId'}, op:'EQUAL', value:{stringValue:phone} }},
+        where:{ fieldFilter:{ field:{fieldPath:field}, op:'EQUAL', value:{stringValue:value} }},
         limit:1
       }})
     }
@@ -108,11 +108,28 @@ async function queryFirestoreByChatId(phone) {
   return Array.isArray(data) && data.length > 0 && data[0].document;
 }
 
+// תאימות לאחור
+async function queryFirestoreByChatId(phone) {
+  return queryFirestoreByField('chatId', phone);
+}
+
+// מזהה משתמש לפי מספר טלפון — מנסה chatId, ואם לא נמצא גם waPhone ו-phone,
+// בכל הווריאציות (972XXXXXXXXX / 0XXXXXXXXX). כך לקוח רשום מזוהה גם אם
+// המספר שמור אצלו בשדה אחר מ-chatId.
 async function getUserDoc(phone) {
-  let doc = await queryFirestoreByChatId(phone);
-  if (doc) return doc;
-  if (phone.startsWith('972')) { doc = await queryFirestoreByChatId('0'+phone.slice(3)); if (doc) return doc; }
-  if (phone.startsWith('0'))   { doc = await queryFirestoreByChatId('972'+phone.slice(1)); if (doc) return doc; }
+  const digits = (phone || '').replace(/[^\d]/g, '');
+  if (!digits) return null;
+  const variants = new Set();
+  variants.add(digits);
+  if (digits.startsWith('972')) variants.add('0' + digits.slice(3));
+  else if (digits.startsWith('0')) variants.add('972' + digits.slice(1));
+  else variants.add('972' + digits);
+  for (const field of ['chatId', 'waPhone', 'phone']) {
+    for (const v of variants) {
+      const doc = await queryFirestoreByField(field, v);
+      if (doc) return doc;
+    }
+  }
   return null;
 }
 
