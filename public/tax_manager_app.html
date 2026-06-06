@@ -529,6 +529,23 @@ textarea.form-input{resize:vertical}
     <input id="r-pass2" type="password" placeholder="אימות סיסמה *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
     <input id="r-phone" type="tel" placeholder="📱 מספר ווצאפ *" required style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;direction:ltr"/>
 
+    <!-- בחירת ערוץ התראות -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px">איך תרצו לקבל התראות?</div>
+      <div style="display:flex;gap:5px">
+        <label id="notif-wa-lbl" onclick="selectNotifCh('whatsapp')" style="flex:1;border:2px solid #6B5AFF;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#f0eeff;transition:all .2s">
+          <input type="radio" name="r-notif" id="r-notif-wa" value="whatsapp" checked style="display:none"/>
+          <div style="font-size:16px;margin-bottom:3px">📲</div>
+          <div style="font-size:12px;font-weight:700;color:#4c3fcc">וואטסאפ</div>
+        </label>
+        <label id="notif-email-lbl" onclick="selectNotifCh('email')" style="flex:1;border:2px solid #ddd;border-radius:10px;padding:10px 4px;cursor:pointer;text-align:center;background:#fff;transition:all .2s">
+          <input type="radio" name="r-notif" id="r-notif-email" value="email" style="display:none"/>
+          <div style="font-size:16px;margin-bottom:3px">📧</div>
+          <div style="font-size:12px;font-weight:700;color:#64748b">מייל</div>
+        </label>
+      </div>
+    </div>
+
     <!-- Plan Selection -->
     <div style="margin-bottom:14px">
       <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px">בחרי תכנית:</div>
@@ -3498,6 +3515,13 @@ function renderPersonalSettings(){
       <div class="form-row"><label class="form-label">שם משפחה</label><input class="form-input" id="ps-lastname" value="${nameParts.slice(1).join(' ')||''}"/></div>
       <div class="form-row"><label class="form-label">טלפון נייד</label><input class="form-input" id="ps-phone" type="tel" placeholder="050-0000000" dir="ltr" value="${S.user?.phone||''}"/></div>
       <div class="form-row"><label class="form-label">אימייל לקשר/התראות</label><input class="form-input" id="ps-email" type="email" value="${S.user?.contactEmail||S.user?.email||''}" dir="ltr"/><span class="form-hint">ההתחברות נשארת עם המייל שאיתו נפתח החשבון</span></div>
+      <div class="form-row"><label class="form-label">ערוץ התראות מועדף</label>
+        <select class="form-input" id="ps-notif-ch">
+          <option value="whatsapp" ${(S.user?.notifyChannel||'whatsapp')!=='email'?'selected':''}>📲 וואטסאפ</option>
+          <option value="email" ${(S.user?.notifyChannel)==='email'?'selected':''}>📧 מייל</option>
+        </select>
+        <span class="form-hint">איך לקבל התראות אם אין אפליקציה מותקנת</span>
+      </div>
       <div class="form-row"><label class="form-label">תפקיד</label>
         <select class="form-input" id="ps-role">
           <option ${(S.user?.role||'')==='owner'?'selected':''}>בעל/ת משרד</option>
@@ -5013,6 +5037,16 @@ function appAlert(msg, title, icon){
   openModal('alert');
 }
 window.appAlert=appAlert;
+// בחירת ערוץ התראות (הרשמה) — החלפת הדגשה ויזואלית
+function selectNotifCh(ch){
+  const wa=document.getElementById('notif-wa-lbl'), em=document.getElementById('notif-email-lbl');
+  const waR=document.getElementById('r-notif-wa'), emR=document.getElementById('r-notif-email');
+  const on={bd:'#6B5AFF',bg:'#f0eeff'}, off={bd:'#ddd',bg:'#fff'};
+  const set=(el,s)=>{ if(el){el.style.borderColor=s.bd;el.style.background=s.bg;} };
+  if(ch==='email'){ if(emR)emR.checked=true; set(em,on); set(wa,off); }
+  else            { if(waR)waR.checked=true; set(wa,on); set(em,off); }
+}
+window.selectNotifCh=selectNotifCh;
 function _confirmOK(){
   closeModal('confirm');
   if(typeof _confirmCallback==='function'){
@@ -5255,7 +5289,9 @@ async function saveSection(id){
       let _newChatId='';
       if(_src) _newChatId = _src.startsWith('972') ? _src : (_src.startsWith('0') ? '972'+_src.slice(1) : '972'+_src);
       const _oldChatId = S.user.chatId||'';
-      const _profile={name,phone,waPhone,role,officeName:S.user.officeName};
+      const _notifyCh = (document.getElementById('ps-notif-ch')?.value==='email')?'email':'whatsapp';
+      S.user.notifyChannel=_notifyCh;
+      const _profile={name,phone,waPhone,role,officeName:S.user.officeName,notifyChannel:_notifyCh};
       if(_newChatId){ S.user.chatId=_newChatId; _profile.chatId=_newChatId; }
       _saveToLocalStorage();
       if(S.user?.uid && window.saveUserProfileToDB){
@@ -6106,6 +6142,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var pass2  = (document.getElementById('r-pass2')?.value||'');
     var phone  = (document.getElementById('r-phone')?.value||'').trim();
     var plan   = document.querySelector('input[name="r-plan"]:checked')?.value || 'free';
+    var notifyCh = document.querySelector('input[name="r-notif"]:checked')?.value || 'whatsapp';
 
     var errEl = document.getElementById('reg-err');
     function showErr(msg){ if(errEl){errEl.textContent=msg;errEl.style.display='block';} else alert(msg); }
@@ -6125,7 +6162,7 @@ document.addEventListener('DOMContentLoaded', function(){
     btnReg.style.pointerEvents='none';
     try {
       if(typeof window.registerNewUser === 'function') {
-        var result = await window.registerNewUser(name, email, pass, office, plan, phone);
+        var result = await window.registerNewUser(name, email, pass, office, plan, phone, notifyCh);
         if(result.error){ showErr(result.error); return; }
         var initials=(first[0]+((last&&last[0])||'')).toUpperCase();
         S.user={name:name,email:email,initials:initials,officeName:office||'Dabelu',uid:result.uid,subscription:result.subscription,chatId:result.chatId||'',waPhone:result.chatId||'',phone:result.chatId||''};
@@ -6331,6 +6368,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if(existing.phone)       S.user.phone   = existing.phone;
         if(existing.waPhone)     S.user.waPhone = existing.waPhone;
         if(existing.contactEmail)S.user.contactEmail = existing.contactEmail;
+        if(existing.notifyChannel)S.user.notifyChannel = existing.notifyChannel;
         if(existing.role)        S.user.role    = existing.role;
         if(existing.officePhone) S.office.phone  = existing.officePhone;
         if(existing.officeEmail) S.office.email  = existing.officeEmail;
@@ -6489,7 +6527,8 @@ document.addEventListener('DOMContentLoaded', function(){
           subscription: uData.subscription || 'trial',
           phone: uData.phone || '',
           waPhone: uData.waPhone || '',
-          contactEmail: uData.contactEmail || ''
+          contactEmail: uData.contactEmail || '',
+          notifyChannel: uData.notifyChannel || 'whatsapp'
         };
         // טעינת פרטי משרד
         if(uData.officePhone) S.office.phone = uData.officePhone;
@@ -6693,7 +6732,7 @@ document.addEventListener('DOMContentLoaded', function(){
     return '972'+digits;
   }
 
-  window.registerNewUser = async function(name, email, pass, officeName, plan, phone) {
+  window.registerNewUser = async function(name, email, pass, officeName, plan, phone, notifyChannel) {
     const em = email.toLowerCase();
     // בדיקה שהמייל לא קיים כבר
     const existing = await getDocs(query(collection(db, 'users'), where('email', '==', em)));
@@ -6719,6 +6758,7 @@ document.addEventListener('DOMContentLoaded', function(){
       chatId: chatId,        // ← לזיהוי הודעות וואטסאפ
       waPhone: chatId,       // ← גיבוי
       phone: chatId,
+      notifyChannel: (notifyChannel === 'email' ? 'email' : 'whatsapp'),  // ← ערוץ התראות מועדף
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
       source: 'self-register'
