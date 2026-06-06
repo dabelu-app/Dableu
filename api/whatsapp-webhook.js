@@ -1180,7 +1180,7 @@ async function notifyWorkerOfTask(workerMember, taskTitle, senderName) {
 // pending.withEmail = מייל הלקוח (לזימון)
 // senderCalId       = יומן גוגל אישי של השולח (אם חובר)
 // ───────────────────────────────────────────
-async function finalizeAppointment(chatId, userDocName, pending, senderCalId, userId) {
+async function finalizeAppointment(chatId, userDocName, pending, senderCalId, userId, inviteeIsUser) {
   await clearPending(userDocName);
 
   const apptWith     = pending.withName     || '';
@@ -1261,9 +1261,16 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
   const inviteMsg    = apptEmail ? `\n📧 זימון נשלח ל-${apptEmail}` : '';
   const clientCalMsg = addedToClientCalendar ? `\n📅 נוסף גם ליומן של ${apptWith} אוטומטית!` : '';
 
-  await sendWhatsAppReply(chatId,
-    `✅ הפגישה נקבעה! 📆\n👤 עם: ${apptWith}\n📅 ${dateStr}${timeStr}${inviteMsg}${clientCalMsg}\n\n🔔 תקבל תזכורת יום לפני!`
-  );
+  if (inviteeIsUser) {
+    // המוזמן הוא משתמש רשום במערכת — נשלחה אליו בקשת אישור (אשר/בטל)
+    await sendWhatsAppReply(chatId,
+      `📩 נשלחה בקשת פגישה ל-${apptWith} 👤\n📅 ${dateStr}${timeStr}\n\n${apptWith} משתמש/ת ב-Dabelu — נשלחה אליו/ה בקשה לאשר את הפגישה.\n✅ תקבל/י עדכון כשי/תאשר/ת, והפגישה תיווסף ליומן שלו/ה.\n\n🔔 תקבל/י תזכורת יום לפני!`
+    );
+  } else {
+    await sendWhatsAppReply(chatId,
+      `✅ הפגישה נקבעה! 📆\n👤 עם: ${apptWith}\n📅 ${dateStr}${timeStr}${inviteMsg}${clientCalMsg}\n\n🔔 תקבל/י תזכורת יום לפני!`
+    );
+  }
 }
 
 function formatDateHebrew(dateStr) {
@@ -1326,9 +1333,11 @@ async function sendInviteWithConfirmation(clientPhoneClean, effectiveOwner, date
       clientName:  clientDisplayName || clientSavedName
     });
     await sendWhatsAppReply(waId, lines.join('\n'));
+    return true;  // המוזמן הוא משתמש רשום — נשלחה בקשת אישור
   } else {
     // לא משתמש מערכת — שלח זימון רגיל
     await sendWhatsAppReply(waId, buildInviteMessage(effectiveOwner, date, time));
+    return false;
   }
 }
 
@@ -1336,11 +1345,12 @@ async function tryFinalize(chatId, userDocName, pending, senderCalId, res, userI
   // Use stored ownerName from pending (persisted across messages) as primary source
   const effectiveOwner = pending.ownerName || ownerName || '';
   if (pending.withEmail || pending.withWhatsapp) {
+    let inviteeIsUser = false;
     if (pending.withWhatsapp && !pending.withEmail) {
       const phoneClean = pending.withWhatsapp.replace(/[-\s+]/g, '');
-      await sendInviteWithConfirmation(phoneClean, effectiveOwner, pending.date, pending.time, chatId, userDocName, pending.withName || '').catch(()=>{});
+      inviteeIsUser = await sendInviteWithConfirmation(phoneClean, effectiveOwner, pending.date, pending.time, chatId, userDocName, pending.withName || '').catch(()=>false);
     }
-    await finalizeAppointment(chatId, userDocName, pending, senderCalId, userId);
+    await finalizeAppointment(chatId, userDocName, pending, senderCalId, userId, inviteeIsUser);
   } else {
     await setPending(userDocName, { ...pending, step:'ask_contact', contactAskedAt: new Date().toISOString() });
     await sendWhatsAppReply(chatId,
@@ -1626,8 +1636,8 @@ module.exports = async (req, res) => {
       if (sharedPhone && /^\d{9,15}$/.test(sharedPhone)) {
         const sp = sharedPhone.startsWith('972') ? sharedPhone : '972' + sharedPhone.replace(/^0/, '');
         await upsertClient(pending.withName, '', sp, userDocId);
-        await sendInviteWithConfirmation(sp, pending.ownerName || ownerName, pending.date, pending.time, chatId, userDocName, pending.withName || '');
-        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
+        const inviteeIsUser = await sendInviteWithConfirmation(sp, pending.ownerName || ownerName, pending.date, pending.time, chatId, userDocName, pending.withName || '').catch(()=>false);
+        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'', withWhatsapp: sp }, senderCalId, userDocId, inviteeIsUser);
         return res.status(200).send('ok');
       }
       const txt = inText.trim();
@@ -1651,8 +1661,8 @@ module.exports = async (req, res) => {
       const phoneClean = txt.replace(/[-\s+]/g, '');
       if (/^\d{9,12}$/.test(phoneClean)) {
         await upsertClient(pending.withName, '', phoneClean, userDocId);
-        await sendInviteWithConfirmation(phoneClean, pending.ownerName || ownerName, pending.date, pending.time, chatId, userDocName, pending.withName || '');
-        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId);
+        const inviteeIsUser = await sendInviteWithConfirmation(phoneClean, pending.ownerName || ownerName, pending.date, pending.time, chatId, userDocName, pending.withName || '').catch(()=>false);
+        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId, inviteeIsUser);
         return res.status(200).send('ok');
       }
 
