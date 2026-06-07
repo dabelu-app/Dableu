@@ -525,8 +525,14 @@ textarea.form-input{resize:vertical}
     </div>
     <input id="r-office" type="text" placeholder="שם המשרד / החברה" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box"/>
     <input id="r-email" type="email" placeholder="אימייל *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
-    <input id="r-pass" type="password" placeholder="סיסמה (לפחות 6 תווים) *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
-    <input id="r-pass2" type="password" placeholder="אימות סיסמה *" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;direction:ltr"/>
+    <div style="position:relative;margin-bottom:8px">
+      <input id="r-pass" type="password" placeholder="סיסמה (לפחות 6 תווים) *" style="width:100%;padding:10px;padding-right:36px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;direction:ltr;text-align:left"/>
+      <span id="toggle-rpass" onclick="togglePw('r-pass','toggle-rpass')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#888;line-height:0;user-select:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+    </div>
+    <div style="position:relative;margin-bottom:8px">
+      <input id="r-pass2" type="password" placeholder="אימות סיסמה *" style="width:100%;padding:10px;padding-right:36px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;direction:ltr;text-align:left"/>
+      <span id="toggle-rpass2" onclick="togglePw('r-pass2','toggle-rpass2')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#888;line-height:0;user-select:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+    </div>
     <input id="r-phone" type="tel" placeholder="📱 מספר ווצאפ *" required style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;direction:ltr"/>
 
     <!-- בחירת ערוץ התראות -->
@@ -5047,6 +5053,16 @@ function selectNotifCh(ch){
   else            { if(waR)waR.checked=true; set(wa,on); set(em,off); }
 }
 window.selectNotifCh=selectNotifCh;
+// הצגה/הסתרה של שדה סיסמה (עין) — לשימוש חוזר
+function togglePw(inputId, iconId){
+  var f=document.getElementById(inputId), s=document.getElementById(iconId);
+  if(!f) return;
+  f.type=(f.type==='password')?'text':'password';
+  var open='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var off ='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  if(s) s.innerHTML=(f.type==='password')?open:off;
+}
+window.togglePw=togglePw;
 function _confirmOK(){
   closeModal('confirm');
   if(typeof _confirmCallback==='function'){
