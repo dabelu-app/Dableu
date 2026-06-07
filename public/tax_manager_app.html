@@ -6161,7 +6161,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var notifyCh = document.querySelector('input[name="r-notif"]:checked')?.value || 'whatsapp';
 
     var errEl = document.getElementById('reg-err');
-    function showErr(msg){ if(errEl){errEl.textContent=msg;errEl.style.display='block';} else alert(msg); }
+    function showErr(msg){ if(errEl){errEl.textContent=msg;errEl.style.color='#dc2626';errEl.style.fontWeight='600';errEl.style.display='block';} else alert(msg); }
 
     var emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
     if(!first||!email||!pass){ showErr('יש למלא שם, אימייל וסיסמה'); return; }
