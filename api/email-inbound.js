@@ -1,4 +1,5 @@
 const fetch = require('node-fetch');
+const { fsFetch } = require('../lib/firestore');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT = 'dabelu';
@@ -9,8 +10,8 @@ const FIREBASE_PROJECT = 'dabelu';
 async function isRegisteredEmail(email) {
   const emailLower = email.toLowerCase();
   const query = async (fieldPath, value) => {
-    const resp = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+    const resp = await fsFetch(
+      `:runQuery`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -46,8 +47,8 @@ async function saveTask(title, senderName, source, userId, assignee, assigneeEma
     createdAt:   { stringValue: new Date().toISOString() },
     description: { stringValue: description || '' }
   };
-  const resp = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:commit?key=${FIREBASE_API_KEY}`,
+  const resp = await fsFetch(
+    `:commit`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ writes: [{ transform: {
         document: `projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userId}/data/tasks`,
@@ -64,8 +65,8 @@ async function saveTask(title, senderName, source, userId, assignee, assigneeEma
 // ───────────────────────────────────────────
 async function createSharedTask(taskDocId, title, assigneeName, assigneeEmail, employerEmail, clientName) {
   try {
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/sharedTasks?documentId=${taskDocId}&key=${FIREBASE_API_KEY}`,
+    await fsFetch(
+      `/sharedTasks?documentId=${taskDocId}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -143,8 +144,8 @@ async function getTeamMembers(userDocId, userDocFields) {
 
   // מיקום 2: users/{uid}/data/team (sub-document)
   try {
-    const resp = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/data/team?key=${FIREBASE_API_KEY}`
+    const resp = await fsFetch(
+      `/users/${userDocId}/data/team`
     );
     const data = await resp.json();
     console.log(`📋 team subcollection raw:`, JSON.stringify(data).slice(0, 300));
@@ -158,8 +159,8 @@ async function getTeamMembers(userDocId, userDocFields) {
 
   // מיקום 3: users/{uid}/team (subcollection עם מסמכים נפרדים)
   try {
-    const resp = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/team?key=${FIREBASE_API_KEY}&pageSize=50`
+    const resp = await fsFetch(
+      `/users/${userDocId}/team&pageSize=50`
     );
     const data = await resp.json();
     if (data.documents && data.documents.length > 0) {

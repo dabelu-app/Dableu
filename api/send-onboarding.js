@@ -1,11 +1,21 @@
 const nodemailer = require('nodemailer');
 const fetch = require('node-fetch');
+const clientOnboarding = require('../lib/client-onboarding');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // ── טופס פרטי לקוח (public/onboarding.html) ──
+  // מנותב לכאן ולא לקובץ api נפרד בגלל מגבלת 12 ה-serverless functions
+  // של Vercel Hobby. הלוגיקה עצמה ב-lib/client-onboarding.js.
+  const action = (req.query && req.query.action) || '';
+  if (action === 'check')  return clientOnboarding.check(req, res);
+  if (action === 'submit') return clientOnboarding.submit(req, res);
+
+  // ── ברירת מחדל: אונבורדינג של מנוי Dabelu חדש ──
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   const { name, email, phone, plan } = req.body || {};

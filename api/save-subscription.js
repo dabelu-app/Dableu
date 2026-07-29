@@ -1,8 +1,7 @@
 const fetch  = require('node-fetch');
 const crypto = require('crypto');
+const { fsFetch } = require('../lib/firestore');
 
-const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
-const FIREBASE_PROJECT = 'dabelu';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,8 +17,8 @@ module.exports = async (req, res) => {
   // ובכך נמנעת כפילות רישומים לאותו מכשיר.
   const docId = crypto.createHash('sha1').update(subscription.endpoint).digest('hex');
 
-  await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/pushSubscriptions/${docId}?key=${FIREBASE_API_KEY}`,
+  await fsFetch(
+    `/pushSubscriptions/${docId}`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

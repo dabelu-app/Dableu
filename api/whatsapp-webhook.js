@@ -1,6 +1,7 @@
 const FormData = require('form-data');
 const fetch    = require('node-fetch');
 const { google } = require('googleapis');
+const { fsFetch, fsFetchV1 } = require('../lib/firestore');
 
 // ═══════════════════════════════════════════════════════════════════
 // לוח שנה עברי — מימוש מקומי, ללא ספריה חיצונית
@@ -76,6 +77,9 @@ console.log('[startup] Hebrew calendar: inline math v3 loaded OK (no @hebcal/cor
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT  = 'dabelu';
 const SITE_URL          = 'https://cosmic-daifuku-4d8c28.netlify.app';
+// בסיס הקישור לטופס פרטי הלקוח. חייב להצביע לפריסת Vercel, כי הטופס
+// פונה ל-/api/send-onboarding — ו-Firebase Hosting אינו מגיש /api כלל.
+const ONBOARDING_BASE_URL = process.env.PUBLIC_SITE_URL || 'https://dabelu.vercel.app';
 
 // ───────────────────────────────────────────
 // WhatsApp
@@ -94,8 +98,8 @@ async function sendWhatsAppReply(chatId, message) {
 // Firestore — משתמשים
 // ───────────────────────────────────────────
 async function queryFirestoreByField(field, value) {
-  const resp = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+  const resp = await fsFetch(
+    `:runQuery`,
     { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ structuredQuery:{
         from:[{collectionId:'users'}],
@@ -159,8 +163,8 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
   const docEmail = fallbackDoc?.fields?.email?.stringValue || '';
   if (docEmail) {
     try {
-      const r = await fetch(
-        `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+      const r = await fsFetch(
+        `:runQuery`,
         { method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ structuredQuery: {
             from:[{collectionId:'users'}],
@@ -187,8 +191,8 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
   for (const ph of variants) {
     for (const field of ['waPhone','phone','chatId']) {
       try {
-        const r = await fetch(
-          `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+        const r = await fsFetch(
+          `:runQuery`,
           { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ structuredQuery: {
               from:[{collectionId:'users'}],
@@ -236,8 +240,8 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
 }
 
 async function patchUserField(docName, fieldName, value) {
-  await fetch(
-    `https://firestore.googleapis.com/v1/${docName}?updateMask.fieldPaths=${fieldName}&key=${FIREBASE_API_KEY}`,
+  await fsFetchV1(
+    `${docName}?updateMask.fieldPaths=${fieldName}`,
     { method:'PATCH', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ fields:{ [fieldName]:{ stringValue: value } } }) }
   );
@@ -255,8 +259,8 @@ async function clearPending(docName) {
 // ───────────────────────────────────────────
 async function getClients(userId) {
   try {
-    const resp = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+    const resp = await fsFetch(
+      `:runQuery`,
       { method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ structuredQuery:{
           from:[{collectionId:'clients'}],
@@ -280,18 +284,41 @@ async function getClients(userId) {
 
 async function createClient(name, email, whatsapp, userId) {
   try {
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/clients?key=${FIREBASE_API_KEY}`,
+    // טוקן חד-פעמי לטופס הפרטים — נשרף אחרי המילוי
+    const onboardingToken = require('crypto').randomBytes(24).toString('base64url');
+    const resp = await fsFetch(
+      `/clients`,
       { method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ fields:{
-          name:      { stringValue: name      },
-          email:     { stringValue: email     || '' },
-          whatsapp:  { stringValue: whatsapp  || '' },
-          userId:    { stringValue: userId    || '' },
-          createdAt: { stringValue: new Date().toISOString() }
+          name:            { stringValue: name      },
+          email:           { stringValue: email     || '' },
+          whatsapp:        { stringValue: whatsapp  || '' },
+          userId:          { stringValue: userId    || '' },
+          onboardingToken: { stringValue: onboardingToken },
+          createdAt:       { stringValue: new Date().toISOString() }
         }})
       }
     );
+    const created  = await resp.json().catch(()=>null);
+    const clientId = created?.name?.split('/').pop();
+
+    // הודעת ברוכים הבאים עם קישור למילוי הפרטים
+    if (clientId && whatsapp) {
+      const digits = whatsapp.toString().replace(/[^\d]/g,'');
+      if (digits) {
+        const chatId = (digits.startsWith('972') ? digits : '972' + digits.replace(/^0/,'')) + '@c.us';
+        // חייב להיות הדומיין של Vercel: טופס האונבורדינג פונה ל-/api,
+        // ו-Firebase Hosting מנתב כל בקשה ל-tax_manager_app.html (אין שם /api).
+        const link   = `${ONBOARDING_BASE_URL}/onboarding.html?c=${clientId}&t=${onboardingToken}`;
+        await sendWhatsAppReply(chatId,
+          `שלום ${name}! 👋\n\n` +
+          `שמחים שהצטרפת אלינו.\n` +
+          `כדי שנוכל לפתוח ולנהל את התיק שלך, נשמח שתמלא/י טופס פרטים קצר — לוקח כ-3 דקות:\n\n` +
+          `${link}\n\n` +
+          `הקישור אישי וחד-פעמי. 💜`
+        ).catch(e => console.warn('welcome message failed:', e.message));
+      }
+    }
   } catch(e) { console.error('createClient error:', e); }
 }
 
@@ -306,8 +333,8 @@ async function upsertClient(name, email, whatsapp, userId) {
       if (whatsapp) fields.whatsapp = { stringValue: whatsapp };
       if (!Object.keys(fields).length) return;
       const masks = Object.keys(fields).map(k=>`updateMask.fieldPaths=${k}`).join('&');
-      await fetch(
-        `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/clients/${existing.id}?${masks}&key=${FIREBASE_API_KEY}`,
+      await fsFetch(
+        `/clients/${existing.id}?${masks}`,
         { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ fields }) }
       );
     } else {
@@ -833,8 +860,8 @@ async function createCalendarEvent(title, date, time, clientName, calendarId, cl
 // Firestore — שמירת פגישה / משימה
 // ───────────────────────────────────────────
 async function saveAppointment(title, date, time, clientName, chatId, googleEventId, userId) {
-  await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/appointments?key=${FIREBASE_API_KEY}`,
+  await fsFetch(
+    `/appointments`,
     { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ fields:{
         title:        {stringValue: title||''},
@@ -855,8 +882,8 @@ async function saveAppointment(title, date, time, clientName, chatId, googleEven
 
 // ── שמירת תזכורת (נרשמת באוסף appointments עם type='reminder' — מופיעה ביומן) ──
 async function saveReminder(title, date, time, chatId, userId) {
-  await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/appointments?key=${FIREBASE_API_KEY}`,
+  await fsFetch(
+    `/appointments`,
     { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ fields:{
         title:        {stringValue: title||''},
@@ -877,8 +904,8 @@ async function saveReminder(title, date, time, chatId, userId) {
 // מחיקת פגישה מ-Firestore לפי userId+date+clientName — מחזיר googleEventId
 async function cancelAppointmentInFirestore(ownerUserId, date, clientName) {
   try {
-    const resp = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+    const resp = await fsFetch(
+      `:runQuery`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ structuredQuery: {
           from: [{ collectionId: 'appointments' }],
@@ -900,7 +927,7 @@ async function cancelAppointmentInFirestore(ownerUserId, date, clientName) {
     const docPath       = doc.name;
     const googleEventId = doc.fields?.googleEventId?.stringValue || '';
 
-    await fetch(`https://firestore.googleapis.com/v1/${docPath}?key=${FIREBASE_API_KEY}`, { method: 'DELETE' });
+    await fsFetchV1(`${docPath}`, { method: 'DELETE' });
     console.log(`🗑️ appointment deleted: ${docPath} | googleEventId=${googleEventId}`);
     return googleEventId || null;
   } catch(e) {
@@ -951,8 +978,8 @@ async function getTeamMembers(userDocId, userDocFields) {
 
   // מיקום 2: users/{uid}/data/team (sub-document)
   try {
-    const resp = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/data/team?key=${FIREBASE_API_KEY}`
+    const resp = await fsFetch(
+      `/users/${userDocId}/data/team`
     );
     const data = await resp.json();
     console.log(`📋 team subcollection raw:`, JSON.stringify(data).slice(0, 300));
@@ -966,8 +993,8 @@ async function getTeamMembers(userDocId, userDocFields) {
 
   // מיקום 3: users/{uid}/team (subcollection עם מסמכים נפרדים)
   try {
-    const resp = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/team?key=${FIREBASE_API_KEY}&pageSize=50`
+    const resp = await fsFetch(
+      `/users/${userDocId}/team&pageSize=50`
     );
     const data = await resp.json();
     if (data.documents && data.documents.length > 0) {
@@ -1059,8 +1086,8 @@ async function saveTask(title, clientName, source, userDocId, assignee, assignee
     createdAt:   { stringValue: new Date().toISOString() },
     description: { stringValue: source !== 'whatsapp-text' ? '🎤 תומלל מהודעה קולית' : '' }
   };
-  const resp = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:commit?key=${FIREBASE_API_KEY}`,
+  const resp = await fsFetch(
+    `:commit`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ writes: [{ transform: {
         document: `projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/data/tasks`,
@@ -1075,8 +1102,8 @@ async function saveTask(title, clientName, source, userDocId, assignee, assignee
 // יצירת sharedTask כדי שהעובד יראה את המשימה
 async function createSharedTask(taskDocId, title, assigneeName, assigneeEmail, employerEmail, clientName, source) {
   try {
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/sharedTasks?documentId=${taskDocId}&key=${FIREBASE_API_KEY}`,
+    await fsFetch(
+      `/sharedTasks?documentId=${taskDocId}`,
       { method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ fields:{
           title:             {stringValue: title},
@@ -1214,8 +1241,8 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
       }
       if (!clientUserDoc && apptEmail) {
         try {
-          const resp = await fetch(
-            `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+          const resp = await fsFetch(
+            `:runQuery`,
             { method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ structuredQuery: {
                 from: [{ collectionId: 'users' }],
@@ -1236,8 +1263,8 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
           // שלוף מייל של בעל העסק לצורך הזמנה ביומן הלקוח
           let ownerEmail = '';
           try {
-            const ownerResp = await fetch(
-              `https://firestore.googleapis.com/v1/${userDocName}?key=${FIREBASE_API_KEY}`
+            const ownerResp = await fsFetchV1(
+              `${userDocName}`
             );
             const ownerData = await ownerResp.json();
             ownerEmail = ownerData.fields?.email?.stringValue || '';

@@ -1,6 +1,7 @@
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 const fetch = require('node-fetch');
+const { fsFetch } = require('../lib/firestore');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT = 'dabelu';
@@ -15,8 +16,8 @@ async function sendWhatsAppReply(chatId, message) {
 }
 
 async function isRegisteredEmail(email) {
-  const resp = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+  const resp = await fsFetch(
+    `:runQuery`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -36,8 +37,8 @@ async function isRegisteredEmail(email) {
 // ── טעינת עובדי צוות לפי מזהה המעסיק ──
 async function getTeamMembers(userDocId) {
   try {
-    const resp = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/data/team?key=${FIREBASE_API_KEY}`
+    const resp = await fsFetch(
+      `/users/${userDocId}/data/team`
     );
     const data = await resp.json();
     if (!data.fields) return [];
@@ -81,8 +82,8 @@ function cleanTitleFromWorker(title, workerName) {
 // ── יצירת sharedTask לעובד ──
 async function createSharedTask(taskDocId, title, assigneeName, assigneeEmail, employerEmail, clientName) {
   try {
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/sharedTasks?documentId=${taskDocId}&key=${FIREBASE_API_KEY}`,
+    await fsFetch(
+      `/sharedTasks?documentId=${taskDocId}`,
       { method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ fields:{
           title:             {stringValue: title},
@@ -141,8 +142,8 @@ async function saveTask(title, senderName, source, userId, assignee, assigneeEma
     fields.assignee      = { stringValue: assignee };
     fields.assigneeEmail = { stringValue: assigneeEmail || '' };
   }
-  const resp = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/tasks?key=${FIREBASE_API_KEY}`,
+  const resp = await fsFetch(
+    `/tasks`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) }
   );
   const data = await resp.json();

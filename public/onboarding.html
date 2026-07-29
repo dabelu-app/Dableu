@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>טופס פרטים אישיים</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#6B5AFF; --accent-light:#ede9fe; --accent-hover:#5a48f5;
+  --bg:#f7f7fb; --surface:#fff; --surface2:#f9fafb;
+  --border:#e5e7eb; --border2:#d1d5db;
+  --text:#1e1b4b; --text2:#4b5563; --text3:#9ca3af;
+  --danger:#dc2626; --ok:#16a34a;
+  --radius:10px; --radius-lg:14px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);
+  -webkit-text-size-adjust:100%}
+.wrap{max-width:560px;margin:0 auto;padding:0 0 120px}
+
+.hdr{background:linear-gradient(135deg,var(--accent),#8b7cff);color:#fff;padding:22px 20px 18px;
+  border-radius:0 0 22px 22px;box-shadow:0 6px 20px rgba(107,90,255,.25)}
+.hdr h1{margin:0;font-size:19px;font-weight:800}
+.hdr p{margin:5px 0 0;font-size:13px;opacity:.92;line-height:1.45}
+.bar{height:5px;background:rgba(255,255,255,.28);border-radius:99px;margin-top:15px;overflow:hidden}
+.bar i{display:block;height:100%;background:#fff;border-radius:99px;transition:width .32s ease}
+.stepno{font-size:11px;opacity:.9;margin-top:7px;font-weight:600}
+
+.card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);
+  padding:20px 18px;margin:18px 16px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+.card h2{margin:0 0 4px;font-size:17px;font-weight:800}
+.card .sub{margin:0 0 18px;font-size:13px;color:var(--text2);line-height:1.5}
+
+.field{margin-bottom:17px}
+.label{display:block;font-size:13px;font-weight:600;margin-bottom:7px}
+.label .req{color:var(--danger)}
+.inp{width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:var(--radius);
+  font-size:16px;font-family:'Heebo',sans-serif;color:var(--text);background:var(--surface);
+  transition:border-color .15s,box-shadow .15s}
+.inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(107,90,255,.13)}
+.inp.err{border-color:var(--danger);box-shadow:0 0 0 3px rgba(220,38,38,.1)}
+select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:left 14px center;padding-left:36px}
+.hint{font-size:11.5px;color:var(--text3);margin-top:6px;line-height:1.45}
+.errmsg{font-size:12px;color:var(--danger);margin-top:6px;font-weight:600;display:none}
+.errmsg.show{display:block}
+
+.yn{display:flex;gap:10px}
+.yn button{flex:1;padding:14px 8px;border:1.5px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);font-family:'Heebo',sans-serif;font-size:15px;font-weight:600;
+  color:var(--text2);cursor:pointer;transition:all .15s}
+.yn button:active{transform:scale(.97)}
+.yn button.on{border-color:var(--accent);background:var(--accent-light);color:var(--accent);
+  box-shadow:0 0 0 3px rgba(107,90,255,.12)}
+.yn.err button{border-color:var(--danger)}
+
+.rep{border:1.5px dashed var(--border2);border-radius:var(--radius);padding:13px;margin-bottom:10px;
+  background:var(--surface2);position:relative}
+.rep .rmv{position:absolute;top:9px;left:9px;background:none;border:none;color:var(--danger);
+  font-size:17px;cursor:pointer;padding:2px 5px;line-height:1}
+.rep .rtitle{font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px}
+.addbtn{width:100%;padding:12px;border:1.5px dashed var(--accent);border-radius:var(--radius);
+  background:var(--accent-light);color:var(--accent);font-family:'Heebo',sans-serif;
+  font-size:14px;font-weight:700;cursor:pointer}
+.addbtn:active{transform:scale(.99)}
+
+.up{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:28px 16px;text-align:center;
+  background:var(--surface2);cursor:pointer;transition:all .15s}
+.up:active{border-color:var(--accent);background:var(--accent-light)}
+.up .ic{font-size:36px;margin-bottom:8px}
+.up .t{font-size:14px;font-weight:700;margin-bottom:3px}
+.up .s{font-size:12px;color:var(--text3)}
+.up.err{border-color:var(--danger)}
+.prev{position:relative;margin-top:12px}
+.prev img{width:100%;border-radius:var(--radius);border:1.5px solid var(--border);display:block}
+.prev .del{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);color:#fff;border:none;
+  border-radius:8px;padding:6px 11px;font-size:12px;font-family:'Heebo',sans-serif;cursor:pointer;font-weight:600}
+.okline{display:flex;align-items:center;gap:7px;justify-content:center;color:var(--ok);
+  font-size:13px;font-weight:700;margin-top:10px}
+
+/* ── הצהרת פרטיות ── */
+.notice{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:15px;max-height:320px;overflow-y:auto;font-size:12.5px;line-height:1.65;color:var(--text2)}
+.notice h4{margin:0 0 6px;font-size:13px;font-weight:800;color:var(--text)}
+.notice h5{margin:14px 0 4px;font-size:12.5px;font-weight:700;color:var(--text)}
+.notice ul{margin:4px 0;padding-inline-start:18px}
+.notice li{margin-bottom:3px}
+.chk{display:flex;gap:11px;align-items:flex-start;padding:14px;border:1.5px solid var(--border);
+  border-radius:var(--radius);background:var(--surface);cursor:pointer;margin-top:14px;transition:all .15s}
+.chk.on{border-color:var(--accent);background:var(--accent-light)}
+.chk.err{border-color:var(--danger)}
+.chk input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--accent);flex-shrink:0}
+.chk span{font-size:13.5px;font-weight:600;line-height:1.5}
+
+.sumrow{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px dashed var(--border)}
+.sumrow:last-child{border-bottom:none}
+.sumrow .k{font-size:12.5px;color:var(--text3);flex-shrink:0}
+.sumrow .v{font-size:13.5px;font-weight:600;text-align:left}
+.sumgrp{margin-bottom:16px}
+.sumgrp h3{font-size:12px;font-weight:800;color:var(--accent);margin:0 0 4px;
+  padding-bottom:5px;border-bottom:2px solid var(--accent-light)}
+
+.nav{position:fixed;bottom:0;right:0;left:0;background:var(--surface);
+  border-top:1.5px solid var(--border);padding:12px 16px;
+  padding-bottom:calc(12px + env(safe-area-inset-bottom));
+  display:flex;gap:10px;max-width:560px;margin:0 auto;box-shadow:0 -3px 14px rgba(0,0,0,.05)}
+.btn{flex:1;padding:15px;border-radius:var(--radius);font-family:'Heebo',sans-serif;
+  font-size:15px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--text2);transition:all .15s}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);flex:2;
+  box-shadow:0 4px 12px rgba(107,90,255,.28)}
+.btn.primary:disabled{opacity:.55;box-shadow:none}
+.btn.back{flex:1}
+
+.center{text-align:center;padding:70px 26px}
+.center .ic{font-size:54px;margin-bottom:14px}
+.center h2{font-size:19px;font-weight:800;margin:0 0 8px}
+.center p{font-size:14px;color:var(--text2);line-height:1.6;margin:0}
+.spin{width:34px;height:34px;border:3px solid var(--accent-light);border-top-color:var(--accent);
+  border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 16px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="loading" class="center">
+  <div class="spin"></div>
+  <p>טוען את הטופס…</p>
+</div>
+
+<div id="denied" class="center hide">
+  <div class="ic">🔒</div>
+  <h2>הקישור אינו תקין</h2>
+  <p>ייתכן שהטופס כבר מולא, או שהקישור פג תוקף.<br>אנא פנו למשרד לקבלת קישור חדש.</p>
+</div>
+
+<div id="done" class="center hide">
+  <div class="ic">✅</div>
+  <h2>תודה רבה!</h2>
+  <p>הפרטים נשלחו בהצלחה למשרד.<br>ניצור קשר בהקדם במידת הצורך.</p>
+</div>
+
+<div id="app" class="hide">
+  <div class="hdr">
+    <h1 id="hdr-title">ברוכים הבאים 👋</h1>
+    <p id="hdr-sub">כדי שנוכל לפתוח את התיק, נשמח שתמלאו כמה פרטים. לוקח כ-3 דקות.</p>
+    <div class="bar"><i id="bar" style="width:10%"></i></div>
+    <div class="stepno" id="stepno">שלב 1</div>
+  </div>
+
+  <div class="wrap">
+
+    <!-- פרטים אישיים -->
+    <section class="card step" data-step="personal">
+      <h2>פרטים אישיים</h2>
+      <p class="sub">נתחיל בפרטים הבסיסיים שלכם.</p>
+      <div class="field">
+        <label class="label" for="firstName">שם פרטי <span class="req">*</span></label>
+        <input class="inp" id="firstName" data-req autocomplete="given-name">
+        <div class="errmsg">נא למלא שם פרטי</div>
+      </div>
+      <div class="field">
+        <label class="label" for="lastName">שם משפחה <span class="req">*</span></label>
+        <input class="inp" id="lastName" data-req autocomplete="family-name">
+        <div class="errmsg">נא למלא שם משפחה</div>
+      </div>
+      <div class="field">
+        <label class="label" for="idNumber">תעודת זהות <span class="req">*</span></label>
+        <input class="inp" id="idNumber" data-req inputmode="numeric" maxlength="9" dir="ltr" placeholder="9 ספרות">
+        <div class="errmsg">נא למלא מספר תעודת זהות תקין (9 ספרות)</div>
+      </div>
+      <div class="field">
+        <label class="label" for="maritalStatus">מצב משפחתי <span class="req">*</span></label>
+        <select class="inp" id="maritalStatus" data-req>
+          <option value="">בחרו…</option>
+          <option>רווק/ה</option><option>נשוי/אה</option><option>ידוע/ה בציבור</option>
+          <option>גרוש/ה</option><option>אלמן/ה</option>
+        </select>
+        <div class="errmsg">נא לבחור מצב משפחתי</div>
+        <div class="hint">אם תבחרו "נשוי/אה" או "ידוע/ה בציבור" — נבקש בשלב הבא גם את פרטי בן/בת הזוג.</div>
+      </div>
+    </section>
+
+    <!-- בן/בת זוג — מוצג רק לנשואים -->
+    <section class="card step hide" data-step="spouse">
+      <h2>פרטי בן/בת הזוג</h2>
+      <p class="sub">נדרש לצורך תיאום מס, נקודות זיכוי ודוח מאוחד.</p>
+      <div class="field">
+        <label class="label" for="spouseFirstName">שם פרטי <span class="req">*</span></label>
+        <input class="inp" id="spouseFirstName" data-req>
+        <div class="errmsg">נא למלא שם פרטי</div>
+      </div>
+      <div class="field">
+        <label class="label" for="spouseLastName">שם משפחה <span class="req">*</span></label>
+        <input class="inp" id="spouseLastName" data-req>
+        <div class="errmsg">נא למלא שם משפחה</div>
+      </div>
+      <div class="field">
+        <label class="label" for="spouseIdNumber">תעודת זהות <span class="req">*</span></label>
+        <input class="inp" id="spouseIdNumber" data-req inputmode="numeric" maxlength="9" dir="ltr" placeholder="9 ספרות">
+        <div class="errmsg">נא למלא מספר תעודת זהות תקין (9 ספרות)</div>
+      </div>
+      <div class="field">
+        <label class="label" for="spousePhone">טלפון</label>
+        <input class="inp" id="spousePhone" type="tel" dir="ltr" placeholder="050-0000000">
+      </div>
+      <div class="field">
+        <label class="label">האם בן/בת הזוג שכיר/ה? <span class="req">*</span></label>
+        <div class="yn" data-yn="spouseIsEmployee">
+          <button type="button" data-v="yes">כן</button>
+          <button type="button" data-v="no">לא</button>
+        </div>
+        <div class="errmsg">נא לבחור תשובה</div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label class="label">האם בן/בת הזוג עצמאי/ת? <span class="req">*</span></label>
+        <div class="yn" data-yn="spouseIsSelfEmployed">
+          <button type="button" data-v="yes">כן</button>
+          <button type="button" data-v="no">לא</button>
+        </div>
+        <div class="errmsg">נא לבחור תשובה</div>
+      </div>
+    </section>
+
+    <!-- ילדים -->
+    <section class="card step hide" data-step="children">
+      <h2>ילדים</h2>
+      <p class="sub">פרטי הילדים משמשים לחישוב נקודות זיכוי במס.</p>
+      <div class="field">
+        <label class="label">האם יש לכם ילדים? <span class="req">*</span></label>
+        <div class="yn" data-yn="hasChildren">
+          <button type="button" data-v="yes">כן</button>
+          <button type="button" data-v="no">לא</button>
+        </div>
+        <div class="errmsg">נא לבחור תשובה</div>
+      </div>
+      <div id="childrenBox" class="hide">
+        <div id="childrenList"></div>
+        <button type="button" class="addbtn" onclick="addChild()">+ הוספת ילד/ה</button>
+        <div class="hint">נא למלא שם ושנת לידה עבור כל ילד/ה.</div>
+      </div>
+    </section>
+
+    <!-- תעסוקה -->
+    <section class="card step hide" data-step="employment">
+      <h2>תעסוקה</h2>
+      <p class="sub">אפשר לסמן כן בשתי האפשרויות אם רלוונטי.</p>
+      <div class="field">
+        <label class="label">האם אתם שכירים? <span class="req">*</span></label>
+        <div class="yn" data-yn="isEmployee">
+          <button type="button" data-v="yes">כן</button>
+          <button type="button" data-v="no">לא</button>
+        </div>
+        <div class="errmsg">נא לבחור תשובה</div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label class="label">האם אתם עצמאים? <span class="req">*</span></label>
+        <div class="yn" data-yn="isSelfEmployed">
+          <button type="button" data-v="yes">כן</button>
+          <button type="button" data-v="no">לא</button>
+        </div>
+        <div class="errmsg">נא לבחור תשובה</div>
+      </div>
+    </section>
+
+    <!-- חברות -->
+    <section class="card step hide" data-step="companies">
+      <h2>חברות בבעלותכם</h2>
+      <p class="sub">חברות בע״מ, שותפויות או עמותות שאתם בעלים בהן.</p>
+      <div class="field">
+        <label class="label">האם יש חברות בבעלותכם? <span class="req">*</span></label>
+        <div class="yn" data-yn="hasCompanies">
+          <button type="button" data-v="yes">כן</button>
+          <button type="button" data-v="no">לא</button>
+        </div>
+        <div class="errmsg">נא לבחור תשובה</div>
+      </div>
+      <div id="companiesBox" class="hide">
+        <div id="companiesList"></div>
+        <button type="button" class="addbtn" onclick="addCompany()">+ הוספת חברה</button>
+        <div class="hint">נא למלא שם חברה ומספר ח.פ בן 9 ספרות.</div>
+      </div>
+    </section>
+
+    <!-- שכר דירה -->
+    <section class="card step hide" data-step="rental">
+      <h2>הכנסות משכר דירה</h2>
+      <p class="sub">הכנסה מהשכרת נכסים בישראל.</p>
+      <div class="field">
+        <label class="label">האם יש לכם הכנסות משכר דירה? <span class="req">*</span></label>
+        <div class="yn" data-yn="hasRentalIncome">
+          <button type="button" data-v="yes">כן</button>
+          <button type="button" data-v="no">לא</button>
+        </div>
+        <div class="errmsg">נא לבחור תשובה</div>
+      </div>
+      <div id="rentalBox" class="hide">
+        <div class="field" style="margin-bottom:0">
+          <label class="label" for="rentalCount">כמה דירות מושכרות? <span class="req">*</span></label>
+          <input class="inp" id="rentalCount" type="number" min="1" max="99" inputmode="numeric" dir="ltr">
+          <div class="errmsg">נא למלא מספר דירות</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- נכסים והשקעות -->
+    <section class="card step hide" data-step="assets">
+      <h2>נכסים והשקעות</h2>
+      <p class="sub">חובת דיווח חלה על נכסים אלו גם אם לא נמכרו.</p>
+      <div class="field">
+        <label class="label">האם יש לכם אחזקה במטבעות וירטואליים? <span class="req">*</span></label>
+        <div class="yn" data-yn="hasCrypto">
+          <button type="button" data-v="yes">כן</button>
+          <button type="button" data-v="no">לא</button>
+        </div>
+        <div class="errmsg">נא לבחור תשובה</div>
+      </div>
+      <div class="field">
+        <label class="label">האם יש לכם חשבונות בנק בחו״ל? <span class="req">*</span></label>
+        <div class="yn" data-yn="hasForeignBank">
+          <button type="button" data-v="yes">כן</button>
+          <button type="button" data-v="no">לא</button>
+        </div>
+        <div class="errmsg">נא לבחור תשובה</div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label class="label">האם יש לכם השקעות בחו״ל? <span class="req">*</span></label>
+        <div class="yn" data-yn="hasForeignInvestments">
+          <button type="button" data-v="yes">כן</button>
+          <button type="button" data-v="no">לא</button>
+        </div>
+        <div class="errmsg">נא לבחור תשובה</div>
+      </div>
+    </section>
+
+    <!-- צילום ת.ז. -->
+    <section class="card step hide" data-step="idphoto">
+      <h2>צילום תעודת זהות</h2>
+      <p class="sub">נדרש לצורך זיהוי ופתיחת התיק ברשויות. ודאו שכל הפרטים קריאים.</p>
+      <div class="field" style="margin-bottom:0">
+        <label class="label">צילום ת.ז. <span class="req">*</span></label>
+        <div class="up" id="upBox" onclick="document.getElementById('idFile').click()">
+          <div class="ic">📷</div>
+          <div class="t">לחצו לצילום או בחירת קובץ</div>
+          <div class="s">JPG או PNG · עד 10MB</div>
+        </div>
+        <input type="file" id="idFile" accept="image/*" capture="environment" class="hide" onchange="handleFile(this)">
+        <div id="upPrev" class="prev hide">
+          <img id="upImg" alt="צילום תעודת זהות">
+          <button type="button" class="del" onclick="clearFile()">הסרה</button>
+          <div class="okline">✓ הקובץ נטען</div>
+        </div>
+        <div class="errmsg">חובה לצרף צילום תעודת זהות</div>
+        <div class="hint">התמונה נדחסת במכשיר שלכם לפני השליחה.</div>
+      </div>
+    </section>
+
+    <!-- הצהרת פרטיות והסכמה -->
+    <section class="card step hide" data-step="consent">
+      <h2>הגנת הפרטיות והסכמה</h2>
+      <p class="sub">לפי חוק הגנת הפרטיות, עלינו ליידע אתכם כיצד המידע שלכם נאסף ומשמש.</p>
+      <div class="notice" id="noticeBox"></div>
+      <label class="chk" id="chkWrap">
+        <input type="checkbox" id="consent">
+        <span>קראתי את ההודעה, אני מאשר/ת את נכונות הפרטים ומסכים/ה לאיסוף המידע ולשימוש בו למטרות שפורטו.</span>
+      </label>
+      <div class="errmsg" id="consentErr">חובה לאשר את ההסכמה כדי לשלוח את הטופס</div>
+    </section>
+
+    <!-- סיכום -->
+    <section class="card step hide" data-step="summary">
+      <h2>סיכום ואישור</h2>
+      <p class="sub">בדקו שהפרטים נכונים. אפשר לחזור אחורה ולתקן.</p>
+      <div id="summary"></div>
+    </section>
+
+  </div>
+
+  <div class="nav">
+    <button type="button" class="btn back hide" id="backBtn" onclick="goBack()">→ הקודם</button>
+    <button type="button" class="btn primary" id="nextBtn" onclick="goNext()">הבא ←</button>
+  </div>
+</div>
+
+<script>
+// אין כאן Firebase בכוונה: הלקוח הממלא אינו משתמש רשום, ולכן כל
+// הקריאה והכתיבה עוברות דרך אנדפוינט בשרת שמאמת את הטוקן ופועל
+// עם חשבון שירות. כך מסד הנתונים נשאר סגור לחלוטין בפני הדפדפן.
+const API = '/api/send-onboarding';
+
+// ── סדר השלבים. 'spouse' מדולג כשלא נשואים ──
+const ALL = ['personal','spouse','children','employment','companies','rental','assets','idphoto','consent','summary'];
+let idx = 0;
+let clientId = '', token = '';
+let idPhotoData = null;
+let office = { name:'המשרד', email:'', phone:'' };
+const answers = {};
+
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const show = (el,on)=>el && el.classList.toggle('hide', !on);
+const isMarried = () => ['נשוי/אה','ידוע/ה בציבור'].includes($('#maritalStatus').value);
+const steps = () => ALL.filter(s => s !== 'spouse' || isMarried());
+const cur = () => steps()[idx];
+
+// ══ אימות הקישור ══
+(async function init(){
+  const p = new URLSearchParams(location.search);
+  clientId = (p.get('c')||'').trim();
+  token    = (p.get('t')||'').trim();
+  if(!clientId || !token) return deny();
+  try{
+    const r = await fetch(`${API}?action=check&c=${encodeURIComponent(clientId)}&t=${encodeURIComponent(token)}`);
+    if(!r.ok) return deny();
+    const d = await r.json();
+    if(!d.ok) return deny();
+    if(d.name) $('#hdr-title').textContent = `ברוכים הבאים, ${d.name} 👋`;
+    if(d.office) office = d.office;
+    buildNotice();
+    show($('#loading'), false);
+    show($('#app'), true);
+    paint();
+  }catch(e){ console.error(e); deny(); }
+})();
+function deny(){ show($('#loading'),false); show($('#denied'),true); }
+
+// ══ הודעת יידוע לפי סעיף 11 לחוק הגנת הפרטיות ══
+function buildNotice(){
+  const contact = [office.email, office.phone].filter(Boolean).join(' · ') || 'דרך פרטי הקשר של המשרד';
+  $('#noticeBox').innerHTML = `
+    <h4>הודעה על איסוף מידע אישי</h4>
+    <p style="margin:0">בהתאם לחוק הגנת הפרטיות, התשמ״א-1981, אנו מיידעים אתכם בדבר איסוף המידע האישי שלכם ואופן השימוש בו.</p>
+
+    <h5>מי אוסף את המידע</h5>
+    <p style="margin:0">${office.name} — בעל/ת השליטה במאגר המידע. פרטי התקשרות: ${contact}</p>
+
+    <h5>מטרת האיסוף</h5>
+    <ul>
+      <li>מתן שירותי ייעוץ מס והנהלת חשבונות</li>
+      <li>פתיחה וניהול של תיקכם מול רשות המסים, מע״מ והביטוח הלאומי</li>
+      <li>הכנה והגשה של דוחות ודיווחים תקופתיים בשמכם</li>
+      <li>קשר שוטף עמכם ומשלוח עדכונים ותזכורות</li>
+    </ul>
+
+    <h5>האם חובה למסור את המידע</h5>
+    <p style="margin:0">אינכם חייבים על פי חוק למסור לנו את המידע, ומסירתו נעשית מרצונכם החופשי ובהסכמתכם.
+    יחד עם זאת, ללא המידע המבוקש לא נוכל לפתוח ולנהל את תיקכם ולספק לכם את השירות,
+    ולא נוכל להגיש דיווחים בשמכם לרשויות.</p>
+
+    <h5>למי יימסר המידע</h5>
+    <ul>
+      <li>רשות המסים בישראל, מע״מ, מס הכנסה והמוסד לביטוח לאומי — לצורך הדיווחים המוגשים בשמכם</li>
+      <li>ספקי תוכנה ושירותי מחשוב המשמשים את המשרד לצורך אחסון ועיבוד המידע</li>
+      <li>גורמים נוספים — רק בהסכמתכם מראש או כאשר קיימת חובה שבדין</li>
+    </ul>
+
+    <h5>הזכויות שלכם</h5>
+    <ul>
+      <li><b>זכות עיון</b> — אתם רשאים לעיין במידע האישי שלכם המוחזק אצלנו</li>
+      <li><b>זכות תיקון</b> — אם המידע אינו נכון, שלם או מעודכן, אתם רשאים לבקש את תיקונו או מחיקתו</li>
+      <li><b>ביטול הסכמה</b> — אתם רשאים לחזור בכם מהסכמתכם בכל עת, בכפוף לחובות שמירת מסמכים החלות עלינו בדין</li>
+    </ul>
+    <p style="margin:6px 0 0">למימוש הזכויות ניתן לפנות אלינו: ${contact}</p>
+
+    <h5>אבטחת המידע</h5>
+    <p style="margin:0">המידע נשמר במערכת ממוחשבת מאובטחת ובגישה מוגבלת לעובדי המשרד המורשים בלבד,
+    בהתאם לתקנות הגנת הפרטיות (אבטחת מידע), התשע״ז-2017.</p>`;
+}
+
+// ══ ניווט ══
+function paint(){
+  const list = steps();
+  if(idx >= list.length) idx = list.length - 1;
+  const id = list[idx];
+  $$('.step').forEach(s => show(s, s.dataset.step === id));
+  $('#bar').style.width = ((idx+1)/list.length*100) + '%';
+  $('#stepno').textContent = `שלב ${idx+1} מתוך ${list.length}`;
+  show($('#backBtn'), idx > 0);
+  $('#nextBtn').textContent = id === 'summary' ? 'שליחת הטופס ✓' : 'הבא ←';
+  if(id === 'summary') buildSummary();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+window.goBack = () => { if(idx>0){ idx--; paint(); } };
+window.goNext = () => {
+  if(!validate(cur())) return;
+  if(cur() === 'summary') return submit();
+  idx++; paint();
+};
+
+// ══ כפתורי כן/לא ══
+$$('[data-yn]').forEach(grp=>{
+  grp.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      grp.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      grp.classList.remove('err');
+      const m = grp.closest('.field').querySelector('.errmsg');
+      if(m) m.classList.remove('show');
+      answers[grp.dataset.yn] = b.dataset.v === 'yes';
+      const box = {hasChildren:'#childrenBox', hasCompanies:'#companiesBox', hasRentalIncome:'#rentalBox'}[grp.dataset.yn];
+      if(box){
+        show($(box), answers[grp.dataset.yn]);
+        if(answers[grp.dataset.yn]){
+          if(grp.dataset.yn==='hasChildren'  && !$('#childrenList').children.length)  addChild();
+          if(grp.dataset.yn==='hasCompanies' && !$('#companiesList').children.length) addCompany();
+        }
+      }
+    });
+  });
+});
+
+// ══ תיבת ההסכמה ══
+$('#consent').addEventListener('change', e=>{
+  $('#chkWrap').classList.toggle('on', e.target.checked);
+  $('#chkWrap').classList.remove('err');
+  if(e.target.checked) $('#consentErr').classList.remove('show');
+});
+
+// ══ רשימות דינמיות ══
+window.addChild = () => {
+  const i = $('#childrenList').children.length + 1;
+  $('#childrenList').insertAdjacentHTML('beforeend', `
+    <div class="rep">
+      <button type="button" class="rmv" onclick="this.parentElement.remove()">✕</button>
+      <div class="rtitle">ילד/ה ${i}</div>
+      <div class="field" style="margin-bottom:11px">
+        <label class="label">שם <span class="req">*</span></label>
+        <input class="inp child-name">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label class="label">שנת לידה <span class="req">*</span></label>
+        <input class="inp child-year" type="number" inputmode="numeric" min="1930" max="2030" dir="ltr" placeholder="2015">
+      </div>
+    </div>`);
+};
+window.addCompany = () => {
+  const i = $('#companiesList').children.length + 1;
+  $('#companiesList').insertAdjacentHTML('beforeend', `
+    <div class="rep">
+      <button type="button" class="rmv" onclick="this.parentElement.remove()">✕</button>
+      <div class="rtitle">חברה ${i}</div>
+      <div class="field" style="margin-bottom:11px">
+        <label class="label">שם החברה <span class="req">*</span></label>
+        <input class="inp co-name">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label class="label">ח.פ <span class="req">*</span></label>
+        <input class="inp co-id" inputmode="numeric" maxlength="9" dir="ltr" placeholder="9 ספרות">
+      </div>
+    </div>`);
+};
+
+// ══ העלאת תמונה ══
+window.handleFile = async (input) => {
+  const f = input.files && input.files[0];
+  if(!f) return;
+  if(f.size > 10*1024*1024){ alert('הקובץ גדול מדי (מקסימום 10MB)'); input.value=''; return; }
+  try{
+    idPhotoData = await compress(f);
+    $('#upImg').src = idPhotoData;
+    show($('#upPrev'), true);
+    show($('#upBox'), false);
+    $('#upBox').classList.remove('err');
+    $('.step[data-step="idphoto"] .errmsg').classList.remove('show');
+  }catch(e){ alert('לא הצלחנו לטעון את התמונה, נסו שוב'); }
+};
+window.clearFile = () => {
+  idPhotoData = null; $('#idFile').value = '';
+  show($('#upPrev'), false); show($('#upBox'), true);
+};
+function compress(file){
+  return new Promise((res, rej)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let {width:w, height:h} = img;
+      const max = 1400;
+      if(w > max || h > max){ const s = max/Math.max(w,h); w = Math.round(w*s); h = Math.round(h*s); }
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      let q = .72, out = cv.toDataURL('image/jpeg', q);
+      while(out.length > 700*1024 && q > .3){ q -= .12; out = cv.toDataURL('image/jpeg', q); }
+      res(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('bad image')); };
+    img.src = url;
+  });
+}
+
+// ══ ולידציה ══
+function validId(v){ return /^\d{9}$/.test(v); }
+function markErr(el, on){
+  el.classList.toggle('err', on);
+  const f = el.closest('.field');
+  const m = f && f.querySelector('.errmsg');
+  if(m) m.classList.toggle('show', on);
+}
+function validate(id){
+  let ok = true;
+  const sec = $(`.step[data-step="${id}"]`);
+
+  sec.querySelectorAll('[data-req]').forEach(el=>{
+    const idFields = ['idNumber','spouseIdNumber'];
+    const bad = !el.value.trim() || (idFields.includes(el.id) && !validId(el.value.trim()));
+    markErr(el, bad); if(bad) ok = false;
+  });
+
+  sec.querySelectorAll('[data-yn]').forEach(grp=>{
+    const bad = answers[grp.dataset.yn] === undefined;
+    grp.classList.toggle('err', bad);
+    const m = grp.closest('.field').querySelector('.errmsg');
+    if(m) m.classList.toggle('show', bad);
+    if(bad) ok = false;
+  });
+
+  if(id === 'children' && answers.hasChildren){
+    const rows = $$('#childrenList .rep');
+    if(!rows.length){ ok = false; alert('נא להוסיף לפחות ילד/ה אחד/ת'); }
+    rows.forEach(r=>{
+      const nm = r.querySelector('.child-name'), yr = r.querySelector('.child-year');
+      const b1 = !nm.value.trim(), b2 = !yr.value.trim();
+      nm.classList.toggle('err', b1); yr.classList.toggle('err', b2);
+      if(b1 || b2) ok = false;
+    });
+  }
+  if(id === 'companies' && answers.hasCompanies){
+    const rows = $$('#companiesList .rep');
+    if(!rows.length){ ok = false; alert('נא להוסיף לפחות חברה אחת'); }
+    rows.forEach(r=>{
+      const nm = r.querySelector('.co-name'), cid = r.querySelector('.co-id');
+      const b1 = !nm.value.trim(), b2 = !validId(cid.value.trim());
+      nm.classList.toggle('err', b1); cid.classList.toggle('err', b2);
+      if(b1 || b2) ok = false;
+    });
+  }
+  if(id === 'rental' && answers.hasRentalIncome){
+    const el = $('#rentalCount');
+    const bad = !el.value.trim() || +el.value < 1;
+    markErr(el, bad); if(bad) ok = false;
+  }
+  if(id === 'idphoto' && !idPhotoData){
+    $('#upBox').classList.add('err');
+    sec.querySelector('.errmsg').classList.add('show');
+    ok = false;
+  }
+  if(id === 'consent' && !$('#consent').checked){
+    $('#chkWrap').classList.add('err');
+    $('#consentErr').classList.add('show');
+    ok = false;
+  }
+
+  if(!ok){
+    const first = sec.querySelector('.err, .errmsg.show');
+    if(first) first.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+  return ok;
+}
+
+// ══ איסוף נתונים ══
+function collect(){
+  const married = isMarried();
+  const d = {
+    firstName:  $('#firstName').value.trim(),
+    lastName:   $('#lastName').value.trim(),
+    idNumber:   $('#idNumber').value.trim(),
+    maritalStatus: $('#maritalStatus').value,
+    spouse: married ? {
+      firstName: $('#spouseFirstName').value.trim(),
+      lastName:  $('#spouseLastName').value.trim(),
+      idNumber:  $('#spouseIdNumber').value.trim(),
+      phone:     $('#spousePhone').value.trim(),
+      isEmployee:     !!answers.spouseIsEmployee,
+      isSelfEmployed: !!answers.spouseIsSelfEmployed
+    } : null,
+    hasChildren: !!answers.hasChildren,
+    children: answers.hasChildren ? $$('#childrenList .rep').map(r=>({
+      name: r.querySelector('.child-name').value.trim(),
+      birthYear: r.querySelector('.child-year').value.trim()
+    })) : [],
+    isEmployee:     !!answers.isEmployee,
+    isSelfEmployed: !!answers.isSelfEmployed,
+    hasCompanies:   !!answers.hasCompanies,
+    companies: answers.hasCompanies ? $$('#companiesList .rep').map(r=>({
+      name: r.querySelector('.co-name').value.trim(),
+      companyId: r.querySelector('.co-id').value.trim()
+    })) : [],
+    hasRentalIncome: !!answers.hasRentalIncome,
+    rentalCount: answers.hasRentalIncome ? +$('#rentalCount').value : 0,
+    hasCrypto:             !!answers.hasCrypto,
+    hasForeignBank:        !!answers.hasForeignBank,
+    hasForeignInvestments: !!answers.hasForeignInvestments
+  };
+  d.fullName = `${d.firstName} ${d.lastName}`.trim();
+  if(d.spouse) d.spouse.fullName = `${d.spouse.firstName} ${d.spouse.lastName}`.trim();
+  return d;
+}
+
+function buildSummary(){
+  const d = collect();
+  const yn = v => v ? '<span style="color:#16a34a">כן</span>' : '<span style="color:#9ca3af">לא</span>';
+  const row = (k,v) => `<div class="sumrow"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  let h = '';
+  h += `<div class="sumgrp"><h3>פרטים אישיים</h3>
+    ${row('שם מלא', d.fullName)}${row('תעודת זהות', d.idNumber)}${row('מצב משפחתי', d.maritalStatus)}</div>`;
+  if(d.spouse) h += `<div class="sumgrp"><h3>בן/בת זוג</h3>
+    ${row('שם מלא', d.spouse.fullName)}${row('תעודת זהות', d.spouse.idNumber)}
+    ${d.spouse.phone ? row('טלפון', d.spouse.phone) : ''}
+    ${row('שכיר/ה', yn(d.spouse.isEmployee))}${row('עצמאי/ת', yn(d.spouse.isSelfEmployed))}</div>`;
+  h += `<div class="sumgrp"><h3>ילדים</h3>${row('יש ילדים', yn(d.hasChildren))}
+    ${d.children.map((c,i)=>row(`ילד/ה ${i+1}`, `${c.name} · ${c.birthYear}`)).join('')}</div>`;
+  h += `<div class="sumgrp"><h3>תעסוקה</h3>
+    ${row('שכיר/ה', yn(d.isEmployee))}${row('עצמאי/ת', yn(d.isSelfEmployed))}</div>`;
+  h += `<div class="sumgrp"><h3>חברות</h3>${row('חברות בבעלות', yn(d.hasCompanies))}
+    ${d.companies.map((c,i)=>row(`חברה ${i+1}`, `${c.name} · ח.פ ${c.companyId}`)).join('')}</div>`;
+  h += `<div class="sumgrp"><h3>נכסים והשקעות</h3>
+    ${row('הכנסות שכר דירה', yn(d.hasRentalIncome))}
+    ${d.hasRentalIncome ? row('מספר דירות', d.rentalCount) : ''}
+    ${row('מטבעות וירטואליים', yn(d.hasCrypto))}
+    ${row('בנקים בחו״ל', yn(d.hasForeignBank))}
+    ${row('השקעות בחו״ל', yn(d.hasForeignInvestments))}</div>`;
+  h += `<div class="sumgrp"><h3>מסמכים והסכמות</h3>
+    ${row('צילום ת.ז.', idPhotoData ? '<span style="color:#16a34a">✓ צורף</span>' : '—')}
+    ${row('הסכמה לאיסוף מידע', $('#consent').checked ? '<span style="color:#16a34a">✓ אושרה</span>' : '—')}</div>`;
+  $('#summary').innerHTML = h;
+}
+
+// ══ שליחה ══
+async function submit(){
+  const btn = $('#nextBtn');
+  btn.disabled = true; btn.textContent = 'שולח…';
+  try{
+    const r = await fetch(`${API}?action=submit`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        c: clientId, t: token,
+        profile: collect(),
+        idPhoto: idPhotoData || '',
+        consent: $('#consent').checked
+      })
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || ('HTTP '+r.status));
+    show($('#app'), false); show($('#done'), true);
+  }catch(e){
+    console.error(e);
+    btn.disabled = false; btn.textContent = 'שליחת הטופס ✓';
+    alert('אירעה שגיאה בשליחה. נסו שוב או פנו למשרד.');
+  }
+}
+</script>
+</body>
+</html>

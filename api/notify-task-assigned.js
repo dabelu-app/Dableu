@@ -1,4 +1,5 @@
 const fetch    = require('node-fetch');
+const { fsFetch } = require('../lib/firestore');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT = 'dabelu';
@@ -45,8 +46,8 @@ async function sendPushToEmail(email, title, body, type) {
   // id יחיד להתראה — מאחד subscriptions מרובים לאותה רשומה ב-bell
   const notifId = Date.now() + Math.floor(Math.random() * 1000);
   try {
-    const r = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+    const r = await fsFetch(
+      `:runQuery`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,8 +67,8 @@ async function sendPushToEmail(email, title, body, type) {
     const webpush = require('web-push');
     webpush.setVapidDetails('mailto:tasks@dabelu.pro', process.env.VAPID_PUBLIC, process.env.VAPID_PRIVATE);
 
-    const r2 = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+    const r2 = await fsFetch(
+      `:runQuery`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,8 +95,8 @@ async function sendPushToEmail(email, title, body, type) {
       } catch(e) {
         if (e.statusCode === 410) {
           const docId = item.document.name.split('/').pop();
-          await fetch(
-            `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/pushSubscriptions/${docId}?key=${FIREBASE_API_KEY}`,
+          await fsFetch(
+            `/pushSubscriptions/${docId}`,
             { method: 'DELETE' }
           ).catch(() => {});
         }

@@ -1,4 +1,5 @@
 const fetch = require('node-fetch');
+const { fsFetch } = require('../lib/firestore');
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT = 'dabelu';
@@ -35,8 +36,8 @@ module.exports = async (req, res) => {
   const plan = PLAN_BY_AMOUNT[amount] || (parseInt(amount) <= 25 ? 'basic' : 'business');
 
   // מצא משתמש לפי אימייל ב-Firestore
-  const queryResp = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+  const queryResp = await fsFetch(
+    `:runQuery`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -58,8 +59,8 @@ module.exports = async (req, res) => {
   const uid = queryData[0].document.name.split('/').pop();
 
   // עדכן subscription ו-plan ב-Firestore
-  const updateResp = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=subscription&updateMask.fieldPaths=plan&updateMask.fieldPaths=paidAt&key=${FIREBASE_API_KEY}`,
+  const updateResp = await fsFetch(
+    `/users/${uid}?updateMask.fieldPaths=subscription&updateMask.fieldPaths=plan&updateMask.fieldPaths=paidAt`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

@@ -1,0 +1,134 @@
+// ═══════════════════════════════════════════════════════════════════
+//  הצעת כללי אבטחה מוקשחים ל-Dabelu
+//
+//  ⚠️  קובץ זה אינו פעיל. הוא נכתב לעיון בלבד.
+//      כדי להפעיל: להשוות מול firestore.rules, ואז להעתיק ידנית.
+//
+//  ⚠️  אל תפעילו לפני שהושלם המעבר של טופס האונבורדינג לשרת
+//      (api/onboarding.js). ראו הסבר בסוף הקובץ.
+//
+//  המצב היום: כל הקולקציות פתוחות ב-`allow read, write: if true` —
+//  כלומר כל אדם באינטרנט שיודע את מזהה הפרויקט יכול לקרוא ולשנות
+//  את כל נתוני הלקוחות. אחרי תיקון 13 לחוק הגנת הפרטיות זו גם
+//  חשיפה משפטית, לא רק סיכון טכני.
+// ═══════════════════════════════════════════════════════════════════
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── עזרים ──
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+    // האם המשתמש המחובר הוא הבעלים של מסמך הלקוח
+    function ownsClient() {
+      return signedIn() && resource.data.userId == request.auth.uid;
+    }
+    // האם הלקוח החדש נוצר תחת המשתמש המחובר
+    function creatingOwnClient() {
+      return signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+    // בעלות על מסמך האב clients/{clientId} — לתת-קולקציות
+    function ownsParentClient(clientId) {
+      return signedIn() &&
+        get(/databases/$(database)/documents/clients/$(clientId)).data.userId == request.auth.uid;
+    }
+
+    // ── משתמשי המערכת ──
+    // קריאה: מחוברים בלבד (האפליקציה מאתרת מעסיק/עובד לפי אימייל).
+    // כתיבה: רק על המסמך של עצמך.
+    match /users/{userId} {
+      allow read:  if signedIn();
+      allow write: if isSelf(userId);
+    }
+    match /users/{userId}/{document=**} {
+      allow read, write: if isSelf(userId);
+    }
+
+    // ── לקוחות ──
+    // כאן יושב המידע הרגיש: ת.ז., פרטי בן/בת זוג, ילדים, אחזקות בחו״ל.
+    match /clients/{clientId} {
+      allow read:   if ownsClient();
+      allow create: if creatingOwnClient();
+      allow update: if ownsClient() && creatingOwnClient();   // אסור להעביר לקוח לבעלים אחר
+      allow delete: if ownsClient();
+    }
+
+    // ── תת-קולקציות של לקוח ──
+    // documents = צילומי ת.ז. · checklist = משימות התיק
+    // timeEntries = רישומי זמן · reports = דוחות רו״ה · payments = תשלומי רשויות
+    match /clients/{clientId}/{document=**} {
+      allow read, write: if ownsParentClient(clientId);
+    }
+
+    // ── משימות ופגישות ──
+    match /tasks/{taskId} {
+      allow read:   if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+    match /appointments/{apptId} {
+      allow read:   if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── משימות משותפות מעסיק↔עובד ──
+    // נגישות לבעלים (ownerUid) ולעובד המשובץ (assigneeEmail).
+    match /sharedTasks/{taskId} {
+      allow read: if signedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        resource.data.assigneeEmail == request.auth.token.email
+      );
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        resource.data.assigneeEmail == request.auth.token.email
+      );
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+    match /sharedTasks/{taskId}/{document=**} {
+      allow read, write: if signedIn() && (
+        get(/databases/$(database)/documents/sharedTasks/$(taskId)).data.ownerUid == request.auth.uid ||
+        get(/databases/$(database)/documents/sharedTasks/$(taskId)).data.assigneeEmail == request.auth.token.email
+      );
+    }
+
+    // ── מנויי התראות פוש ──
+    // נכתב מהדפדפן בעת רישום; נקרא רק מהשרת (עוקף כללים דרך חשבון שירות).
+    match /pushSubscriptions/{docId} {
+      allow read:  if false;
+      allow write: if signedIn();
+    }
+
+    // ── ברירת מחדל: סגור ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  מה צריך לקרות לפני ההפעלה
+//
+//  1. טופס האונבורדינג (public/onboarding.html) קורא וכותב היום
+//     ישירות ל-Firestore, בלי התחברות — הלקוח אינו משתמש רשום.
+//     תחת הכללים האלה הוא יפסיק לעבוד.
+//     הפתרון: להעביר את הקריאה והכתיבה לאנדפוינט שרת
+//     (api/onboarding.js) שמאמת את הטוקן בצד השרת ופועל
+//     עם חשבון שירות (service account) שעוקף את הכללים.
+//     זה גם נכון יותר אבטחתית: הטוקן מאומת במקום שהלקוח
+//     לא יכול לעקוף, והמאגר כולו נשאר סגור.
+//
+//  2. קוד השרת הקיים (api/*.js, lib/cron/*.js) ניגש ל-Firestore
+//     דרך REST עם מפתח API בלבד. גישה כזו כפופה לכללים ותיחסם.
+//     צריך להחליף לאימות מול חשבון שירות
+//     (אפשר עם החבילה googleapis שכבר מותקנת בפרויקט).
+//
+//  3. לבדוק ב-Firebase Console → Firestore → Rules → Playground
+//     לפני פרסום, ולוודא שהאפליקציה עובדת מול הכללים החדשים.
+// ═══════════════════════════════════════════════════════════════════

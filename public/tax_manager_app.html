@@ -1539,7 +1539,7 @@ function _doLogout(){
 // ══════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════
-const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'לקוחות',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
+const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'לקוחות',clientDetail:'כרטיס לקוח',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
 function nav(page,el){
   S.page=page;
   if(el){
@@ -1758,6 +1758,7 @@ function renderPage(){
     else if(S.page==='calendar'){el.innerHTML=renderCalendarPage();loadAppointmentsIfNeeded();}
     else if(S.page==='appointments'){el.innerHTML=renderAppointmentsPage();loadAppointmentsIfNeeded();}
     else if(S.page==='clients'){el.innerHTML=renderClientsPage();loadWAClientsIfNeeded();}
+    else if(S.page==='clientDetail'){el.innerHTML=renderClientDetailPage();loadWAClientsIfNeeded();}
     else if(S.page==='settings')el.innerHTML=renderSettingsPage();
     else if(S.page==='admin'){el.innerHTML=renderAdminPage();if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();}
     else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
@@ -3305,25 +3306,30 @@ function renderClientsPage(){
       </div>
     `:`
     <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-      <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;padding:10px 16px;background:var(--surface3);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2)">
-        <div>שם</div><div>אחראי</div><div>מייל</div><div>ווצאפ</div><div></div>
+      <div style="display:grid;grid-template-columns:1.4fr 1fr .9fr .9fr auto;padding:10px 16px;background:var(--surface3);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2)">
+        <div>שם</div><div>אחראי</div><div>משימות פתוחות</div><div>תעריף חודשי</div><div></div>
       </div>
       ${filtered.map(c=>{
         const assignee=effectiveAssignee(c);
         const isOwnerAssignee=!c.assignedTo||c.assignedTo===ownerName;
         const [cbg,cclr]=teamForChips.find(m=>m.name===assignee)?.colors||['#dcfce7','#16a34a'];
+        const cName=(c.name||'').trim();
+        const openCnt=(S.tasks||[]).filter(t=>{
+          const n=((t.clientName||t.client||'')+'').trim();
+          return n && cName && n===cName && t.status!=='done';
+        }).length;
         return `
-      <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;padding:11px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:13px" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
-        <div style="font-weight:600">${c.name}</div>
+      <div style="display:grid;grid-template-columns:1.4fr 1fr .9fr .9fr auto;padding:11px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:13px;cursor:pointer" onclick="openClientDetail('${c.id}')" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+        <div style="font-weight:600">${c.activeTimerStartedAt?'<span title="שעון פועל">⏱ </span>':''}${c.name}</div>
         <div>
           <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;background:${cbg}33;color:${cclr};font-size:11px;font-weight:600">
             <span style="width:14px;height:14px;border-radius:50%;background:${cbg};color:${cclr};font-size:7px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">${avInitials(assignee)}</span>
             ${assignee.split(' ')[0]}${isOwnerAssignee?' 👑':''}
           </span>
         </div>
-        <div style="color:var(--text2)">${c.email||'—'}</div>
-        <div style="color:var(--text2)">${c.whatsapp?formatPhone(c.whatsapp):'—'}</div>
-        <div style="display:flex;gap:6px">
+        <div>${openCnt?`<span style="padding:2px 9px;border-radius:20px;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700">${openCnt}</span>`:'<span style="color:var(--text3)">—</span>'}</div>
+        <div style="color:var(--text2)">${c.monthlyFee?('₪'+Number(c.monthlyFee).toLocaleString()):'—'}</div>
+        <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
           <button class="btn sm" onclick="openEditClientModal('${c.id}')">✏️</button>
           <button class="btn sm danger" onclick="confirmDeleteClient('${c.id}','${c.name.replace(/'/g,'')}')">🗑</button>
         </div>
@@ -3338,6 +3344,9 @@ function renderClientsPage(){
         <input class="auth-input" id="cm-name"     placeholder="שם מלא *">
         <input class="auth-input" id="cm-email"    placeholder="מייל (לזימון)">
         <input class="auth-input" id="cm-whatsapp" placeholder="ווצאפ (לזימון)">
+        <input class="auth-input" id="cm-phone"    placeholder="טלפון" dir="ltr">
+        <input class="auth-input" id="cm-taxid"    placeholder="מספר תיק / ח.פ" dir="ltr">
+        <input class="auth-input" id="cm-fee" type="number" min="0" placeholder="תעריף חודשי (₪)" dir="ltr">
         <div style="margin-bottom:10px">
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">אחראי</label>
           <select class="form-input" id="cm-assignee" style="width:100%">${assigneeOptions}</select>
@@ -3360,6 +3369,9 @@ function openAddClientModal(){
   document.getElementById('cm-name').value='';
   document.getElementById('cm-email').value='';
   document.getElementById('cm-whatsapp').value='';
+  document.getElementById('cm-phone').value='';
+  document.getElementById('cm-taxid').value='';
+  document.getElementById('cm-fee').value='';
   // ברירת מחדל: בעל העסק
   const sel=document.getElementById('cm-assignee');
   if(sel) sel.value=S.user?.name||'';
@@ -3373,6 +3385,9 @@ function openEditClientModal(id){
   document.getElementById('cm-name').value=c.name||'';
   document.getElementById('cm-email').value=c.email||'';
   document.getElementById('cm-whatsapp').value=c.whatsapp||'';
+  document.getElementById('cm-phone').value=c.phone||'';
+  document.getElementById('cm-taxid').value=c.taxId||'';
+  document.getElementById('cm-fee').value=c.monthlyFee||'';
   const sel=document.getElementById('cm-assignee');
   if(sel) sel.value=c.assignedTo||(S.user?.name||'');
   document.getElementById('client-modal').style.display='flex';
@@ -3381,13 +3396,332 @@ function saveClientModal(){
   const name=document.getElementById('cm-name').value.trim();
   if(!name){ alert('שם חובה'); return; }
   const assignedTo=document.getElementById('cm-assignee')?.value||(S.user?.name||'');
-  const data={ name, email: document.getElementById('cm-email').value.trim(), whatsapp: document.getElementById('cm-whatsapp').value.trim(), assignedTo };
+  const data={
+    name,
+    email: document.getElementById('cm-email').value.trim(),
+    whatsapp: document.getElementById('cm-whatsapp').value.trim(),
+    phone: document.getElementById('cm-phone').value.trim(),
+    taxId: document.getElementById('cm-taxid').value.trim(),
+    monthlyFee: Number(document.getElementById('cm-fee').value)||0,
+    assignedTo
+  };
   window.saveWAClient(_editClientId, data);
   document.getElementById('client-modal').style.display='none';
 }
 function confirmDeleteClient(id,name){
   appConfirm('למחוק את הלקוח "'+name+'"?', ()=>window.deleteWAClient(id), 'מחיקת לקוח');
 }
+
+// ══════════════════════════════════════
+// כרטיס לקוח
+// ══════════════════════════════════════
+function openClientDetail(id){
+  S.selectedClientId=id;
+  S.page='clientDetail';
+  const tb=document.getElementById('topbar-title');
+  if(tb){
+    const c=(S.waClients||[]).find(x=>x.id===id);
+    tb.textContent=c?c.name:'כרטיס לקוח';
+  }
+  if(typeof window.loadClientTimeEntries==='function') window.loadClientTimeEntries(id);
+  if(typeof window.loadClientChecklist==='function') window.loadClientChecklist(id);
+  renderPage();
+}
+
+// ── שליחת קישור לטופס הפרטים ──
+async function sendOnboardingLink(clientId){
+  const c=(S.waClients||[]).find(x=>x.id===clientId);
+  if(!c) return;
+  toast('⏳ מייצר קישור…');
+  const link=await window.createOnboardingLink(clientId);
+  if(!link){ toast('⚠️ יצירת הקישור נכשלה'); return; }
+  const msg=`שלום ${c.name}! 👋\n\nכדי שנוכל לפתוח את התיק שלך, נשמח שתמלא/י טופס פרטים קצר (כ-3 דקות):\n${link}\n\nהקישור אישי וחד-פעמי.`;
+  const phone=(c.whatsapp||c.phone||'').replace(/[^\d]/g,'');
+  const wa=phone?`https://wa.me/${phone.startsWith('972')?phone:'972'+phone.replace(/^0/,'')}?text=${encodeURIComponent(msg)}`:'';
+  appConfirm(
+    `הקישור נוצר ומוכן לשליחה${phone?' בוואטסאפ':''}.\n\nהוא אישי, חד-פעמי, ונשרף לאחר המילוי.`,
+    ()=>{
+      if(wa) window.open(wa,'_blank');
+      else { navigator.clipboard?.writeText(link); toast('📋 הקישור הועתק'); }
+      renderPage();
+    },
+    phone?'שליחה בוואטסאפ':'העתקת הקישור'
+  );
+}
+
+// ── משימות התיק ──
+function addChecklistItem(clientId){
+  const t=document.getElementById('cl-new-title');
+  const d=document.getElementById('cl-new-date');
+  const title=(t?.value||'').trim();
+  if(!title){ toast('⚠️ נא להזין שם משימה'); t?.focus(); return; }
+  window.addClientChecklistItem(clientId, title, d?.value||'');
+  if(t) t.value=''; if(d) d.value='';
+}
+function checklistRowHTML(clientId, it){
+  const overdue = !it.done && it.dueDate && it.dueDate < today();
+  const soon    = !it.done && it.dueDate && !overdue &&
+                  (new Date(it.dueDate)-new Date(today()))/86400000 <= 7;
+  const clr = overdue?'#dc2626':(soon?'#d97706':'var(--text2)');
+  return `
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--border)">
+    <input type="checkbox" ${it.done?'checked':''} style="width:19px;height:19px;accent-color:var(--accent);cursor:pointer;flex-shrink:0"
+      onchange="window.toggleClientChecklistItem('${clientId}','${it.id}',this.checked)">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13.5px;font-weight:600;${it.done?'text-decoration:line-through;color:var(--text3)':''}">${it.title}</div>
+      ${it.dueDate?`<div style="font-size:11px;color:${it.done?'var(--text3)':clr};font-weight:600;margin-top:2px">
+        📅 ${fmtD(it.dueDate)}${overdue?' · באיחור':''}${soon?' · השבוע':''}</div>`:''}
+    </div>
+    <button class="btn sm danger" style="flex-shrink:0" onclick="window.deleteClientChecklistItem('${clientId}','${it.id}')">🗑</button>
+  </div>`;
+}
+
+function fmtDur(ms){
+  const totalMin=Math.floor((ms||0)/60000);
+  const h=Math.floor(totalMin/60), m=totalMin%60;
+  if(h>0) return `${h} שע׳ ${m} דק׳`;
+  return `${m} דק׳`;
+}
+function fmtClock(ms){
+  const s=Math.floor((ms||0)/1000);
+  const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+  return [h,m,sec].map(n=>String(n).padStart(2,'0')).join(':');
+}
+
+// תצוגת הפרטים שהלקוח מילא בטופס
+function pRow(k,v){
+  return `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed var(--border)">
+    <span style="font-size:12px;color:var(--text3);flex-shrink:0">${k}</span>
+    <span style="font-size:13px;font-weight:600;text-align:left">${v}</span>
+  </div>`;
+}
+function renderProfileRows(p){
+  const yn=v=>v?'<span style="color:#16a34a">כן</span>':'<span style="color:var(--text3)">לא</span>';
+  let h='';
+  h+=pRow('שם מלא', p.fullName||`${p.firstName||''} ${p.lastName||''}`.trim()||'—');
+  if(p.idNumber)      h+=pRow('תעודת זהות', p.idNumber);
+  if(p.maritalStatus) h+=pRow('מצב משפחתי', p.maritalStatus);
+  if(p.spouse){
+    h+=pRow('בן/בת זוג', p.spouse.fullName||`${p.spouse.firstName||''} ${p.spouse.lastName||''}`.trim());
+    if(p.spouse.idNumber) h+=pRow('ת.ז בן/בת זוג', p.spouse.idNumber);
+    if(p.spouse.phone)    h+=pRow('טלפון בן/בת זוג', p.spouse.phone);
+    h+=pRow('בן/בת זוג מועסק/ת', [p.spouse.isEmployee?'שכיר/ה':'',p.spouse.isSelfEmployed?'עצמאי/ת':'']
+      .filter(Boolean).join(' + ')||'לא');
+  }
+  if(p.children&&p.children.length)
+    h+=pRow('ילדים', p.children.map(c=>`${c.name} (${c.birthYear})`).join(', '));
+  else if(p.hasChildren===false) h+=pRow('ילדים', '<span style="color:var(--text3)">אין</span>');
+  h+=pRow('תעסוקה', [p.isEmployee?'שכיר/ה':'',p.isSelfEmployed?'עצמאי/ת':''].filter(Boolean).join(' + ')||'—');
+  if(p.companies&&p.companies.length)
+    h+=pRow('חברות', p.companies.map(x=>`${x.name} (ח.פ ${x.companyId})`).join(', '));
+  if(p.hasRentalIncome) h+=pRow('שכר דירה', `${p.rentalCount||0} דירות`);
+  if(p.hasCrypto)             h+=pRow('מטבעות וירטואליים', yn(true));
+  if(p.hasForeignBank)        h+=pRow('בנקים בחו״ל', yn(true));
+  if(p.hasForeignInvestments) h+=pRow('השקעות בחו״ל', yn(true));
+  return h;
+}
+
+function renderClientDetailPage(){
+  const c=(S.waClients||[]).find(x=>x.id===S.selectedClientId);
+  if(!c) return `<div style="text-align:center;padding:60px 20px;color:var(--text2)">
+    <div style="font-size:44px;margin-bottom:12px">👤</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:14px">הלקוח לא נמצא</div>
+    <button class="btn primary" onclick="nav('clients')">חזרה לרשימת הלקוחות</button>
+  </div>`;
+
+  // ── זמן עבודה ──
+  const entries=(S.clientTimeEntries&&S.clientTimeEntries[c.id])||[];
+  const running=!!c.activeTimerStartedAt;
+  const loggedMs=entries.reduce((s,e)=>s+(Number(e.durationMs)||0),0);
+  const runningMs=running?(Date.now()-c.activeTimerStartedAt):0;
+  const totalMs=loggedMs+runningMs;
+  // צבירה לפי חודש
+  const byMonth={};
+  entries.forEach(e=>{
+    const k=new Date(e.startedAt||Date.now()).toISOString().slice(0,7);
+    byMonth[k]=(byMonth[k]||0)+(Number(e.durationMs)||0);
+  });
+  const monthRows=Object.keys(byMonth).sort().reverse().slice(0,6);
+
+  // ── משימות הלקוח ──
+  const nameKey=(c.name||'').trim();
+  const clientTasks=(S.tasks||[]).filter(t=>{
+    const n=((t.clientName||t.client||'')+'').trim();
+    return n && nameKey && n===nameKey;
+  });
+  const openTasks=clientTasks.filter(t=>t.status!=='done');
+  const doneCount=clientTasks.length-openTasks.length;
+
+  // ── משימות התיק ──
+  const checklist=(S.clientChecklist&&S.clientChecklist[c.id])||[];
+  const chkOpen=checklist.filter(i=>!i.done);
+  const chkOverdue=chkOpen.filter(i=>i.dueDate&&i.dueDate<today()).length;
+
+  // ── פירוט שכר ──
+  const feeItems=(c.feeItems&&c.feeItems.length)?c.feeItems:[];
+  const feeTotal=feeItems.length?feeItems.reduce((s,i)=>s+(Number(i.amount)||0),0):(Number(c.monthlyFee)||0);
+
+  // ── פרטים אישיים מהטופס ──
+  const profile=c.profile||null;
+  const profileRows=profile?renderProfileRows(profile):'';
+
+  const card='background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px';
+
+  return `
+  <div style="max-width:920px;margin:0 auto">
+    <!-- כותרת -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn sm" onclick="nav('clients')">→ חזרה</button>
+      <div style="flex:1;min-width:150px">
+        <h2 style="font-size:20px;font-weight:700">${c.name}</h2>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">
+          ${c.taxId?'תיק '+c.taxId+' · ':''}${c.assignedTo||S.user?.name||''}
+        </div>
+      </div>
+      <button class="btn sm" onclick="openEditClientModal('${c.id}')">✏️ עריכה</button>
+    </div>
+
+    <!-- טיימר זמן עבודה -->
+    <div style="${card};margin-bottom:14px;background:${running?'linear-gradient(135deg,#fef3c7,#fffbeb)':'var(--surface)'};border-color:${running?'#fcd34d':'var(--border)'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:3px">⏱ זמן עבודה על התיק</div>
+          <div id="client-timer-elapsed" data-started="${running?c.activeTimerStartedAt:''}" data-logged="${loggedMs}"
+               style="font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;color:${running?'#b45309':'var(--text)'}">
+            ${running?fmtClock(totalMs):fmtDur(totalMs)}
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">${entries.length} רישומים${running?' · שעון פועל':''}</div>
+        </div>
+        ${running
+          ?`<button class="btn" style="background:#dc2626;color:#fff;border-color:#dc2626;font-size:15px;padding:12px 22px" onclick="window.stopClientTimer('${c.id}')">⏹ סיום עבודה</button>`
+          :`<button class="btn primary" style="font-size:15px;padding:12px 22px" onclick="window.startClientTimer('${c.id}')">▶ התחלת עבודה</button>`}
+      </div>
+      ${monthRows.length?`
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:7px">סיכום חודשי</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${monthRows.map(k=>`<span style="padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:11px;font-weight:600">
+            ${k.split('-').reverse().join('/')} · ${fmtDur(byMonth[k])}</span>`).join('')}
+        </div>
+      </div>`:''}
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px">
+      <!-- פרטי קשר -->
+      <div style="${card}">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">📇 פרטי קשר</div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--border)">
+          <span style="font-size:12px;color:var(--text3)">ווצאפ</span>
+          <span style="font-size:13px;font-weight:600" dir="ltr">${c.whatsapp?formatPhone(c.whatsapp):'—'}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--border)">
+          <span style="font-size:12px;color:var(--text3)">טלפון</span>
+          <span style="font-size:13px;font-weight:600" dir="ltr">${c.phone||'—'}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--border)">
+          <span style="font-size:12px;color:var(--text3)">מייל</span>
+          <span style="font-size:13px;font-weight:600" dir="ltr">${c.email||'—'}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0">
+          <span style="font-size:12px;color:var(--text3)">מספר תיק / ח.פ</span>
+          <span style="font-size:13px;font-weight:600" dir="ltr">${c.taxId||'—'}</span></div>
+      </div>
+
+      <!-- פרטים אישיים מהטופס -->
+      <div style="${card}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:700">📋 פרטים אישיים</div>
+          ${c.privacyConsent?.given?`<span title="הלקוח אישר את הודעת הפרטיות ב-${fmtD((c.privacyConsent.at||'').slice(0,10))}"
+            style="padding:2px 9px;border-radius:20px;background:#dcfce7;color:#166534;font-size:10px;font-weight:700">🔒 הסכמה נחתמה</span>`:''}
+        </div>
+        ${profileRows||`<div style="text-align:center;padding:14px 4px;color:var(--text3)">
+          <div style="font-size:12px;margin-bottom:10px">הלקוח טרם מילא את טופס הפרטים</div>
+          <button class="btn sm primary" onclick="sendOnboardingLink('${c.id}')">📨 שלח קישור לטופס</button>
+        </div>`}
+      </div>
+    </div>
+
+    <!-- פירוט שכר חודשי -->
+    <div style="${card};margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700">💰 פירוט שכר חודשי</div>
+        <div style="font-size:16px;font-weight:800;color:var(--accent)">₪${feeTotal.toLocaleString()}</div>
+      </div>
+      <div id="fee-rows">
+        ${(feeItems.length?feeItems:[{label:'',amount:''}]).map(it=>feeRowHTML(it)).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn sm" onclick="addFeeRow()">+ הוסף שורה</button>
+        <button class="btn sm primary" onclick="saveFeeItems('${c.id}')">שמור פירוט</button>
+      </div>
+    </div>
+
+    <!-- משימות התיק (רשימה ייעודית + תאריכי יעד) -->
+    <div style="${card};margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:700">✅ משימות התיק</div>
+        ${chkOpen.length?`<span style="padding:3px 10px;border-radius:20px;background:${chkOverdue?'#fee2e2':'var(--surface2)'};color:${chkOverdue?'#b91c1c':'var(--text2)'};font-size:11px;font-weight:700">
+          ${chkOpen.length} פתוחות${chkOverdue?` · ${chkOverdue} באיחור`:''}</span>`:''}
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input class="form-input" id="cl-new-title" placeholder="משימה חדשה…" style="flex:2;min-width:150px"
+          onkeydown="if(event.key==='Enter')addChecklistItem('${c.id}')">
+        <input class="form-input" id="cl-new-date" type="date" style="flex:1;min-width:130px" title="תאריך יעד">
+        <button class="btn sm primary" onclick="addChecklistItem('${c.id}')">+ הוסף</button>
+      </div>
+      ${checklist.length
+        ? checklist.map(it=>checklistRowHTML(c.id,it)).join('')
+        : `<div style="text-align:center;padding:18px 10px;color:var(--text3);font-size:13px">
+             אין עדיין משימות בתיק. הוסיפו משימה עם תאריך יעד כדי לעקוב.</div>`}
+    </div>
+
+    <!-- משימות הלקוח -->
+    <div style="${card}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:700">📌 משימות ממערכת המשימות</div>
+        <div style="display:flex;gap:6px">
+          <span style="padding:3px 10px;border-radius:20px;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700">${openTasks.length} פתוחות</span>
+          <span style="padding:3px 10px;border-radius:20px;background:#dcfce7;color:#166534;font-size:11px;font-weight:700">${doneCount} הושלמו</span>
+        </div>
+      </div>
+      ${openTasks.length?openTasks.map(t=>taskCardHTML(t)).join(''):
+        `<div style="text-align:center;padding:26px 10px;color:var(--text3);font-size:13px">אין משימות פתוחות ללקוח זה 🎉</div>`}
+    </div>
+  </div>`;
+}
+
+function feeRowHTML(it){
+  const lbl=(it&&it.label||'').replace(/"/g,'&quot;');
+  const amt=(it&&it.amount!=null&&it.amount!=='')?it.amount:'';
+  return `<div class="fee-row" style="display:flex;gap:8px;margin-bottom:7px">
+    <input class="form-input fee-label" placeholder="שירות (הנה״ח, שכר, דוח שנתי…)" value="${lbl}" style="flex:2">
+    <input class="form-input fee-amount" type="number" min="0" placeholder="₪" value="${amt}" dir="ltr" style="flex:1">
+    <button class="btn sm danger" onclick="this.parentElement.remove()">🗑</button>
+  </div>`;
+}
+function addFeeRow(){
+  const box=document.getElementById('fee-rows');
+  if(box) box.insertAdjacentHTML('beforeend', feeRowHTML({}));
+}
+function saveFeeItems(clientId){
+  const rows=[...document.querySelectorAll('#fee-rows .fee-row')];
+  const items=rows.map(r=>({
+    label:(r.querySelector('.fee-label').value||'').trim(),
+    amount:Number(r.querySelector('.fee-amount').value)||0
+  })).filter(i=>i.label||i.amount);
+  window.saveClientFeeItems(clientId, items);
+  const c=(S.waClients||[]).find(x=>x.id===clientId);
+  if(c){ c.feeItems=items; c.monthlyFee=items.reduce((s,i)=>s+i.amount,0); }
+  toast('✅ פירוט השכר נשמר');
+  renderPage();
+}
+
+// עדכון חי של שעון הטיימר
+setInterval(()=>{
+  const el=document.getElementById('client-timer-elapsed');
+  if(!el) return;
+  const started=Number(el.dataset.started||0);
+  if(!started) return;
+  const logged=Number(el.dataset.logged||0);
+  el.textContent=fmtClock(logged+(Date.now()-started));
+},1000);
 
 // ══════════════════════════════════════
 let sSection='office';
@@ -7089,7 +7423,9 @@ document.addEventListener('DOMContentLoaded', function(){
   window.saveWAClient = async function(id, data) {
     try {
       if(id) await updateDoc(doc(db,'clients',id), data);
-      else    await addDoc(collection(db,'clients'), { ...data, createdAt: new Date().toISOString() });
+      // userId חובה — בלעדיו הלקוח לא מופיע ברשימה (שמסוננת לפי userId)
+      else    await addDoc(collection(db,'clients'),
+                { ...data, userId: S.user?.uid || '', createdAt: new Date().toISOString() });
       if(typeof toast === 'function') toast('✅ לקוח נשמר');
     } catch(e) { console.error('saveWAClient:', e); }
   };
@@ -7100,6 +7436,99 @@ document.addEventListener('DOMContentLoaded', function(){
       await deleteDoc(doc(db,'clients',id));
       if(typeof toast === 'function') toast('✅ לקוח נמחק');
     } catch(e) { console.error('deleteWAClient:', e); }
+  };
+
+  // בסיס הקישור לטופס פרטי הלקוח — פריסת Vercel, שם /api זמין.
+  const ONBOARDING_BASE_URL = 'https://dabelu.vercel.app';
+
+  // ── קישור אישי למילוי טופס הפרטים ──
+  // הטוקן נוצר כאן (בדפדפן המאומת של בעל/ת המשרד) ונשמר על מסמך הלקוח.
+  // השרת מאמת אותו מול המסמך כשהלקוח פותח את הטופס.
+  window.createOnboardingLink = async function(clientId) {
+    try {
+      const bytes = new Uint8Array(24);
+      crypto.getRandomValues(bytes);
+      const token = btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+      await updateDoc(doc(db,'clients',clientId), { onboardingToken: token, profileCompletedAt: null });
+      const c = S.waClients.find(x=>x.id===clientId);
+      if(c){ c.onboardingToken = token; c.profileCompletedAt = null; }
+      // חייב להיות הדומיין של Vercel ולא location.origin: הטופס פונה
+      // ל-/api/send-onboarding, ו-Firebase Hosting מנתב הכל ל-tax_manager_app.html.
+      return `${ONBOARDING_BASE_URL}/onboarding.html?c=${clientId}&t=${token}`;
+    } catch(e) { console.error('createOnboardingLink:', e); return null; }
+  };
+
+  // ── פירוט שכר חודשי ──
+  window.saveClientFeeItems = async function(clientId, feeItems) {
+    try {
+      const total = feeItems.reduce((s,i)=>s+(Number(i.amount)||0),0);
+      await updateDoc(doc(db,'clients',clientId), { feeItems, monthlyFee: total });
+    } catch(e) { console.error('saveClientFeeItems:', e); }
+  };
+
+  // ── טיימר זמן עבודה ללקוח ──
+  window.startClientTimer = async function(clientId) {
+    try {
+      const startedAt = Date.now();
+      await updateDoc(doc(db,'clients',clientId), { activeTimerStartedAt: startedAt });
+      const c = S.waClients.find(x=>x.id===clientId); if(c) c.activeTimerStartedAt = startedAt;
+      renderPage();
+    } catch(e) { console.error('startClientTimer:', e); }
+  };
+  window.stopClientTimer = async function(clientId) {
+    try {
+      const c = S.waClients.find(x=>x.id===clientId);
+      const startedAt = c?.activeTimerStartedAt;
+      if(!startedAt) return;
+      const endedAt = Date.now();
+      await addDoc(collection(db,'clients',clientId,'timeEntries'), { startedAt, endedAt, durationMs: endedAt-startedAt });
+      await updateDoc(doc(db,'clients',clientId), { activeTimerStartedAt: null });
+      if(c) c.activeTimerStartedAt = null;
+      if(typeof toast === 'function') toast('⏸ נרשם זמן עבודה: ' + fmtDur(endedAt-startedAt));
+      await window.loadClientTimeEntries(clientId);
+      renderPage();
+    } catch(e) { console.error('stopClientTimer:', e); }
+  };
+  // ── משימות התיק (רשימה ייעודית ללקוח, עם תאריכי יעד) ──
+  window.loadClientChecklist = async function(clientId) {
+    try {
+      if(!S.clientChecklist) S.clientChecklist = {};
+      const snap = await getDocs(collection(db,'clients',clientId,'checklist'));
+      S.clientChecklist[clientId] = snap.docs.map(d=>({id:d.id,...d.data()}))
+        .sort((a,b)=>(a.done?1:0)-(b.done?1:0) || (a.dueDate||'9999').localeCompare(b.dueDate||'9999'));
+      if(S.page==='clientDetail' && S.selectedClientId===clientId) renderPage();
+    } catch(e) { console.error('loadClientChecklist:', e); }
+  };
+  window.addClientChecklistItem = async function(clientId, title, dueDate) {
+    try {
+      await addDoc(collection(db,'clients',clientId,'checklist'),
+        { title, dueDate: dueDate||'', done:false, createdAt: new Date().toISOString() });
+      await window.loadClientChecklist(clientId);
+      if(typeof toast === 'function') toast('✅ המשימה נוספה');
+    } catch(e) { console.error('addClientChecklistItem:', e); if(typeof toast==='function') toast('⚠️ שמירה נכשלה'); }
+  };
+  window.toggleClientChecklistItem = async function(clientId, itemId, done) {
+    try {
+      await updateDoc(doc(db,'clients',clientId,'checklist',itemId),
+        { done, doneAt: done ? new Date().toISOString() : null });
+      await window.loadClientChecklist(clientId);
+    } catch(e) { console.error('toggleClientChecklistItem:', e); }
+  };
+  window.deleteClientChecklistItem = async function(clientId, itemId) {
+    try {
+      await deleteDoc(doc(db,'clients',clientId,'checklist',itemId));
+      await window.loadClientChecklist(clientId);
+    } catch(e) { console.error('deleteClientChecklistItem:', e); }
+  };
+
+  window.loadClientTimeEntries = async function(clientId) {
+    try {
+      if(!S.clientTimeEntries) S.clientTimeEntries = {};
+      const snap = await getDocs(collection(db,'clients',clientId,'timeEntries'));
+      S.clientTimeEntries[clientId] = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.startedAt||0)-(a.startedAt||0));
+      if(S.page==='clientDetail' && S.selectedClientId===clientId) renderPage();
+    } catch(e) { console.error('loadClientTimeEntries:', e); }
   };
 
   // ── Admin: טעינת כל המשתמשים (היררכי: מעסיקים + עובדיהם) ──
