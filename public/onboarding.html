@@ -391,7 +391,10 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
 // אין כאן Firebase בכוונה: הלקוח הממלא אינו משתמש רשום, ולכן כל
 // הקריאה והכתיבה עוברות דרך אנדפוינט בשרת שמאמת את הטוקן ופועל
 // עם חשבון שירות. כך מסד הנתונים נשאר סגור לחלוטין בפני הדפדפן.
-const API = '/api/send-onboarding';
+// כתובת מלאה ולא יחסית: הקובץ הזה מוגש גם מ-dabelu.web.app, ושם
+// Firebase Hosting מנתב כל בקשה ל-tax_manager_app.html — כולל /api.
+// האנדפוינט מחזיר Access-Control-Allow-Origin: * ולכן זה עובד חוצה-דומיין.
+const API = 'https://dabelu.vercel.app/api/send-onboarding';
 
 // ── סדר השלבים. 'spouse' מדולג כשלא נשואים ──
 const ALL = ['personal','spouse','children','employment','companies','rental','assets','idphoto','consent','summary'];
