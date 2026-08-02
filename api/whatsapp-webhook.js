@@ -76,10 +76,13 @@ console.log('[startup] Hebrew calendar: inline math v3 loaded OK (no @hebcal/cor
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT  = 'dabelu';
-const SITE_URL          = 'https://cosmic-daifuku-4d8c28.netlify.app';
+// אתר ההרשמה הציבורי. היה מוגדר לדומיין Netlify ישן, כך שנרשמים
+// חדשים שקיבלו את ההודעה "אינך מנוי" הופנו לאתר שאינו בשימוש.
+const SITE_URL          = process.env.PUBLIC_SITE_URL || 'https://dabelu.web.app';
 // בסיס הקישור לטופס פרטי הלקוח. חייב להצביע לפריסת Vercel, כי הטופס
 // פונה ל-/api/send-onboarding — ו-Firebase Hosting אינו מגיש /api כלל.
-const ONBOARDING_BASE_URL = process.env.PUBLIC_SITE_URL || 'https://dabelu.vercel.app';
+// שם משתנה נפרד במכוון: הערך כאן חייב להיות שונה מ-SITE_URL.
+const ONBOARDING_BASE_URL = process.env.ONBOARDING_BASE_URL || 'https://dabelu.vercel.app';
 
 // ───────────────────────────────────────────
 // WhatsApp
