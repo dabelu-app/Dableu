@@ -772,6 +772,12 @@ async function submit(){
     });
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !d.ok) throw new Error(d.error || ('HTTP '+r.status));
+    if(idPhotoData && d.photoSaved === false){
+      $('#done').querySelector('p').innerHTML =
+        'הפרטים נשלחו בהצלחה למשרד.<br><br>' +
+        '<span style="color:#b45309">⚠ את צילום תעודת הזהות לא הצלחנו לשמור.<br>' +
+        'נבקש לשלוח אותו ישירות למשרד.</span>';
+    }
     show($('#app'), false); show($('#done'), true);
   }catch(e){
     console.error(e);
