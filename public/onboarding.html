@@ -175,6 +175,19 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
         <div class="errmsg">נא למלא מספר תעודת זהות תקין (9 ספרות)</div>
       </div>
       <div class="field">
+        <label class="label" for="phone">טלפון נייד <span class="req">*</span></label>
+        <input class="inp" id="phone" data-req type="tel" inputmode="tel" dir="ltr"
+               autocomplete="tel" placeholder="050-0000000">
+        <div class="errmsg">נא למלא מספר טלפון תקין</div>
+      </div>
+      <div class="field">
+        <label class="label" for="email">אימייל <span class="req">*</span></label>
+        <input class="inp" id="email" data-req type="email" inputmode="email" dir="ltr"
+               autocomplete="email" placeholder="name@example.com">
+        <div class="errmsg">נא למלא כתובת אימייל תקינה</div>
+        <div class="hint">לכתובת זו יישלחו הדוחות והעדכונים מהמשרד.</div>
+      </div>
+      <div class="field">
         <label class="label" for="maritalStatus">מצב משפחתי <span class="req">*</span></label>
         <select class="inp" id="maritalStatus" data-req>
           <option value="">בחרו…</option>
@@ -599,6 +612,8 @@ function compress(file){
 
 // ══ ולידציה ══
 function validId(v){ return /^\d{9}$/.test(v); }
+function validEmail(v){ return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(v); }
+function validPhone(v){ const d=(v||'').replace(/[^\d]/g,''); return d.length>=9 && d.length<=15; }
 function markErr(el, on){
   el.classList.toggle('err', on);
   const f = el.closest('.field');
@@ -610,8 +625,11 @@ function validate(id){
   const sec = $(`.step[data-step="${id}"]`);
 
   sec.querySelectorAll('[data-req]').forEach(el=>{
-    const idFields = ['idNumber','spouseIdNumber'];
-    const bad = !el.value.trim() || (idFields.includes(el.id) && !validId(el.value.trim()));
+    const v = el.value.trim();
+    let bad = !v;
+    if(!bad && ['idNumber','spouseIdNumber'].includes(el.id)) bad = !validId(v);
+    if(!bad && el.type === 'email')                           bad = !validEmail(v);
+    if(!bad && el.type === 'tel')                             bad = !validPhone(v);
     markErr(el, bad); if(bad) ok = false;
   });
 
@@ -673,6 +691,8 @@ function collect(){
     firstName:  $('#firstName').value.trim(),
     lastName:   $('#lastName').value.trim(),
     idNumber:   $('#idNumber').value.trim(),
+    phone:      $('#phone').value.trim(),
+    email:      $('#email').value.trim(),
     maritalStatus: $('#maritalStatus').value,
     spouse: married ? {
       firstName: $('#spouseFirstName').value.trim(),
@@ -711,7 +731,9 @@ function buildSummary(){
   const row = (k,v) => `<div class="sumrow"><span class="k">${k}</span><span class="v">${v}</span></div>`;
   let h = '';
   h += `<div class="sumgrp"><h3>פרטים אישיים</h3>
-    ${row('שם מלא', d.fullName)}${row('תעודת זהות', d.idNumber)}${row('מצב משפחתי', d.maritalStatus)}</div>`;
+    ${row('שם מלא', d.fullName)}${row('תעודת זהות', d.idNumber)}
+    ${row('טלפון', d.phone)}${row('אימייל', d.email)}
+    ${row('מצב משפחתי', d.maritalStatus)}</div>`;
   if(d.spouse) h += `<div class="sumgrp"><h3>בן/בת זוג</h3>
     ${row('שם מלא', d.spouse.fullName)}${row('תעודת זהות', d.spouse.idNumber)}
     ${d.spouse.phone ? row('טלפון', d.spouse.phone) : ''}

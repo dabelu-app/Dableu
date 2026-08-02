@@ -1539,7 +1539,7 @@ function _doLogout(){
 // ══════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════
-const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'לקוחות',clientDetail:'כרטיס לקוח',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
+const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'לקוחות',clientDetail:'כרטיס לקוח',timeReport:'דוח זמנים',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
 function nav(page,el){
   S.page=page;
   if(el){
@@ -1759,6 +1759,7 @@ function renderPage(){
     else if(S.page==='appointments'){el.innerHTML=renderAppointmentsPage();loadAppointmentsIfNeeded();}
     else if(S.page==='clients'){el.innerHTML=renderClientsPage();loadWAClientsIfNeeded();}
     else if(S.page==='clientDetail'){el.innerHTML=renderClientDetailPage();loadWAClientsIfNeeded();}
+    else if(S.page==='timeReport'){el.innerHTML=renderTimeReportPage();loadWAClientsIfNeeded();}
     else if(S.page==='settings')el.innerHTML=renderSettingsPage();
     else if(S.page==='admin'){el.innerHTML=renderAdminPage();if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();}
     else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
@@ -3276,7 +3277,10 @@ function renderClientsPage(){
         <h2 style="font-size:20px;font-weight:700">👥 לקוחות</h2>
         <div style="font-size:12px;color:var(--text2);margin-top:2px">${S.waClients.length} לקוחות רשומים</div>
       </div>
-      <button class="btn primary" onclick="openAddClientModal()">+ הוסף לקוח</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="openTimeReport()">📊 דוח זמנים</button>
+        <button class="btn primary" onclick="openAddClientModal()">+ הוסף לקוח</button>
+      </div>
     </div>
 
     <!-- חיפוש מובייל — בולט, כמו פגישות -->
@@ -3428,6 +3432,167 @@ function openClientDetail(id){
   renderPage();
 }
 
+// ══════════════════════════════════════
+// דוח זמנים
+// ══════════════════════════════════════
+function openTimeReport(){
+  S.page='timeReport';
+  const tb=document.getElementById('topbar-title'); if(tb) tb.textContent='דוח זמנים';
+  if(!S.timeReport){
+    const n=new Date();
+    const from=new Date(n.getFullYear(),n.getMonth(),1).toISOString().slice(0,10);
+    window.loadTimeReport(from, today());
+  } else renderPage();
+}
+function runTimeReport(){
+  const f=document.getElementById('tr-from')?.value;
+  const t=document.getElementById('tr-to')?.value;
+  if(!f||!t){ toast('⚠️ בחרי טווח תאריכים'); return; }
+  if(f>t){ toast('⚠️ תאריך ההתחלה מאוחר מתאריך הסיום'); return; }
+  window.loadTimeReport(f,t);
+}
+function trPreset(kind){
+  const n=new Date(); let f,t=today();
+  const iso=d=>d.toISOString().slice(0,10);
+  if(kind==='thisMonth') f=iso(new Date(n.getFullYear(),n.getMonth(),1));
+  else if(kind==='lastMonth'){
+    f=iso(new Date(n.getFullYear(),n.getMonth()-1,1));
+    t=iso(new Date(n.getFullYear(),n.getMonth(),0));
+  }
+  else if(kind==='quarter') f=iso(new Date(n.getFullYear(),n.getMonth()-2,1));
+  else if(kind==='year')    f=iso(new Date(n.getFullYear(),0,1));
+  window.loadTimeReport(f,t);
+}
+function exportTimeReportCSV(){
+  const r=S.timeReport; if(!r||!r.rows.length){ toast('⚠️ אין נתונים לייצוא'); return; }
+  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const hhmm=ms=>{const m=Math.round(ms/60000);return `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`;};
+  const tm=ts=>ts?new Date(ts).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}):'';
+  const lines=[['לקוח','תאריך','שעת התחלה','שעת סיום','משך (שע:דק)','משך (דקות)']
+    .map(esc).join(',')];
+  r.rows.forEach(x=>lines.push([x.clientName,x.day,tm(x.startedAt),tm(x.endedAt),
+    hhmm(x.durationMs),Math.round(x.durationMs/60000)].map(esc).join(',')));
+  const total=r.rows.reduce((s,x)=>s+x.durationMs,0);
+  lines.push(['סה״כ','','','',hhmm(total),Math.round(total/60000)].map(esc).join(','));
+  // BOM כדי שאקסל יזהה עברית ב-UTF-8
+  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`דוח-זמנים_${r.from}_עד_${r.to}.csv`;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  toast('📥 הדוח יורד');
+}
+
+function renderTimeReportPage(){
+  const r=S.timeReport||{from:'',to:'',rows:[],loading:true};
+  const card='background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px';
+
+  // צבירה לפי לקוח
+  const byClient={};
+  r.rows.forEach(x=>{
+    const k=x.clientId;
+    if(!byClient[k]) byClient[k]={name:x.clientName,ms:0,n:0};
+    byClient[k].ms+=x.durationMs; byClient[k].n++;
+  });
+  const clientRows=Object.values(byClient).sort((a,b)=>b.ms-a.ms);
+  const totalMs=r.rows.reduce((s,x)=>s+x.durationMs,0);
+
+  const preset=(k,l)=>`<button class="btn sm" onclick="trPreset('${k}')">${l}</button>`;
+
+  return `
+  <div style="max-width:920px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn sm" onclick="nav('clients')">→ חזרה</button>
+      <h2 style="font-size:20px;font-weight:700;flex:1">📊 דוח זמנים</h2>
+      <button class="btn sm primary" onclick="exportTimeReportCSV()" ${r.rows.length?'':'disabled'}>📥 ייצוא ל-Excel</button>
+    </div>
+
+    <div style="${card};margin-bottom:14px">
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">מתאריך</label>
+          <input class="form-input" type="date" id="tr-from" value="${r.from}">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">עד תאריך</label>
+          <input class="form-input" type="date" id="tr-to" value="${r.to}">
+        </div>
+        <button class="btn primary" onclick="runTimeReport()">הפק דוח</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${preset('thisMonth','החודש')}${preset('lastMonth','חודש שעבר')}
+        ${preset('quarter','3 חודשים')}${preset('year','השנה')}
+      </div>
+    </div>
+
+    ${r.loading?`<div style="text-align:center;padding:40px;color:var(--text2);font-size:14px">⏳ טוען נתונים…</div>`:`
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px">
+      <div style="${card};text-align:center">
+        <div style="font-size:11px;color:var(--text3);font-weight:600">סה״כ זמן</div>
+        <div style="font-size:24px;font-weight:800;color:var(--accent);margin-top:4px">${fmtDur(totalMs)}</div>
+      </div>
+      <div style="${card};text-align:center">
+        <div style="font-size:11px;color:var(--text3);font-weight:600">רישומים</div>
+        <div style="font-size:24px;font-weight:800;margin-top:4px">${r.rows.length}</div>
+      </div>
+      <div style="${card};text-align:center">
+        <div style="font-size:11px;color:var(--text3);font-weight:600">לקוחות</div>
+        <div style="font-size:24px;font-weight:800;margin-top:4px">${clientRows.length}</div>
+      </div>
+    </div>
+
+    ${r.rows.length===0?`
+      <div style="${card};text-align:center;padding:44px 20px;color:var(--text2)">
+        <div style="font-size:40px;margin-bottom:10px">🗓</div>
+        <div style="font-size:14px;font-weight:600">אין רישומי זמן בטווח שנבחר</div>
+      </div>`:`
+
+    <div style="${card};margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">סיכום לפי לקוח</div>
+      ${clientRows.map(c=>{
+        const pct=totalMs?Math.round(c.ms/totalMs*100):0;
+        return `<div style="margin-bottom:11px">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <span style="font-weight:600">${c.name}</span>
+            <span style="color:var(--text2)">${fmtDur(c.ms)} · ${c.n} רישומים</span>
+          </div>
+          <div style="height:7px;background:var(--surface2);border-radius:20px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:20px"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div style="${card}">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">פירוט רישומים</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:460px">
+          <thead><tr style="background:var(--surface3)">
+            <th style="text-align:right;padding:8px;font-size:11px;color:var(--text2)">לקוח</th>
+            <th style="text-align:right;padding:8px;font-size:11px;color:var(--text2)">תאריך</th>
+            <th style="text-align:right;padding:8px;font-size:11px;color:var(--text2)">שעות</th>
+            <th style="text-align:right;padding:8px;font-size:11px;color:var(--text2)">משך</th>
+          </tr></thead>
+          <tbody>
+          ${r.rows.map(x=>{
+            const tm=ts=>ts?new Date(ts).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}):'—';
+            return `<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px;font-weight:600">${x.clientName}</td>
+              <td style="padding:8px;color:var(--text2)">${fmtD(x.day)}</td>
+              <td style="padding:8px;color:var(--text2)" dir="ltr">${tm(x.startedAt)}–${tm(x.endedAt)}</td>
+              <td style="padding:8px;font-weight:600">${fmtDur(x.durationMs)}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    `}`}
+  </div>`;
+}
+
 // ── שליחת קישור לטופס הפרטים ──
 async function sendOnboardingLink(clientId){
   const c=(S.waClients||[]).find(x=>x.id===clientId);
@@ -3438,14 +3603,19 @@ async function sendOnboardingLink(clientId){
   const msg=`שלום ${c.name}! 👋\n\nכדי שנוכל לפתוח את התיק שלך, נשמח שתמלא/י טופס פרטים קצר (כ-3 דקות):\n${link}\n\nהקישור אישי וחד-פעמי.`;
   const phone=(c.whatsapp||c.phone||'').replace(/[^\d]/g,'');
   const wa=phone?`https://wa.me/${phone.startsWith('972')?phone:'972'+phone.replace(/^0/,'')}?text=${encodeURIComponent(msg)}`:'';
+  S._lastOnboardingLink=link;
   appConfirm(
-    `הקישור נוצר ומוכן לשליחה${phone?' בוואטסאפ':''}.\n\nהוא אישי, חד-פעמי, ונשרף לאחר המילוי.`,
+    (phone?`הקישור מוכן לשליחה בוואטסאפ אל ${formatPhone(phone)}.`:'הקישור מוכן להעתקה.')
+      + `\n\n${link}\n\n`
+      + 'שימי לב: כל לחיצה על הכפתור מייצרת קישור חדש ומבטלת את הקודם.',
     ()=>{
       if(wa) window.open(wa,'_blank');
       else { navigator.clipboard?.writeText(link); toast('📋 הקישור הועתק'); }
       renderPage();
     },
-    phone?'שליחה בוואטסאפ':'העתקת הקישור'
+    'שליחת טופס ללקוח',
+    phone?'שליחה בוואטסאפ':'העתקת הקישור',
+    false                       // לא מסוכן — כפתור סגול ולא אדום
   );
 }
 
@@ -3500,6 +3670,8 @@ function renderProfileRows(p){
   let h='';
   h+=pRow('שם מלא', p.fullName||`${p.firstName||''} ${p.lastName||''}`.trim()||'—');
   if(p.idNumber)      h+=pRow('תעודת זהות', p.idNumber);
+  if(p.phone)         h+=pRow('טלפון', `<span dir="ltr">${p.phone}</span>`);
+  if(p.email)         h+=pRow('אימייל', `<span dir="ltr">${p.email}</span>`);
   if(p.maritalStatus) h+=pRow('מצב משפחתי', p.maritalStatus);
   if(p.spouse){
     h+=pRow('בן/בת זוג', p.spouse.fullName||`${p.spouse.firstName||''} ${p.spouse.lastName||''}`.trim());
@@ -7455,8 +7627,24 @@ document.addEventListener('DOMContentLoaded', function(){
       if(c){ c.onboardingToken = token; c.profileCompletedAt = null; }
       // חייב להיות הדומיין של Vercel ולא location.origin: הטופס פונה
       // ל-/api/send-onboarding, ו-Firebase Hosting מנתב הכל ל-tax_manager_app.html.
-      return `${ONBOARDING_BASE_URL}/onboarding.html?c=${clientId}&t=${token}`;
-    } catch(e) { console.error('createOnboardingLink:', e); return null; }
+      const link = `${ONBOARDING_BASE_URL}/onboarding.html?c=${clientId}&t=${token}`;
+
+      // ודא מול השרת שהקישור באמת תקין לפני שהוא נשלח ללקוח
+      try {
+        const vr = await fetch(
+          `${ONBOARDING_BASE_URL}/api/send-onboarding?action=check&c=${encodeURIComponent(clientId)}&t=${encodeURIComponent(token)}`);
+        const vj = await vr.json().catch(()=>({}));
+        if(!vr.ok || !vj.ok){
+          console.error('link verification failed:', vr.status, vj);
+          if(typeof toast === 'function') toast('⚠️ הקישור נוצר אך השרת דחה אותו — נסי שוב');
+          return null;
+        }
+      } catch(e){ console.warn('link verification skipped:', e.message); }
+
+      return link;
+    } catch(e) { console.error('createOnboardingLink:', e);
+      if(typeof toast === 'function') toast('⚠️ ' + failMsg(e));
+      return null; }
   };
 
   // ── פירוט שכר חודשי ──
@@ -7468,27 +7656,63 @@ document.addEventListener('DOMContentLoaded', function(){
   };
 
   // ── טיימר זמן עבודה ללקוח ──
+  // הודעת שגיאה קריאה במקום כישלון שקט
+  function failMsg(e){
+    const m = (e && (e.code || e.message)) || '';
+    if(/permission|insufficient/i.test(m)) return 'אין הרשאה לשמור. יש לעדכן את כללי האבטחה ב-Firestore.';
+    if(/offline|network|unavailable/i.test(m)) return 'אין חיבור לשרת. בדקי את האינטרנט ונסי שוב.';
+    return 'שגיאה: ' + (m || 'לא ידועה');
+  }
+
   window.startClientTimer = async function(clientId) {
     try {
       const startedAt = Date.now();
       await updateDoc(doc(db,'clients',clientId), { activeTimerStartedAt: startedAt });
       const c = S.waClients.find(x=>x.id===clientId); if(c) c.activeTimerStartedAt = startedAt;
+      if(typeof toast === 'function') toast('▶ השעון התחיל');
       renderPage();
-    } catch(e) { console.error('startClientTimer:', e); }
+    } catch(e) {
+      console.error('startClientTimer:', e);
+      if(typeof toast === 'function') toast('⚠️ ' + failMsg(e));
+    }
   };
+
   window.stopClientTimer = async function(clientId) {
+    const c = S.waClients.find(x=>x.id===clientId);
+    // אל תסתמך רק על המצב המקומי — אם הוא חסר, קרא מהשרת
+    let startedAt = c?.activeTimerStartedAt;
+    if(!startedAt){
+      try {
+        const snap = await getDoc(doc(db,'clients',clientId));
+        startedAt = snap.exists() ? snap.data().activeTimerStartedAt : null;
+      } catch(e) { console.error('stopClientTimer read:', e); }
+    }
+    if(!startedAt){
+      if(typeof toast === 'function') toast('⚠️ לא נמצא שעון פעיל ללקוח זה');
+      if(c) c.activeTimerStartedAt = null;
+      renderPage();
+      return;
+    }
+
+    const endedAt = Date.now();
+    // קודם רושמים את הזמן, ורק אם הצליח מכבים את השעון —
+    // כך שכשל בשמירה לא מוחק את הזמן שנצבר.
     try {
-      const c = S.waClients.find(x=>x.id===clientId);
-      const startedAt = c?.activeTimerStartedAt;
-      if(!startedAt) return;
-      const endedAt = Date.now();
-      await addDoc(collection(db,'clients',clientId,'timeEntries'), { startedAt, endedAt, durationMs: endedAt-startedAt });
+      await addDoc(collection(db,'clients',clientId,'timeEntries'),
+        { startedAt, endedAt, durationMs: endedAt-startedAt, createdAt: new Date().toISOString() });
+    } catch(e) {
+      console.error('stopClientTimer save:', e);
+      if(typeof toast === 'function') toast('⚠️ הזמן לא נשמר — ' + failMsg(e));
+      return;   // השעון ממשיך לרוץ, הזמן לא אבד
+    }
+    try {
       await updateDoc(doc(db,'clients',clientId), { activeTimerStartedAt: null });
       if(c) c.activeTimerStartedAt = null;
-      if(typeof toast === 'function') toast('⏸ נרשם זמן עבודה: ' + fmtDur(endedAt-startedAt));
-      await window.loadClientTimeEntries(clientId);
-      renderPage();
-    } catch(e) { console.error('stopClientTimer:', e); }
+    } catch(e) { console.error('stopClientTimer clear:', e); }
+
+    if(typeof toast === 'function') toast('⏹ נרשמו ' + fmtDur(endedAt-startedAt));
+    await window.loadClientTimeEntries(clientId);
+    renderPage();
   };
   // ── משימות התיק (רשימה ייעודית ללקוח, עם תאריכי יעד) ──
   window.loadClientChecklist = async function(clientId) {
@@ -7520,6 +7744,38 @@ document.addEventListener('DOMContentLoaded', function(){
       await deleteDoc(doc(db,'clients',clientId,'checklist',itemId));
       await window.loadClientChecklist(clientId);
     } catch(e) { console.error('deleteClientChecklistItem:', e); }
+  };
+
+  // ── דוח זמנים לטווח תאריכים, על פני כל הלקוחות ──
+  // רץ לקוח-לקוח (ולא collectionGroup) כדי שהשאילתה תישאר מוגבלת
+  // ללקוחות של המשתמש/ת המחובר/ת בלבד.
+  window.loadTimeReport = async function(fromDate, toDate) {
+    const clients = S.waClients || [];
+    S.timeReport = { from: fromDate, to: toDate, rows: [], loading: true };
+    renderPage();
+    const rows = [];
+    let failed = 0;
+    for (const c of clients) {
+      try {
+        const snap = await getDocs(collection(db, 'clients', c.id, 'timeEntries'));
+        snap.docs.forEach(d => {
+          const e = d.data();
+          if (!e.startedAt) return;
+          const day = new Date(e.startedAt).toISOString().slice(0, 10);
+          if (day >= fromDate && day <= toDate) {
+            rows.push({
+              clientId: c.id, clientName: c.name || '—',
+              day, startedAt: e.startedAt, endedAt: e.endedAt || 0,
+              durationMs: Number(e.durationMs) || 0
+            });
+          }
+        });
+      } catch (e) { failed++; console.error('loadTimeReport', c.id, e); }
+    }
+    rows.sort((a, b) => b.startedAt - a.startedAt);
+    S.timeReport = { from: fromDate, to: toDate, rows, loading: false, failed };
+    if (failed && typeof toast === 'function') toast(`⚠️ ${failed} לקוחות לא נטענו`);
+    renderPage();
   };
 
   window.loadClientTimeEntries = async function(clientId) {
