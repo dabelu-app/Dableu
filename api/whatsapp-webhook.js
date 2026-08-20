@@ -828,7 +828,8 @@ async function classifyMessage(text) {
         }
       }
       // ── שלב 4: override — מילת appointment מפורשת תמיד מנצחת ──
-      if (/פגישה|תור|להיפגש|נפגשים|נתראה/.test(text) && result.intent !== 'appointment') {
+      // פגיש = כל צורות "פגישה" כולל שגיאות כתיבה (פגישת/פגישות/פגישא/פגיש)
+      if (/פגיש|להיפגש|נפגש|נתראה|להפגש/.test(text) && result.intent !== 'appointment') {
         result.intent = 'appointment';
       }
       return result;
@@ -836,7 +837,7 @@ async function classifyMessage(text) {
   } catch(err) { console.error('Classify error:', err); }
 
   // גם fallback חייב לכבד מילות appointment
-  const fallbackIntent = /פגישה|תור|להיפגש|נפגשים|נתראה/.test(text) ? 'appointment' : 'task';
+  const fallbackIntent = /פגיש|להיפגש|נפגש|נתראה|להפגש/.test(text) ? 'appointment' : 'task';
   return { intent: fallbackIntent, date: jsDate, time:null, title:text };
 }
 
@@ -1815,9 +1816,10 @@ module.exports = async (req, res) => {
     if (withName) {
       matchedClient = matchClient(clients, withName);
       // אם לא נמצא — ודא שזה שם אדם אמיתי ולא מילה אחרת
+      // שים לב: הAI של 70B כבר זיהה את השם, אז נסמוך עליו אלא אם ה-8B בטוח שזה לא שם
       if (!matchedClient) {
         const verified = await extractPersonName(withName);
-        withName = verified || ''; // אם לא שם — נשכח ונשאל בהמשך
+        withName = verified || withName; // שמור את השם המקורי אם ה-8B לא בטוח
       }
     }
 
