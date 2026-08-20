@@ -1553,10 +1553,16 @@ module.exports = async (req, res) => {
           `❌ ביטלת את הפגישה.\n📅 ${dateStr}${timeStr}\n\nניתן לפנות ל${ownerDisplayName} לקביעה מחדש.`
         );
 
-        // הודע לבעל העסק על הביטול
-        if (pending.ownerChatId) {
+        // הודע לבעל העסק ושאל אם רוצה לקבוע מחדש
+        if (pending.ownerChatId && pending.ownerDocName) {
+          await setPending(pending.ownerDocName, {
+            step: 'reschedule_after_cancel',
+            clientName: clientOwnName,
+            clientChatId: chatId,
+            ownerName: ownerName || pending.ownerName || ''
+          });
           await sendWhatsAppReply(pending.ownerChatId,
-            `❌ *${clientOwnName}* ביטל/ה את הפגישה.\n📅 ${dateStr}${timeStr}\n🗑️ הפגישה נמחקה מהיומן.`
+            `❌ *${clientOwnName}* ביטל/ה את הפגישה.\n📅 ${dateStr}${timeStr}\n🗑️ הפגישה נמחקה מהיומן.\n\nרוצה לקבוע תאריך חדש? שלח תאריך ושעה\nאו "ללא" לביטול`
           );
         }
         return res.status(200).send('ok');
@@ -1568,6 +1574,51 @@ module.exports = async (req, res) => {
       await sendWhatsAppReply(chatId,
         `📅 *${pending.ownerName || 'העסק'}* הזמין/ה אותך לפגישה\n🗓 ${dateStr}${timeStr}\n\n✅ לאישור שלח: *אשר*\n❌ לביטול שלח: *בטל*`
       );
+      return res.status(200).send('ok');
+    }
+
+    // ── שלב: קביעה מחדש לאחר ביטול ──
+    if (pending.step === 'reschedule_after_cancel') {
+      const txt = inText.trim();
+
+      // ביטול — לא רוצה לקבוע מחדש
+      if (/^ללא$|^לא$|^ביטול$/i.test(txt)) {
+        await clearPending(userDocName);
+        await sendWhatsAppReply(chatId, 'בסדר, לא נקבע תאריך חדש.');
+        return res.status(200).send('ok');
+      }
+
+      const newDate = extractDateJS(txt);
+      const newTime = extractTimeJS(txt);
+
+      if (!newDate) {
+        await sendWhatsAppReply(chatId, '⚠️ לא זיהיתי תאריך. שלח תאריך ושעה חדשים\nלדוגמה: "7/5 בשעה 14:00"\nאו "ללא" לביטול');
+        return res.status(200).send('ok');
+      }
+
+      await clearPending(userDocName);
+
+      const clientName = pending.clientName || '';
+      const clientChatId = pending.clientChatId || '';
+
+      // שלח הזמנה חדשה ללקוח
+      const inviteeIsUser = clientChatId
+        ? await sendInviteWithConfirmation(
+            clientChatId.replace('@c.us',''), ownerName, newDate, newTime||'', chatId, userDocName, clientName
+          ).catch(()=>false)
+        : false;
+
+      if (!inviteeIsUser) {
+        // לקוח לא רשום — שמור מיד
+        const clients = await getClients(userDocId);
+        const matched = matchClient(clients, clientName);
+        await finalizeAppointment(chatId, userDocName,
+          { date: newDate, time: newTime||'', withName: clientName, withEmail: matched?.email||'', withWhatsapp: matched?.whatsapp||'' },
+          senderCalId, userDocId, false
+        );
+      } else {
+        await sendWhatsAppReply(chatId, `📨 נשלחה הזמנה חדשה ל${clientName}\n📅 ${formatDateHebrew(newDate)}${newTime?' בשעה '+newTime:''}`);
+      }
       return res.status(200).send('ok');
     }
 
