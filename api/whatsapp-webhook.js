@@ -827,10 +827,17 @@ async function classifyMessage(text) {
           console.log('[date] past-date pushed to next year:', result.date);
         }
       }
+      // ── שלב 4: override — מילת appointment מפורשת תמיד מנצחת ──
+      if (/פגישה|תור|להיפגש|נפגשים|נתראה/.test(text) && result.intent !== 'appointment') {
+        result.intent = 'appointment';
+      }
       return result;
     }
   } catch(err) { console.error('Classify error:', err); }
-  return { intent:'task', date: jsDate, time:null, title:text };
+
+  // גם fallback חייב לכבד מילות appointment
+  const fallbackIntent = /פגישה|תור|להיפגש|נפגשים|נתראה/.test(text) ? 'appointment' : 'task';
+  return { intent: fallbackIntent, date: jsDate, time:null, title:text };
 }
 
 // ───────────────────────────────────────────
