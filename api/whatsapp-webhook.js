@@ -1430,8 +1430,10 @@ module.exports = async (req, res) => {
 
 
   // ── שלוף מסמך משתמש (כולל pending ו-calId) ──
+  console.error(`[DEBUG] incoming chatId="${chatId}" phone="${phone}" inText="${inText.slice(0,30)}"`);
   let userDoc = null;
   try { userDoc = await getUserDoc(phone); } catch(err) { console.error('getUserDoc:', err); }
+  console.error(`[DEBUG] userDoc found: ${!!userDoc}`);
 
   if (!userDoc) {
     if (chatId) await sendWhatsAppReply(chatId, `❌ אינך מנוי במערכת Dabelu.\n\nלהרשמה:\n${SITE_URL}`);
