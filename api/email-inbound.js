@@ -100,12 +100,12 @@ async function isValidTask(taskTitle) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_KEY}` },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-20b', reasoning_effort: 'low', include_reasoning: false,
         messages: [
           { role: 'system', content: 'You decide if a Hebrew message is a valid work task. A valid task must contain a clear action or subject (name + action, job to do, reminder, etc). Answer only "כן" if valid, or "לא" if it is noise, test, single meaningless word, or unclear.' },
           { role: 'user', content: taskTitle.trim() }
         ],
-        max_tokens: 5,
+        max_tokens: 300,
         temperature: 0
       })
     });
@@ -225,7 +225,7 @@ async function extractAssigneeFromText(text, teamMembers) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_KEY}` },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-20b', reasoning_effort: 'low', include_reasoning: false,
         messages: [
           { role: 'system', content:
 `רשימת העובדים הקיימים: ${namesList}
@@ -237,7 +237,7 @@ async function extractAssigneeFromText(text, teamMembers) {
 אם לא — החזר בדיוק: null` },
           { role: 'user', content: text.slice(0, 600) }
         ],
-        max_tokens: 50,
+        max_tokens: 300,
         temperature: 0
       })
     });

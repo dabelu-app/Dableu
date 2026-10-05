@@ -330,7 +330,7 @@ async function extractPersonName(text) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_KEY}` },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-20b', reasoning_effort: 'low', include_reasoning: false,
         messages: [
           { role: 'system', content:
 `חלץ שם של אדם מהטקסט. החזר רק את השם בלבד, ללא הסברים.
@@ -348,7 +348,7 @@ async function extractPersonName(text) {
 "אברהם אבי" → "אברהם אבי"` },
           { role: 'user', content: text }
         ],
-        max_tokens: 30,
+        max_tokens: 300,
         temperature: 0
       })
     });
@@ -695,9 +695,8 @@ async function classifyMessage(text) {
       method:'POST',
       headers:{'Content-Type':'application/json', Authorization:`Bearer ${process.env.GROQ_KEY}`},
       body: JSON.stringify({
-        // Llama 3.3 70B — מודל גדול הרבה יותר חכם מ-8B, מבין עברית טוב יותר.
-        // עדיין חינמי דרך Groq וכמעט באותה מהירות.
-        model:'llama-3.3-70b-versatile',
+        // Groq כיבתה את llama-3.3-70b-versatile ב-16.8.2026 — זה המחליף שהם ממליצים עליו.
+        model:'openai/gpt-oss-120b', reasoning_effort: 'low', include_reasoning: false,
         // response_format JSON — Groq תומך בזה, מבטיח שהתשובה תהיה JSON תקין
         response_format: { type: 'json_object' },
         messages:[
@@ -774,7 +773,7 @@ async function classifyMessage(text) {
           },
           { role:'user', content: text }
         ],
-        max_tokens:250, temperature:0
+        max_tokens:1000, temperature:0
       })
     });
     const data = await resp.json();
