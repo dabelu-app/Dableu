@@ -1,7 +1,6 @@
 const FormData = require('form-data');
 const fetch    = require('node-fetch');
 const { google } = require('googleapis');
-const { fsFetch, fsFetchV1 } = require('../lib/firestore');
 
 // ═══════════════════════════════════════════════════════════════════
 // לוח שנה עברי — מימוש מקומי, ללא ספריה חיצונית
@@ -76,13 +75,7 @@ console.log('[startup] Hebrew calendar: inline math v3 loaded OK (no @hebcal/cor
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT  = 'dabelu';
-// אתר ההרשמה הציבורי. היה מוגדר לדומיין Netlify ישן, כך שנרשמים
-// חדשים שקיבלו את ההודעה "אינך מנוי" הופנו לאתר שאינו בשימוש.
-const SITE_URL          = process.env.PUBLIC_SITE_URL || 'https://dabelu.web.app';
-// בסיס הקישור לטופס פרטי הלקוח. חייב להצביע לפריסת Vercel, כי הטופס
-// פונה ל-/api/send-onboarding — ו-Firebase Hosting אינו מגיש /api כלל.
-// שם משתנה נפרד במכוון: הערך כאן חייב להיות שונה מ-SITE_URL.
-const ONBOARDING_BASE_URL = process.env.ONBOARDING_BASE_URL || 'https://dabelu.vercel.app';
+const SITE_URL          = 'https://cosmic-daifuku-4d8c28.netlify.app';
 
 // ───────────────────────────────────────────
 // WhatsApp
@@ -101,8 +94,8 @@ async function sendWhatsAppReply(chatId, message) {
 // Firestore — משתמשים
 // ───────────────────────────────────────────
 async function queryFirestoreByField(field, value) {
-  const resp = await fsFetch(
-    `:runQuery`,
+  const resp = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
     { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ structuredQuery:{
         from:[{collectionId:'users'}],
@@ -166,8 +159,8 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
   const docEmail = fallbackDoc?.fields?.email?.stringValue || '';
   if (docEmail) {
     try {
-      const r = await fsFetch(
-        `:runQuery`,
+      const r = await fetch(
+        `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
         { method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ structuredQuery: {
             from:[{collectionId:'users'}],
@@ -194,8 +187,8 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
   for (const ph of variants) {
     for (const field of ['waPhone','phone','chatId']) {
       try {
-        const r = await fsFetch(
-          `:runQuery`,
+        const r = await fetch(
+          `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
           { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ structuredQuery: {
               from:[{collectionId:'users'}],
@@ -243,8 +236,8 @@ async function resolveOwnerName(phone, fallbackDoc, senderDisplayName) {
 }
 
 async function patchUserField(docName, fieldName, value) {
-  await fsFetchV1(
-    `${docName}?updateMask.fieldPaths=${fieldName}`,
+  await fetch(
+    `https://firestore.googleapis.com/v1/${docName}?updateMask.fieldPaths=${fieldName}&key=${FIREBASE_API_KEY}`,
     { method:'PATCH', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ fields:{ [fieldName]:{ stringValue: value } } }) }
   );
@@ -262,8 +255,8 @@ async function clearPending(docName) {
 // ───────────────────────────────────────────
 async function getClients(userId) {
   try {
-    const resp = await fsFetch(
-      `:runQuery`,
+    const resp = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
       { method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ structuredQuery:{
           from:[{collectionId:'clients'}],
@@ -287,41 +280,18 @@ async function getClients(userId) {
 
 async function createClient(name, email, whatsapp, userId) {
   try {
-    // טוקן חד-פעמי לטופס הפרטים — נשרף אחרי המילוי
-    const onboardingToken = require('crypto').randomBytes(24).toString('base64url');
-    const resp = await fsFetch(
-      `/clients`,
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/clients?key=${FIREBASE_API_KEY}`,
       { method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ fields:{
-          name:            { stringValue: name      },
-          email:           { stringValue: email     || '' },
-          whatsapp:        { stringValue: whatsapp  || '' },
-          userId:          { stringValue: userId    || '' },
-          onboardingToken: { stringValue: onboardingToken },
-          createdAt:       { stringValue: new Date().toISOString() }
+          name:      { stringValue: name      },
+          email:     { stringValue: email     || '' },
+          whatsapp:  { stringValue: whatsapp  || '' },
+          userId:    { stringValue: userId    || '' },
+          createdAt: { stringValue: new Date().toISOString() }
         }})
       }
     );
-    const created  = await resp.json().catch(()=>null);
-    const clientId = created?.name?.split('/').pop();
-
-    // הודעת ברוכים הבאים עם קישור למילוי הפרטים
-    if (clientId && whatsapp) {
-      const digits = whatsapp.toString().replace(/[^\d]/g,'');
-      if (digits) {
-        const chatId = (digits.startsWith('972') ? digits : '972' + digits.replace(/^0/,'')) + '@c.us';
-        // חייב להיות הדומיין של Vercel: טופס האונבורדינג פונה ל-/api,
-        // ו-Firebase Hosting מנתב כל בקשה ל-tax_manager_app.html (אין שם /api).
-        const link   = `${ONBOARDING_BASE_URL}/onboarding.html?c=${clientId}&t=${onboardingToken}`;
-        await sendWhatsAppReply(chatId,
-          `שלום ${name}! 👋\n\n` +
-          `שמחים שהצטרפת אלינו.\n` +
-          `כדי שנוכל לפתוח ולנהל את התיק שלך, נשמח שתמלא/י טופס פרטים קצר — לוקח כ-3 דקות:\n\n` +
-          `${link}\n\n` +
-          `הקישור אישי וחד-פעמי. 💜`
-        ).catch(e => console.warn('welcome message failed:', e.message));
-      }
-    }
   } catch(e) { console.error('createClient error:', e); }
 }
 
@@ -336,8 +306,8 @@ async function upsertClient(name, email, whatsapp, userId) {
       if (whatsapp) fields.whatsapp = { stringValue: whatsapp };
       if (!Object.keys(fields).length) return;
       const masks = Object.keys(fields).map(k=>`updateMask.fieldPaths=${k}`).join('&');
-      await fsFetch(
-        `/clients/${existing.id}?${masks}`,
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/clients/${existing.id}?${masks}&key=${FIREBASE_API_KEY}`,
         { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ fields }) }
       );
     } else {
@@ -736,15 +706,15 @@ async function classifyMessage(text) {
 
 ═══ קטגוריות ═══
 "appointment" — קביעת פגישה/תור/מפגש *עם אדם מסוים*. סימני זיהוי:
-  • מילים מפורשות: "פגישה", "תור", "להיפגש", "מפגש", "נתראה", "נפגשים", "לקבוע", "קבוע"
+  • מילים מפורשות: "פגישה", "תור", "להיפגש", "מפגש", "נתראה", "נפגשים"
   • שאלות: "מתי פנוי/ה?", "אפשר לקבוע?", "יש זמן ב..?"
   • תבנית: "[שם אדם] ב[יום/שעה]" כשמשתמע מפגש
-  • ⚡ כלל עליון: אם יש מילת appointment מפורשת ("פגישה"/"תור"/"להיפגש"/"לקבוע") — זה appointment גם אם יש תאריך ושעה!
+  • דרישה: צריך להיות שם של אדם להיפגש איתו
 
 "reminder" — *תזכורת לאירוע/פעולה בתאריך ספציפי* ללא מפגש עם לקוח. סימני זיהוי:
   • מילים מפורשות: "תזכיר/י לי", "להזכיר לי", "תזכורת", "אל תשכח/י"
-  • *הודעה עם תאריך + שעה מפורשים ואין מילת פגישה מפורשת* — זו תזכורת
-  • פעולה/אירוע בתאריך עתידי ללא פגישה: "שיעור נהיגה מחר ב-09:00", "להגיש מקדמה ב-25/5"
+  • *כל הודעה עם תאריך + שעה מפורשים* (גם בלי מילים מפורשות) — זו תזכורת
+  • פעולה/אירוע בתאריך עתידי: "שיעור נהיגה מחר ב-09:00", "להגיש מקדמה ב-25/5"
   • דרישה: חייב להיות תאריך (אחרת זה task)
 
 "task" — *כל* בקשה אחרת ללא תאריך+שעה ספציפיים. למשל:
@@ -757,8 +727,6 @@ async function classifyMessage(text) {
 
 ═══ דוגמאות ═══
 "פגישה עם דינה ביום שלישי" → appointment, with="דינה"
-"פגישה עם דינה מחר ב-10" → appointment, with="דינה" (לא reminder! יש מילת פגישה)
-"קבוע פגישה עם דינה מחר ב-10" → appointment, with="דינה"
 "להתקשר לדינה" → task
 "שרה תכין דוח מע"מ" → task, assignee="שרה"
 "מתי אני פנויה השבוע?" → appointment
@@ -771,7 +739,7 @@ async function classifyMessage(text) {
 "מחר ב-14:00 לשלם ארנונה" → reminder, title="לשלם ארנונה"
 "ביום ראשון ב-10:00 להזכיר לי טיפולים" → reminder, title="טיפולים"
 
-⚠️ כלל ברזל לתזכורות: אם יש *תאריך + שעה ספציפית* בהודעה ואין מילת appointment מפורשת → תמיד reminder
+⚠️ כלל ברזל לתזכורות: אם יש *תאריך + שעה ספציפית* בהודעה → תמיד reminder (גם בלי "תזכיר לי")
 
 "להעלות חשבוניות של ישראל" → task (אין תאריך)
 "להזכיר לי להגיש מקדמה" → task (אין תאריך מפורש)
@@ -799,7 +767,7 @@ async function classifyMessage(text) {
 }
 
 ⚠️ כללים נוספים:
-1. אם בספק בין task ל-appointment ויש מילת פגישה ("פגישה"/"תור"/"להיפגש"/"לקבוע") — בחר appointment
+1. אם בספק בין task ל-appointment — בחר "task"
 2. assignee הוא רק אם השם בתחילת ההודעה ("שרה — תכיני דוח") או אחרי "ש[שם] תעשה"
 3. title צריך להכיל את הפעולה/בקשה, לא להחזיר רק את השם
 4. אל תכלול את התאריך/שעה ב-title — אבל כן שמור הקשר משמעותי`
@@ -827,18 +795,10 @@ async function classifyMessage(text) {
           console.log('[date] past-date pushed to next year:', result.date);
         }
       }
-      // ── שלב 4: override — מילת appointment מפורשת תמיד מנצחת ──
-      // פגיש = כל צורות "פגישה" כולל שגיאות כתיבה (פגישת/פגישות/פגישא/פגיש)
-      if (/פגיש|להיפגש|נפגש|נתראה|להפגש/.test(text) && result.intent !== 'appointment') {
-        result.intent = 'appointment';
-      }
       return result;
     }
   } catch(err) { console.error('Classify error:', err); }
-
-  // גם fallback חייב לכבד מילות appointment
-  const fallbackIntent = /פגיש|להיפגש|נפגש|נתראה|להפגש/.test(text) ? 'appointment' : 'task';
-  return { intent: fallbackIntent, date: jsDate, time:null, title:text };
+  return { intent:'task', date: jsDate, time:null, title:text };
 }
 
 // ───────────────────────────────────────────
@@ -873,8 +833,8 @@ async function createCalendarEvent(title, date, time, clientName, calendarId, cl
 // Firestore — שמירת פגישה / משימה
 // ───────────────────────────────────────────
 async function saveAppointment(title, date, time, clientName, chatId, googleEventId, userId) {
-  await fsFetch(
-    `/appointments`,
+  await fetch(
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/appointments?key=${FIREBASE_API_KEY}`,
     { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ fields:{
         title:        {stringValue: title||''},
@@ -895,8 +855,8 @@ async function saveAppointment(title, date, time, clientName, chatId, googleEven
 
 // ── שמירת תזכורת (נרשמת באוסף appointments עם type='reminder' — מופיעה ביומן) ──
 async function saveReminder(title, date, time, chatId, userId) {
-  await fsFetch(
-    `/appointments`,
+  await fetch(
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/appointments?key=${FIREBASE_API_KEY}`,
     { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ fields:{
         title:        {stringValue: title||''},
@@ -917,8 +877,8 @@ async function saveReminder(title, date, time, chatId, userId) {
 // מחיקת פגישה מ-Firestore לפי userId+date+clientName — מחזיר googleEventId
 async function cancelAppointmentInFirestore(ownerUserId, date, clientName) {
   try {
-    const resp = await fsFetch(
-      `:runQuery`,
+    const resp = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ structuredQuery: {
           from: [{ collectionId: 'appointments' }],
@@ -940,7 +900,7 @@ async function cancelAppointmentInFirestore(ownerUserId, date, clientName) {
     const docPath       = doc.name;
     const googleEventId = doc.fields?.googleEventId?.stringValue || '';
 
-    await fsFetchV1(`${docPath}`, { method: 'DELETE' });
+    await fetch(`https://firestore.googleapis.com/v1/${docPath}?key=${FIREBASE_API_KEY}`, { method: 'DELETE' });
     console.log(`🗑️ appointment deleted: ${docPath} | googleEventId=${googleEventId}`);
     return googleEventId || null;
   } catch(e) {
@@ -991,8 +951,8 @@ async function getTeamMembers(userDocId, userDocFields) {
 
   // מיקום 2: users/{uid}/data/team (sub-document)
   try {
-    const resp = await fsFetch(
-      `/users/${userDocId}/data/team`
+    const resp = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/data/team?key=${FIREBASE_API_KEY}`
     );
     const data = await resp.json();
     console.log(`📋 team subcollection raw:`, JSON.stringify(data).slice(0, 300));
@@ -1006,8 +966,8 @@ async function getTeamMembers(userDocId, userDocFields) {
 
   // מיקום 3: users/{uid}/team (subcollection עם מסמכים נפרדים)
   try {
-    const resp = await fsFetch(
-      `/users/${userDocId}/team&pageSize=50`
+    const resp = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/team?key=${FIREBASE_API_KEY}&pageSize=50`
     );
     const data = await resp.json();
     if (data.documents && data.documents.length > 0) {
@@ -1099,8 +1059,8 @@ async function saveTask(title, clientName, source, userDocId, assignee, assignee
     createdAt:   { stringValue: new Date().toISOString() },
     description: { stringValue: source !== 'whatsapp-text' ? '🎤 תומלל מהודעה קולית' : '' }
   };
-  const resp = await fsFetch(
-    `:commit`,
+  const resp = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:commit?key=${FIREBASE_API_KEY}`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ writes: [{ transform: {
         document: `projects/${FIREBASE_PROJECT}/databases/(default)/documents/users/${userDocId}/data/tasks`,
@@ -1115,8 +1075,8 @@ async function saveTask(title, clientName, source, userDocId, assignee, assignee
 // יצירת sharedTask כדי שהעובד יראה את המשימה
 async function createSharedTask(taskDocId, title, assigneeName, assigneeEmail, employerEmail, clientName, source) {
   try {
-    await fsFetch(
-      `/sharedTasks?documentId=${taskDocId}`,
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/sharedTasks?documentId=${taskDocId}&key=${FIREBASE_API_KEY}`,
       { method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ fields:{
           title:             {stringValue: title},
@@ -1254,8 +1214,8 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
       }
       if (!clientUserDoc && apptEmail) {
         try {
-          const resp = await fsFetch(
-            `:runQuery`,
+          const resp = await fetch(
+            `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
             { method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ structuredQuery: {
                 from: [{ collectionId: 'users' }],
@@ -1276,8 +1236,8 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
           // שלוף מייל של בעל העסק לצורך הזמנה ביומן הלקוח
           let ownerEmail = '';
           try {
-            const ownerResp = await fsFetchV1(
-              `${userDocName}`
+            const ownerResp = await fetch(
+              `https://firestore.googleapis.com/v1/${userDocName}?key=${FIREBASE_API_KEY}`
             );
             const ownerData = await ownerResp.json();
             ownerEmail = ownerData.fields?.email?.stringValue || '';
@@ -1553,16 +1513,10 @@ module.exports = async (req, res) => {
           `❌ ביטלת את הפגישה.\n📅 ${dateStr}${timeStr}\n\nניתן לפנות ל${ownerDisplayName} לקביעה מחדש.`
         );
 
-        // הודע לבעל העסק ושאל אם רוצה לקבוע מחדש
-        if (pending.ownerChatId && pending.ownerDocName) {
-          await setPending(pending.ownerDocName, {
-            step: 'reschedule_after_cancel',
-            clientName: clientOwnName,
-            clientChatId: chatId,
-            ownerName: ownerName || pending.ownerName || ''
-          });
+        // הודע לבעל העסק על הביטול
+        if (pending.ownerChatId) {
           await sendWhatsAppReply(pending.ownerChatId,
-            `❌ *${clientOwnName}* ביטל/ה את הפגישה.\n📅 ${dateStr}${timeStr}\n🗑️ הפגישה נמחקה מהיומן.\n\nרוצה לקבוע תאריך חדש? שלח תאריך ושעה\nאו "ללא" לביטול`
+            `❌ *${clientOwnName}* ביטל/ה את הפגישה.\n📅 ${dateStr}${timeStr}\n🗑️ הפגישה נמחקה מהיומן.`
           );
         }
         return res.status(200).send('ok');
@@ -1574,51 +1528,6 @@ module.exports = async (req, res) => {
       await sendWhatsAppReply(chatId,
         `📅 *${pending.ownerName || 'העסק'}* הזמין/ה אותך לפגישה\n🗓 ${dateStr}${timeStr}\n\n✅ לאישור שלח: *אשר*\n❌ לביטול שלח: *בטל*`
       );
-      return res.status(200).send('ok');
-    }
-
-    // ── שלב: קביעה מחדש לאחר ביטול ──
-    if (pending.step === 'reschedule_after_cancel') {
-      const txt = inText.trim();
-
-      // ביטול — לא רוצה לקבוע מחדש
-      if (/^ללא$|^לא$|^ביטול$/i.test(txt)) {
-        await clearPending(userDocName);
-        await sendWhatsAppReply(chatId, 'בסדר, לא נקבע תאריך חדש.');
-        return res.status(200).send('ok');
-      }
-
-      const newDate = extractDateJS(txt);
-      const newTime = extractTimeJS(txt);
-
-      if (!newDate) {
-        await sendWhatsAppReply(chatId, '⚠️ לא זיהיתי תאריך. שלח תאריך ושעה חדשים\nלדוגמה: "7/5 בשעה 14:00"\nאו "ללא" לביטול');
-        return res.status(200).send('ok');
-      }
-
-      await clearPending(userDocName);
-
-      const clientName = pending.clientName || '';
-      const clientChatId = pending.clientChatId || '';
-
-      // שלח הזמנה חדשה ללקוח
-      const inviteeIsUser = clientChatId
-        ? await sendInviteWithConfirmation(
-            clientChatId.replace('@c.us',''), ownerName, newDate, newTime||'', chatId, userDocName, clientName
-          ).catch(()=>false)
-        : false;
-
-      if (!inviteeIsUser) {
-        // לקוח לא רשום — שמור מיד
-        const clients = await getClients(userDocId);
-        const matched = matchClient(clients, clientName);
-        await finalizeAppointment(chatId, userDocName,
-          { date: newDate, time: newTime||'', withName: clientName, withEmail: matched?.email||'', withWhatsapp: matched?.whatsapp||'' },
-          senderCalId, userDocId, false
-        );
-      } else {
-        await sendWhatsAppReply(chatId, `📨 נשלחה הזמנה חדשה ל${clientName}\n📅 ${formatDateHebrew(newDate)}${newTime?' בשעה '+newTime:''}`);
-      }
       return res.status(200).send('ok');
     }
 
@@ -1867,10 +1776,9 @@ module.exports = async (req, res) => {
     if (withName) {
       matchedClient = matchClient(clients, withName);
       // אם לא נמצא — ודא שזה שם אדם אמיתי ולא מילה אחרת
-      // שים לב: הAI של 70B כבר זיהה את השם, אז נסמוך עליו אלא אם ה-8B בטוח שזה לא שם
       if (!matchedClient) {
         const verified = await extractPersonName(withName);
-        withName = verified || withName; // שמור את השם המקורי אם ה-8B לא בטוח
+        withName = verified || ''; // אם לא שם — נשכח ונשאל בהמשך
       }
     }
 
