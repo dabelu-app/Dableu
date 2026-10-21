@@ -33,14 +33,16 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(200).json({ ok: true });
 
-  const { employeeName, employeeEmail, employeePhone, officeName, inviterName, tempCode } = req.body || {};
+  const { employeeName, employeePhone, officeName, inviterName, tempCode } = req.body || {};
+  const employeeEmail = (req.body?.employeeEmail || '').toString().trim();
 
   if (!employeeEmail || !employeeName) {
     return res.status(200).json({ ok: false, error: 'Missing fields' });
   }
 
   const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
-  if (!emailRegex.test(employeeEmail)) {
+  const emailValid = emailRegex.test(employeeEmail.trim());
+  if (!emailValid && !employeePhone) {
     return res.status(400).json({ ok: false, error: `כתובת המייל "${employeeEmail}" אינה תקינה` });
   }
 
@@ -50,12 +52,12 @@ module.exports = async (req, res) => {
 
   // הזמנה ראשונית — תמיד נשלחת גם במייל וגם בוואטסאפ (אם יש טלפון).
   // העדפת הערוץ של העובד (notify) משפיעה רק על תזכורות עתידיות, לא על ההזמנה הראשונית.
-  const wantEmail = true;
+  const wantEmail = emailValid;
   const wantWA    = !!employeePhone;
 
   let emailSent = false;
   let waSent    = false;
-  let emailError = null;
+  let emailError = emailValid ? null : 'invalid email';
   let waError    = null;
 
   // ── שליחת מייל ──
