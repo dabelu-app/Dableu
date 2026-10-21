@@ -460,6 +460,19 @@ textarea.form-input{resize:vertical}
 .chat-input:focus{outline:none;border-color:var(--accent)}
 .chat-send{padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:20px;font-family:'Heebo',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
 .chat-send:hover{background:#5a48f5}
+
+/* ═══════════════ WORKER TIME TRACKER ═══════════════ */
+.wt-timer-display{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--accent);letter-spacing:2px;text-align:center;padding:16px 0;font-family:monospace}
+.wt-timer-display.running{color:var(--success)}
+.wt-hours-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.wt-hours-tbl th{padding:7px 10px;text-align:right;color:var(--text2);border-bottom:1px solid var(--border);font-weight:600;background:var(--surface3)}
+.wt-hours-tbl td{padding:8px 10px;border-bottom:1px solid var(--border)}
+.wt-hours-tbl tr:last-child td{border:none}
+.wt-hours-tbl tfoot td{font-weight:700;background:var(--surface3);border-top:2px solid var(--border2)}
+.clients-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.clients-tbl th{padding:8px 12px;text-align:right;color:var(--text2);border-bottom:2px solid var(--border);font-weight:600;background:var(--surface3)}
+.clients-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.clients-tbl tr:hover td{background:var(--surface2)}
 </style>
 </head>
 <body>
@@ -2138,7 +2151,20 @@ function renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cp,ci,cd,t
   const workerActive = chipMode === 'worker';
   const clientActive = chipMode === 'client';
 
+  // Build client dropdown options from S.waClients
+  const clientDropOpts = (S.waClients||[]).map(c=>`<option value="${c.name.replace(/"/g,'&quot;')}" ${fc===c.name?'selected':''}>${c.name}</option>`).join('');
+
   return `
+  <!-- CLIENT FILTER DROPDOWN -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <label style="font-size:12px;font-weight:600;color:var(--text2);flex-shrink:0">סינון לפי לקוח:</label>
+    <select style="padding:6px 10px;border:1.5px solid ${fc?'var(--accent)':'var(--border)'};border-radius:var(--radius);font-size:12px;font-family:'Heebo',sans-serif;background:var(--surface);color:var(--text);cursor:pointer;flex:1;max-width:280px"
+      onchange="S.taskFilter=S.taskFilter||{};S.taskFilter.client=this.value;renderPage()">
+      <option value="" ${!fc?'selected':''}>כל הלקוחות</option>
+      ${clientDropOpts}
+    </select>
+    ${fc?`<button onclick="S.taskFilter=S.taskFilter||{};S.taskFilter.client='';renderPage()" style="padding:4px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif;color:var(--text2)">✕ נקה</button>`:''}
+  </div>
   <!-- VIEW TOGGLE -->
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
     <div style="display:flex;gap:0;background:var(--surface3);border-radius:10px;padding:3px">
@@ -3096,6 +3122,7 @@ function loadAppointmentsIfNeeded(){
 }
 function loadWAClientsIfNeeded(){
   if(!S.waClients && typeof window.listenWAClients==='function') window.listenWAClients();
+  if(!S._apiClientsLoaded){ S._apiClientsLoaded=true; _loadClientsFromApi(); }
 }
 
 // ══════════════════════════════════════
@@ -3309,35 +3336,40 @@ function renderClientsPage(){
         <div style="font-size:13px">${q||workerFilter?'נסה סינון אחר':'לקוחות מתווספים אוטומטית מהבוט בוואטסאפ'}</div>
       </div>
     `:`
-    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-      <div style="display:grid;grid-template-columns:1.4fr 1fr .9fr .9fr auto;padding:10px 16px;background:var(--surface3);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2)">
-        <div>שם</div><div>אחראי</div><div>משימות פתוחות</div><div>תעריף חודשי</div><div></div>
-      </div>
-      ${filtered.map(c=>{
-        const assignee=effectiveAssignee(c);
-        const isOwnerAssignee=!c.assignedTo||c.assignedTo===ownerName;
-        const [cbg,cclr]=teamForChips.find(m=>m.name===assignee)?.colors||['#dcfce7','#16a34a'];
-        const cName=(c.name||'').trim();
-        const openCnt=(S.tasks||[]).filter(t=>{
-          const n=((t.clientName||t.client||'')+'').trim();
-          return n && cName && n===cName && t.status!=='done';
-        }).length;
-        return `
-      <div style="display:grid;grid-template-columns:1.4fr 1fr .9fr .9fr auto;padding:11px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:13px;cursor:pointer" onclick="openClientDetail('${c.id}')" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
-        <div style="font-weight:600">${c.activeTimerStartedAt?'<span title="שעון פועל">⏱ </span>':''}${c.name}</div>
-        <div>
-          <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;background:${cbg}33;color:${cclr};font-size:11px;font-weight:600">
-            <span style="width:14px;height:14px;border-radius:50%;background:${cbg};color:${cclr};font-size:7px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">${avInitials(assignee)}</span>
-            ${assignee.split(' ')[0]}${isOwnerAssignee?' 👑':''}
-          </span>
-        </div>
-        <div>${openCnt?`<span style="padding:2px 9px;border-radius:20px;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700">${openCnt}</span>`:'<span style="color:var(--text3)">—</span>'}</div>
-        <div style="color:var(--text2)">${c.monthlyFee?('₪'+Number(c.monthlyFee).toLocaleString()):'—'}</div>
-        <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
-          <button class="btn sm" onclick="openEditClientModal('${c.id}')">✏️</button>
-          <button class="btn sm danger" onclick="confirmDeleteClient('${c.id}','${c.name.replace(/'/g,'')}')">🗑</button>
-        </div>
-      </div>`}).join('')}
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:auto">
+      <table class="clients-tbl">
+        <thead><tr>
+          <th>שם</th>
+          <th class="mob-hide">מייל</th>
+          <th class="mob-hide">טלפון</th>
+          <th class="mob-hide">ווצאפ</th>
+          <th class="mob-hide">הערות</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+        ${filtered.map(c=>{
+          const cName=(c.name||'').trim();
+          const openCnt=(S.tasks||[]).filter(t=>{
+            const n=((t.clientName||t.client||'')+'').trim();
+            return n && cName && n===cName && t.status!=='done';
+          }).length;
+          return `<tr onclick="openClientDetail('${c.id}')" style="cursor:pointer">
+            <td style="font-weight:600">
+              ${c.activeTimerStartedAt?'<span title="שעון פועל">⏱ </span>':''}${c.name}
+              ${openCnt?`<span style="margin-right:6px;padding:1px 7px;border-radius:20px;background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:700">${openCnt} פתוחות</span>`:''}
+            </td>
+            <td class="mob-hide" style="color:var(--text2);direction:ltr">${c.email||'—'}</td>
+            <td class="mob-hide" style="color:var(--text2);direction:ltr">${c.phone||'—'}</td>
+            <td class="mob-hide" style="color:var(--text2);direction:ltr">${c.whatsapp||'—'}</td>
+            <td class="mob-hide" style="color:var(--text2);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.notes||'—'}</td>
+            <td onclick="event.stopPropagation()" style="white-space:nowrap">
+              <button class="btn sm" onclick="openEditClientModal('${c.id}')">✏️</button>
+              <button class="btn sm danger" onclick="confirmDeleteClient('${c.id}','${c.name.replace(/'/g,'')}')">🗑</button>
+            </td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
     </div>
     `}
 
@@ -3351,6 +3383,7 @@ function renderClientsPage(){
         <input class="auth-input" id="cm-phone"    placeholder="טלפון" dir="ltr">
         <input class="auth-input" id="cm-taxid"    placeholder="מספר תיק / ח.פ" dir="ltr">
         <input class="auth-input" id="cm-fee" type="number" min="0" placeholder="תעריף חודשי (₪)" dir="ltr">
+        <textarea class="auth-input" id="cm-notes" placeholder="הערות" rows="2" style="resize:vertical"></textarea>
         <div style="margin-bottom:10px">
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">אחראי</label>
           <select class="form-input" id="cm-assignee" style="width:100%">${assigneeOptions}</select>
@@ -3376,6 +3409,7 @@ function openAddClientModal(){
   document.getElementById('cm-phone').value='';
   document.getElementById('cm-taxid').value='';
   document.getElementById('cm-fee').value='';
+  document.getElementById('cm-notes').value='';
   // ברירת מחדל: בעל העסק
   const sel=document.getElementById('cm-assignee');
   if(sel) sel.value=S.user?.name||'';
@@ -3392,6 +3426,7 @@ function openEditClientModal(id){
   document.getElementById('cm-phone').value=c.phone||'';
   document.getElementById('cm-taxid').value=c.taxId||'';
   document.getElementById('cm-fee').value=c.monthlyFee||'';
+  document.getElementById('cm-notes').value=c.notes||'';
   const sel=document.getElementById('cm-assignee');
   if(sel) sel.value=c.assignedTo||(S.user?.name||'');
   document.getElementById('client-modal').style.display='flex';
@@ -3407,13 +3442,64 @@ function saveClientModal(){
     phone: document.getElementById('cm-phone').value.trim(),
     taxId: document.getElementById('cm-taxid').value.trim(),
     monthlyFee: Number(document.getElementById('cm-fee').value)||0,
+    notes: document.getElementById('cm-notes').value.trim(),
     assignedTo
   };
   window.saveWAClient(_editClientId, data);
+  _syncClientToApi(_editClientId, data);
   document.getElementById('client-modal').style.display='none';
 }
 function confirmDeleteClient(id,name){
-  appConfirm('למחוק את הלקוח "'+name+'"?', ()=>window.deleteWAClient(id), 'מחיקת לקוח');
+  appConfirm('למחוק את הלקוח "'+name+'"?', ()=>{ window.deleteWAClient(id); _deleteClientFromApi(id); }, 'מחיקת לקוח');
+}
+
+// ══════════════════════════════════════
+// REST API — clients sync
+// ══════════════════════════════════════
+const _API = 'https://dabelu.vercel.app';
+async function _syncClientToApi(id, data){
+  try {
+    const userId = S.user?.uid || '';
+    if(!userId) return;
+    const payload = { userId, name: data.name, email: data.email||'', phone: data.phone||'', whatsapp: data.whatsapp||'', notes: data.notes||'' };
+    if(id) {
+      await fetch(_API+'/api/clients', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...payload, id}) });
+    } else {
+      const res = await fetch(_API+'/api/clients', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const j = await res.json().catch(()=>({}));
+      if(j.id) {
+        const c = S.waClients.find(x=>x.name===data.name);
+        if(c && !c.apiId) c.apiId = j.id;
+      }
+    }
+  } catch(e){ console.warn('_syncClientToApi:', e.message); }
+}
+async function _deleteClientFromApi(id){
+  try {
+    const userId = S.user?.uid || '';
+    if(!userId || !id) return;
+    await fetch(`${_API}/api/clients?userId=${encodeURIComponent(userId)}&id=${encodeURIComponent(id)}`, { method:'DELETE' });
+  } catch(e){ console.warn('_deleteClientFromApi:', e.message); }
+}
+async function _loadClientsFromApi(){
+  try {
+    const userId = S.user?.uid || '';
+    if(!userId) return;
+    const res = await fetch(`${_API}/api/clients?userId=${encodeURIComponent(userId)}`);
+    if(!res.ok) return;
+    const j = await res.json().catch(()=>({}));
+    const apiClients = j.clients || [];
+    // Merge notes from API into S.waClients (match by name)
+    apiClients.forEach(ac=>{
+      const local = S.waClients.find(c=>c.name===ac.name);
+      if(local){ local.notes=local.notes||ac.notes; local.apiId=ac.id; }
+      else {
+        S.waClients.push({id:ac.id, apiId:ac.id, name:ac.name, email:ac.email||'', phone:ac.phone||'', whatsapp:ac.whatsapp||'', notes:ac.notes||''});
+      }
+    });
+    S.waClients.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    if(S.page==='clients') renderPage();
+  } catch(e){ console.warn('_loadClientsFromApi:', e.message); }
 }
 
 // ══════════════════════════════════════
@@ -3898,14 +3984,260 @@ setInterval(()=>{
 // ══════════════════════════════════════
 let sSection='office';
 let taskTab='pending';
+
+// ══════════════════════════════════════
+// WORKER TIME TRACKER
+// ══════════════════════════════════════
+if(!window._wtState) window._wtState = {running:false, startedAt:null, clientId:'', clientName:'', note:'', pendingMinutes:0};
+let _wtInterval = null;
+
+function _fmtHMS(sec){
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function _fmtHHMM(min){
+  const h=Math.floor(min/60), m=min%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+function _getMondayISO(){
+  const d=new Date(); const day=d.getDay(); const diff=day===0?-6:1-day;
+  d.setDate(d.getDate()+diff); return d.toISOString().slice(0,10);
+}
+function _getSundayISO(){
+  const d=new Date(); const day=d.getDay(); const diff=day===0?0:7-day;
+  d.setDate(d.getDate()+diff); return d.toISOString().slice(0,10);
+}
+
+function _startWtInterval(){
+  if(_wtInterval) clearInterval(_wtInterval);
+  _wtInterval = setInterval(()=>{
+    const el = document.getElementById('wt-display');
+    if(el && window._wtState.running){
+      const sec = Math.floor((Date.now()-window._wtState.startedAt)/1000);
+      el.textContent = _fmtHMS(sec);
+    } else if(!window._wtState.running){
+      clearInterval(_wtInterval); _wtInterval = null;
+    }
+  }, 1000);
+}
+
+function wtStartTimer(){
+  const sel = document.getElementById('wt-timer-client');
+  if(!sel||!sel.value){ toast('⚠️ בחרי לקוח קודם'); return; }
+  window._wtState.running = true;
+  window._wtState.startedAt = Date.now();
+  window._wtState.clientId = sel.value;
+  window._wtState.clientName = sel.options[sel.selectedIndex]?.text || '';
+  window._wtState.note = document.getElementById('wt-timer-note')?.value || '';
+  window._wtState.pendingMinutes = 0;
+  _startWtInterval();
+  renderPage();
+}
+
+function wtStopTimer(){
+  if(!window._wtState.running) return;
+  const minutes = Math.max(1, Math.round((Date.now()-window._wtState.startedAt)/60000));
+  window._wtState.running = false;
+  window._wtState.pendingMinutes = minutes;
+  if(_wtInterval){ clearInterval(_wtInterval); _wtInterval = null; }
+  renderPage();
+  toast(`⏹ ${minutes} דקות נרשמו — אשרי בטופס`);
+}
+
+async function wtSaveEntry(){
+  const clientId = document.getElementById('wt-form-client')?.value;
+  const clientName = document.getElementById('wt-form-client')?.options[document.getElementById('wt-form-client')?.selectedIndex]?.text || '';
+  const date = document.getElementById('wt-form-date')?.value || today();
+  const hours = parseInt(document.getElementById('wt-form-hours')?.value)||0;
+  const mins  = parseInt(document.getElementById('wt-form-mins')?.value)||0;
+  const minutes = hours*60+mins;
+  const note = document.getElementById('wt-form-note')?.value.trim()||'';
+  if(!clientId){ toast('⚠️ בחרי לקוח'); return; }
+  if(!minutes){ toast('⚠️ הזיני זמן גדול מ-0'); return; }
+  try {
+    const userId = S.user?.uid||'';
+    const res = await fetch(_API+'/api/hours', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ userId, clientId, clientName, minutes, date, note,
+        employeeId: userId, employeeName: S.user?.name||'' })
+    });
+    const j = await res.json().catch(()=>({}));
+    if(j.ok || res.ok){
+      window._wtState.pendingMinutes = 0;
+      S._workerHoursLoaded = false;
+      _loadWorkerHoursIfNeeded();
+      toast('✅ הזמן נשמר');
+      renderPage();
+    } else { toast('⚠️ שגיאה בשמירה'); }
+  } catch(e){ toast('⚠️ '+e.message); }
+}
+
+async function wtDeleteEntry(id){
+  try {
+    const userId = S.user?.uid||'';
+    await fetch(`${_API}/api/hours?userId=${encodeURIComponent(userId)}&id=${encodeURIComponent(id)}`, {method:'DELETE'});
+    S._workerHoursLoaded = false;
+    _loadWorkerHoursIfNeeded();
+    toast('🗑️ הרשומה נמחקה');
+  } catch(e){ toast('⚠️ '+e.message); }
+}
+
+async function _loadWorkerHoursIfNeeded(){
+  if(S._workerHoursLoaded) return;
+  S._workerHoursLoaded = true;
+  try {
+    const userId = S.user?.uid||'';
+    if(!userId) return;
+    const todayStr = today();
+    const mondayStr = _getMondayISO();
+    const sundayStr = _getSundayISO();
+    const [todayRes, weekRes] = await Promise.all([
+      fetch(`${_API}/api/hours?userId=${encodeURIComponent(userId)}&from=${todayStr}&to=${todayStr}&employeeId=${encodeURIComponent(userId)}`),
+      fetch(`${_API}/api/hours?userId=${encodeURIComponent(userId)}&from=${mondayStr}&to=${sundayStr}&employeeId=${encodeURIComponent(userId)}`)
+    ]);
+    const todayData = await todayRes.json().catch(()=>({hours:[]}));
+    const weekData  = await weekRes.json().catch(()=>({hours:[],summary:{byClient:{}}}));
+    S._workerHoursToday = todayData.hours||[];
+    S._workerHoursWeek  = weekData.hours||[];
+    S._workerWeeklySummary = weekData.summary||{};
+    if(S.page==='settings') renderPage();
+  } catch(e){ console.warn('_loadWorkerHoursIfNeeded:', e.message); }
+}
+
+function renderWorkerTimeTracker(){
+  const wts = window._wtState;
+  const clientOpts = (S.waClients||[]).map(c=>`<option value="${c.id||c.name}" ${wts.clientId===(c.id||c.name)?'selected':''}>${c.name}</option>`).join('');
+
+  // Timer display
+  const curSec = wts.running ? Math.floor((Date.now()-wts.startedAt)/1000) : 0;
+  const timerDisplay = _fmtHMS(curSec);
+  if(wts.running && !_wtInterval) _startWtInterval();
+
+  // Today's entries
+  const todayEntries = S._workerHoursToday||[];
+  const todayTotal = todayEntries.reduce((s,e)=>s+(e.minutes||0),0);
+  const entriesHTML = todayEntries.length ? `
+    <table class="wt-hours-tbl">
+      <thead><tr><th>לקוח</th><th>תאריך</th><th>משך</th><th>הערה</th><th></th></tr></thead>
+      <tbody>
+        ${todayEntries.map(e=>`
+          <tr>
+            <td style="font-weight:600">${e.clientName||'—'}</td>
+            <td>${e.date||''}</td>
+            <td>${_fmtHHMM(e.minutes||0)}</td>
+            <td style="color:var(--text2)">${e.note||''}</td>
+            <td><button class="btn sm danger" onclick="wtDeleteEntry('${e.id}')">🗑</button></td>
+          </tr>`).join('')}
+      </tbody>
+      <tfoot><tr><td colspan="2" style="font-weight:700">סה"כ היום</td><td>${_fmtHHMM(todayTotal)}</td><td colspan="2"></td></tr></tfoot>
+    </table>` : '<div class="empty-state" style="padding:16px">אין רשומות היום עדיין</div>';
+
+  // Weekly summary
+  const weekSummary = S._workerWeeklySummary?.byClient || {};
+  const weekTotal = (S._workerHoursWeek||[]).reduce((s,e)=>s+(e.minutes||0),0);
+  const weekHTML = Object.entries(weekSummary).length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">
+      ${Object.entries(weekSummary).map(([cname,mins])=>`
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 10px;font-weight:600">${cname}</td>
+          <td style="padding:6px 10px;text-align:left">${_fmtHHMM(mins)}</td>
+        </tr>`).join('')}
+      <tr style="background:var(--surface3)">
+        <td style="padding:6px 10px;font-weight:700">סה"כ שבוע</td>
+        <td style="padding:6px 10px;font-weight:700;text-align:left">${_fmtHHMM(weekTotal)}</td>
+      </tr>
+    </table>` : `<div style="padding:12px;color:var(--text3);font-size:12px">אין נתונים לשבוע זה</div>`;
+
+  return `
+  <div class="s-card" style="margin-top:14px">
+    <div class="s-card-title">⏱ מעקב שעות</div>
+
+    <!-- Timer Widget -->
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">שעון עצר</div>
+      <div id="wt-display" class="wt-timer-display ${wts.running?'running':''}">${timerDisplay}</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:10px">
+        <div style="flex:1;min-width:160px">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">לקוח</label>
+          <select class="form-input" id="wt-timer-client" style="width:100%" ${wts.running?'disabled':''}>
+            <option value="">בחרי לקוח...</option>
+            ${clientOpts}
+          </select>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">הערה</label>
+          <input class="form-input" id="wt-timer-note" placeholder="תיאור קצר..." value="${wts.note||''}" ${wts.running?'disabled':''}/>
+        </div>
+        ${!wts.running
+          ? `<button class="btn primary" onclick="wtStartTimer()" style="background:var(--success);border-color:var(--success);white-space:nowrap">▶ התחל</button>`
+          : `<button class="btn danger" onclick="wtStopTimer()" style="white-space:nowrap">⏹ עצור</button>`}
+      </div>
+    </div>
+
+    <!-- Manual Entry Form -->
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">רישום ידני</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="grid-column:1/-1">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">לקוח *</label>
+          <select class="form-input" id="wt-form-client" style="width:100%">
+            <option value="">בחרי לקוח...</option>
+            ${(S.waClients||[]).map(c=>`<option value="${c.id||c.name}" ${wts.pendingMinutes&&wts.clientId===(c.id||c.name)?'selected':''}>${c.name}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">תאריך</label>
+          <input class="form-input" type="date" id="wt-form-date" value="${today()}"/>
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-end">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">שעות</label>
+            <input class="form-input" type="number" id="wt-form-hours" min="0" max="23" placeholder="0" value="${wts.pendingMinutes?Math.floor(wts.pendingMinutes/60):''}" style="width:70px"/>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">דקות</label>
+            <input class="form-input" type="number" id="wt-form-mins" min="0" max="59" placeholder="0" value="${wts.pendingMinutes?wts.pendingMinutes%60:''}" style="width:70px"/>
+          </div>
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">הערה</label>
+          <input class="form-input" id="wt-form-note" placeholder="תיאור קצר..." value="${wts.pendingMinutes?wts.note||'':''}"/>
+        </div>
+      </div>
+      <div class="save-row" style="margin-top:12px">
+        <button class="btn primary" onclick="wtSaveEntry()">שמור</button>
+      </div>
+    </div>
+
+    <!-- Today's Entries -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        <span>רשומות היום</span>
+        <button class="btn sm" onclick="S._workerHoursLoaded=false;_loadWorkerHoursIfNeeded()" title="רענן">↻ רענן</button>
+      </div>
+      ${entriesHTML}
+    </div>
+
+    <!-- Weekly Summary -->
+    <div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">סיכום שבועי (${_getMondayISO()} — ${_getSundayISO()})</div>
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+        ${weekHTML}
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderSettingsPage(){
   const _isWorker = S.user?.role === 'worker' || S.user?.role === 'employee';
 
-  // ── מצב עובד: פרופיל אישי בלבד ──
+  // ── מצב עובד: פרופיל אישי + מעקב שעות ──
   if (_isWorker) {
+    _loadWorkerHoursIfNeeded();
     return `
-    <div style="max-width:520px">
+    <div style="max-width:700px">
       ${renderPersonalSettings()}
+      ${renderWorkerTimeTracker()}
     </div>`;
   }
 
