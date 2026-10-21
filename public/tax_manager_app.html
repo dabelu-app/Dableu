@@ -636,6 +636,7 @@ textarea.form-input{resize:vertical}
       <div class="nav-item" onclick="nav('calendar',this)"><span class="nav-icon">📆</span><span class="nav-label">יומן</span></div>
       <div class="nav-item" onclick="nav('appointments',this)"><span class="nav-icon">🤝</span><span class="nav-label">פגישות</span><span class="nav-badge" id="nb-appts" style="display:none">0</span></div>
       <div class="nav-item" onclick="nav('clients',this)"><span class="nav-icon">👥</span><span class="nav-label">לקוחות</span></div>
+      <div class="nav-item" onclick="nav('hoursReport',this)"><span class="nav-icon">⏱</span><span class="nav-label">שעות עבודה</span></div>
       <div class="nav-item" onclick="nav('deadlines',this)"><span class="nav-icon">📅</span><span class="nav-label">דדליינים</span></div>
       <div class="nav-item" onclick="nav('reminders',this)"><span class="nav-icon">🔔</span><span class="nav-label">תזכורות</span></div>
       <div class="nav-item" id="nav-worker-chats" onclick="nav('worker-chats',this)"><span class="nav-icon">💬</span><span class="nav-label">הודעות</span><span class="nav-badge" id="nb-worker-chats" style="display:none">0</span></div>
@@ -1552,7 +1553,7 @@ function _doLogout(){
 // ══════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════
-const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'לקוחות',clientDetail:'כרטיס לקוח',timeReport:'דוח זמנים',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
+const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'לקוחות',clientDetail:'כרטיס לקוח',timeReport:'דוח זמנים',hoursReport:'⏱ שעות עבודה',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
 function nav(page,el){
   S.page=page;
   if(el){
@@ -1773,6 +1774,7 @@ function renderPage(){
     else if(S.page==='clients'){el.innerHTML=renderClientsPage();loadWAClientsIfNeeded();}
     else if(S.page==='clientDetail'){el.innerHTML=renderClientDetailPage();loadWAClientsIfNeeded();}
     else if(S.page==='timeReport'){el.innerHTML=renderTimeReportPage();loadWAClientsIfNeeded();}
+    else if(S.page==='hoursReport')el.innerHTML=renderHoursReportPage();
     else if(S.page==='settings')el.innerHTML=renderSettingsPage();
     else if(S.page==='admin'){el.innerHTML=renderAdminPage();if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();}
     else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
@@ -4037,6 +4039,8 @@ function wtStartTimer(){
 function wtStopTimer(){
   if(!window._wtState.running) return;
   const minutes = Math.max(1, Math.round((Date.now()-window._wtState.startedAt)/60000));
+  window._wtState.startedISO = new Date(window._wtState.startedAt).toISOString();
+  window._wtState.endedISO = new Date().toISOString();
   window._wtState.running = false;
   window._wtState.pendingMinutes = minutes;
   if(_wtInterval){ clearInterval(_wtInterval); _wtInterval = null; }
@@ -4056,14 +4060,18 @@ async function wtSaveEntry(){
   if(!minutes){ toast('⚠️ הזיני זמן גדול מ-0'); return; }
   try {
     const userId = S.user?.uid||'';
+    const fromTimer = !!window._wtState.pendingMinutes && window._wtState.startedISO;
     const res = await fetch(_API+'/api/hours', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ userId, clientId, clientName, minutes, date, note,
-        employeeId: userId, employeeName: S.user?.name||'' })
+        employeeId: _hrEmpId(), employeeName: S.user?.name||'',
+        startedAt: fromTimer ? window._wtState.startedISO : '',
+        endedAt:   fromTimer ? window._wtState.endedISO   : '' })
     });
     const j = await res.json().catch(()=>({}));
     if(j.ok || res.ok){
       window._wtState.pendingMinutes = 0;
+      window._wtState.startedISO = window._wtState.endedISO = '';
       S._workerHoursLoaded = false;
       _loadWorkerHoursIfNeeded();
       toast('✅ הזמן נשמר');
@@ -4082,6 +4090,90 @@ async function wtDeleteEntry(id){
   } catch(e){ toast('⚠️ '+e.message); }
 }
 
+function _hrEmpId(){ return ((S.user?.email||S.user?.uid||'')+'').toLowerCase(); }
+function _hrEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function _hrTime(iso){
+  if(!iso) return '';
+  const d=new Date(iso); if(isNaN(d)) return '';
+  return d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+}
+function _hrRange(e){
+  const a=_hrTime(e.startedAt), b=_hrTime(e.endedAt);
+  return a&&b ? `${a}–${b}` : '—';
+}
+
+function _hrInit(){ if(!S._hr) S._hr = {from:today().slice(0,8)+'01', to:today(), employee:'', client:'', rows:[], loaded:false, loading:false}; return S._hr; }
+
+async function loadHoursReport(){
+  const hr=_hrInit(); hr.loading=true; hr.loaded=false;
+  if(S.page==='hoursReport') renderPage();
+  try {
+    const userId=S.user?.uid||'';
+    const res=await fetch(`${_API}/api/hours?userId=${encodeURIComponent(userId)}&from=${hr.from}&to=${hr.to}`);
+    const j=await res.json().catch(()=>({}));
+    hr.rows=(j.hours||[]).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.startedAt||b.createdAt||'').localeCompare(a.startedAt||a.createdAt||''));
+  } catch(e){ hr.rows=[]; toast('⚠️ '+e.message); }
+  hr.loading=false; hr.loaded=true;
+  if(S.page==='hoursReport') renderPage();
+}
+function hrApplyFilters(){
+  const hr=_hrInit();
+  hr.from=document.getElementById('hr-from')?.value||hr.from;
+  hr.to=document.getElementById('hr-to')?.value||hr.to;
+  hr.employee=document.getElementById('hr-emp')?.value||'';
+  hr.client=document.getElementById('hr-client')?.value||'';
+  loadHoursReport();
+}
+function renderHoursReportPage(){
+  const hr=_hrInit();
+  if(!hr.loaded && !hr.loading) setTimeout(loadHoursReport,0);
+  const all=hr.rows||[];
+  const emps=[...new Set(all.map(r=>r.employeeName||'—'))].sort();
+  const clients=[...new Set(all.map(r=>r.clientName||'—'))].sort();
+  const rows=all.filter(r=>(!hr.employee||(r.employeeName||'—')===hr.employee)&&(!hr.client||(r.clientName||'—')===hr.client));
+  const total=rows.reduce((s,r)=>s+(r.minutes||0),0);
+  const sum=(key)=>{const m={};rows.forEach(r=>{const k=r[key]||'—';m[k]=(m[k]||0)+(r.minutes||0);});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+  const sumTbl=(title,entries)=>`
+    <div style="flex:1;min-width:240px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+      <div style="padding:8px 12px;font-size:12px;font-weight:700;background:var(--surface3)">${title}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        ${entries.length?entries.map(([k,m])=>`<tr style="border-top:1px solid var(--border)"><td style="padding:6px 12px;font-weight:600">${_hrEsc(k)}</td><td style="padding:6px 12px;text-align:left">${_fmtHHMM(m)}</td></tr>`).join(''):'<tr><td style="padding:10px 12px;color:var(--text3)">אין נתונים</td></tr>'}
+      </table>
+    </div>`;
+  const opt=(arr,sel)=>arr.map(v=>`<option value="${_hrEsc(v)}" ${v===sel?'selected':''}>${_hrEsc(v)}</option>`).join('');
+  return `
+  <div style="max-width:1000px">
+    <div class="s-card">
+      <div class="s-card-title">⏱ דוח שעות עבודה — מי עבדה על מה ומתי</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+        <div><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">מתאריך</label><input class="form-input" type="date" id="hr-from" value="${hr.from}"/></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">עד תאריך</label><input class="form-input" type="date" id="hr-to" value="${hr.to}"/></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">עובדת</label><select class="form-input" id="hr-emp" onchange="S._hr.employee=this.value;renderPage()"><option value="">הכל</option>${opt(emps,hr.employee)}</select></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">לקוח</label><select class="form-input" id="hr-client" onchange="S._hr.client=this.value;renderPage()"><option value="">הכל</option>${opt(clients,hr.client)}</select></div>
+        <button class="btn primary" onclick="hrApplyFilters()">הצג</button>
+      </div>
+      ${hr.loading?'<div class="empty-state" style="padding:20px">⏳ טוען...</div>':`
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        ${sumTbl('סה"כ לפי עובדת',sum('employeeName'))}
+        ${sumTbl('סה"כ לפי לקוח',sum('clientName'))}
+      </div>
+      ${rows.length?`
+      <div style="overflow-x:auto">
+      <table class="wt-hours-tbl">
+        <thead><tr><th>תאריך</th><th>עובדת</th><th>לקוח</th><th>שעות</th><th>משך</th><th>הערה</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr>
+          <td>${_hrEsc(r.date)}</td>
+          <td style="font-weight:600">${_hrEsc(r.employeeName||'—')}</td>
+          <td>${_hrEsc(r.clientName||'—')}</td>
+          <td>${_hrRange(r)}</td>
+          <td>${_fmtHHMM(r.minutes||0)}</td>
+          <td style="color:var(--text2)">${_hrEsc(r.note)}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td colspan="4">סה"כ</td><td>${_fmtHHMM(total)}</td><td></td></tr></tfoot>
+      </table></div>`:'<div class="empty-state" style="padding:20px">אין רשומות בטווח שנבחר</div>'}`}
+    </div>
+  </div>`;
+}
+
 async function _loadWorkerHoursIfNeeded(){
   if(S._workerHoursLoaded) return;
   S._workerHoursLoaded = true;
@@ -4092,8 +4184,8 @@ async function _loadWorkerHoursIfNeeded(){
     const mondayStr = _getMondayISO();
     const sundayStr = _getSundayISO();
     const [todayRes, weekRes] = await Promise.all([
-      fetch(`${_API}/api/hours?userId=${encodeURIComponent(userId)}&from=${todayStr}&to=${todayStr}&employeeId=${encodeURIComponent(userId)}`),
-      fetch(`${_API}/api/hours?userId=${encodeURIComponent(userId)}&from=${mondayStr}&to=${sundayStr}&employeeId=${encodeURIComponent(userId)}`)
+      fetch(`${_API}/api/hours?userId=${encodeURIComponent(userId)}&from=${todayStr}&to=${todayStr}&employeeId=${encodeURIComponent(_hrEmpId())}`),
+      fetch(`${_API}/api/hours?userId=${encodeURIComponent(userId)}&from=${mondayStr}&to=${sundayStr}&employeeId=${encodeURIComponent(_hrEmpId())}`)
     ]);
     const todayData = await todayRes.json().catch(()=>({hours:[]}));
     const weekData  = await weekRes.json().catch(()=>({hours:[],summary:{byClient:{}}}));
@@ -4118,12 +4210,12 @@ function renderWorkerTimeTracker(){
   const todayTotal = todayEntries.reduce((s,e)=>s+(e.minutes||0),0);
   const entriesHTML = todayEntries.length ? `
     <table class="wt-hours-tbl">
-      <thead><tr><th>לקוח</th><th>תאריך</th><th>משך</th><th>הערה</th><th></th></tr></thead>
+      <thead><tr><th>לקוח</th><th>שעות</th><th>משך</th><th>הערה</th><th></th></tr></thead>
       <tbody>
         ${todayEntries.map(e=>`
           <tr>
-            <td style="font-weight:600">${e.clientName||'—'}</td>
-            <td>${e.date||''}</td>
+            <td style="font-weight:600">${_hrEsc(e.clientName||'—')}</td>
+            <td>${_hrRange(e)}</td>
             <td>${_fmtHHMM(e.minutes||0)}</td>
             <td style="color:var(--text2)">${e.note||''}</td>
             <td><button class="btn sm danger" onclick="wtDeleteEntry('${e.id}')">🗑</button></td>

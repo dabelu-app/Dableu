@@ -25,6 +25,8 @@ function docToHour(doc) {
     employeeId:   f.employeeId?.stringValue   || '',
     employeeName: f.employeeName?.stringValue || '',
     createdAt:    f.createdAt?.stringValue    || '',
+    startedAt:    f.startedAt?.stringValue    || '',
+    endedAt:      f.endedAt?.stringValue      || '',
   };
 }
 
@@ -76,7 +78,7 @@ module.exports = async (req, res) => {
 
     // POST { userId, clientId, clientName, minutes, date, note?, employeeId, employeeName }
     if (req.method === 'POST') {
-      const { userId, clientId, clientName, minutes, date, note, employeeId, employeeName } = req.body || {};
+      const { userId, clientId, clientName, minutes, date, note, employeeId, employeeName, startedAt, endedAt } = req.body || {};
       const minutesNum = Number(minutes);
       if (!userId || !clientId || !date || !employeeId || !minutes || isNaN(minutesNum) || minutesNum <= 0) {
         return res.status(400).json({ error: 'userId, clientId, minutes (positive), date, employeeId required' });
@@ -92,6 +94,8 @@ module.exports = async (req, res) => {
         createdAt:    fsStr(new Date().toISOString()),
       };
       if (note !== undefined) fields.note = fsStr(note);
+      if (startedAt) fields.startedAt = fsStr(startedAt);
+      if (endedAt)   fields.endedAt   = fsStr(endedAt);
 
       const resp = await fsFetch(`/users/${userId}/data/hours`, {
         method: 'POST',
