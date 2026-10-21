@@ -643,6 +643,7 @@ textarea.form-input{resize:vertical}
       <div class="nav-item" id="nav-worker-chats" onclick="nav('worker-chats',this)"><span class="nav-icon">💬</span><span class="nav-label">הודעות</span><span class="nav-badge" id="nb-worker-chats" style="display:none">0</span></div>
       <div class="nav-item" id="nav-admin" style="display:none" onclick="nav('admin',this)"><span class="nav-icon">👑</span><span class="nav-label">ניהול משתמשים</span></div>
       <div class="nav-item" id="nav-worker-tasks" style="display:none" onclick="nav('worker-tasks',this)"><span class="nav-icon">📋</span><span class="nav-label">המשימות שלי</span><span class="nav-badge" id="nb-worker-tasks" style="display:none">0</span></div>
+      <div class="nav-item" id="nav-worker-hours" style="display:none" onclick="nav('worker-hours',this)"><span class="nav-icon">⏱</span><span class="nav-label">שעות עבודה</span></div>
       <div class="nav-item" id="nav-worker-chat" style="display:none" onclick="nav('worker-chat',this)"><span class="nav-icon">💬</span><span class="nav-label">שיחות</span><span class="nav-badge" id="nb-worker-chat" style="display:none">0</span></div>
       <div class="nav-item" onclick="nav('settings',this)"><span class="nav-icon">⚙️</span><span class="nav-label">הגדרות</span></div>
 
@@ -1444,6 +1445,7 @@ function enterApp(){
     document.querySelectorAll('.nav-group-label').forEach(n=>n.style.display='none');
     // הצג רק לשונית "המשימות שלי"
     document.getElementById('nav-worker-tasks').style.display='flex';
+    document.getElementById('nav-worker-hours').style.display='flex';
     // הסתר כפתור "משימה חדשה"
     const topBtn = document.getElementById('topbar-main-btn');
     if(topBtn) topBtn.style.display='none';
@@ -1458,6 +1460,11 @@ function enterApp(){
           </svg></span>
           <span>המשימות שלי</span>
           <span class="mob-nav-badge" id="mob-badge-worker-tasks" style="display:none">0</span>
+        </button>
+        <button class="mob-nav-btn" id="mob-btn-worker-hours"
+          onclick="nav('worker-hours')">
+          <span class="mob-icon" style="font-size:20px;line-height:1">⏱</span>
+          <span>שעות</span>
         </button>
         <button class="mob-nav-btn" id="mob-btn-worker-chat"
           onclick="nav('worker-chat')">
@@ -1554,7 +1561,7 @@ function _doLogout(){
 // ══════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════
-const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'רשימת טלפונים',officeClients:'לקוחות',clientDetail:'כרטיס לקוח',timeReport:'דוח זמנים',hoursReport:'⏱ שעות עבודה',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
+const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'רשימת טלפונים',officeClients:'לקוחות',clientDetail:'כרטיס לקוח',timeReport:'דוח זמנים',hoursReport:'⏱ שעות עבודה',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-hours':'⏱ שעות עבודה','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
 function nav(page,el){
   S.page=page;
   if(el){
@@ -1567,7 +1574,7 @@ function nav(page,el){
   // עובד: mob-btn-worker-tasks / mob-btn-worker-chat / mob-btn-worker-settings
   const isWorker = S.user && (S.user.role==='worker'||S.user.role==='employee');
   const mobBtnId = isWorker
-    ? (page==='worker-tasks'?'mob-btn-worker-tasks': page==='worker-chat'?'mob-btn-worker-chat': page==='settings'?'mob-btn-worker-settings':null)
+    ? (page==='worker-tasks'?'mob-btn-worker-tasks': page==='worker-hours'?'mob-btn-worker-hours': page==='worker-chat'?'mob-btn-worker-chat': page==='settings'?'mob-btn-worker-settings':null)
     : 'mob-btn-'+page;
   const mobBtn = mobBtnId ? document.getElementById(mobBtnId) : null;
   if(mobBtn) mobBtn.classList.add('active');
@@ -1781,6 +1788,7 @@ function renderPage(){
     else if(S.page==='settings')el.innerHTML=renderSettingsPage();
     else if(S.page==='admin'){el.innerHTML=renderAdminPage();if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();}
     else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
+    else if(S.page==='worker-hours')el.innerHTML=renderWorkerHoursPage();
     else if(S.page==='worker-all')el.innerHTML=renderWorkerAllTasksPage();
     else if(S.page==='worker-chat')el.innerHTML=renderWorkerChatListPage();
     else if(S.page==='worker-chats')el.innerHTML=renderEmployerChatsPage();
@@ -3501,6 +3509,16 @@ async function ocSave(){
     await loadOfficeClients();
   } catch(e){ toast('⚠️ '+e.message); }
 }
+function ocOpenCount(name){
+  const n=(name||'').trim().toLowerCase();
+  return (S.tasks||[]).filter(t=>t.status!=='done'&&((t.client||t.clientName||'').trim().toLowerCase()===n)).length;
+}
+function ocOpenTasks(id){
+  const c=(S.officeClients||[]).find(x=>x.id===id); if(!c) return;
+  S.taskFilter=S.taskFilter||{}; S.taskFilter.client=c.name;
+  nav('tasks',document.querySelector('.nav-item[onclick*="\'tasks\'"]'));
+  renderPage();
+}
 function ocEdit(id){ _ocInit().editId=id; renderPage(); }
 function ocCancel(){ _ocInit().editId=null; renderPage(); }
 function ocDelete(id){
@@ -3539,10 +3557,11 @@ function renderOfficeClientsPage(){
     </div>
     <input type="search" id="oc-search" placeholder="🔍 חיפוש לקוח..." dir="rtl" value="${_hrEsc(S.ocSearch||'')}" oninput="S.ocSearch=this.value;renderPage();var i=document.getElementById('oc-search');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}" style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;background:var(--surface);box-sizing:border-box;margin-bottom:10px"/>
     ${shown.length?`<div style="overflow-x:auto"><table class="wt-hours-tbl">
-      <thead><tr><th>שם</th><th>ח.פ / עוסק</th><th>טלפון</th><th>הערות</th><th></th></tr></thead>
+      <thead><tr><th>שם</th><th>ח.פ / עוסק</th><th>משימות פתוחות</th><th>טלפון</th><th>הערות</th><th></th></tr></thead>
       <tbody>${shown.map(c=>`<tr>
         <td style="font-weight:600">${_hrEsc(c.name)}</td>
         <td>${_hrEsc(c.taxId)}</td>
+        <td>${ocOpenCount(c.name)?`<button class="btn sm" onclick="ocOpenTasks('${c.id}')" style="font-weight:700">${ocOpenCount(c.name)} משימות</button>`:'<span style="color:var(--text3)">0</span>'}</td>
         <td>${_hrEsc(c.phone)}</td>
         <td style="color:var(--text2)">${_hrEsc(c.notes)}</td>
         <td style="white-space:nowrap"><button class="btn sm" onclick="ocEdit('${c.id}')">✏️</button>${isWorker?'':` <button class="btn sm danger" onclick="ocDelete('${c.id}')">🗑</button>`}</td>
@@ -4059,10 +4078,10 @@ function _getSundayISO(){
 function _startWtInterval(){
   if(_wtInterval) clearInterval(_wtInterval);
   _wtInterval = setInterval(()=>{
-    const el = document.getElementById('wt-display');
-    if(el && window._wtState.running){
+    const els = document.querySelectorAll('#wt-display,.wt-live');
+    if(els.length && window._wtState.running){
       const sec = Math.floor((Date.now()-window._wtState.startedAt)/1000);
-      el.textContent = _fmtHMS(sec);
+      els.forEach(el=>{ el.textContent = _fmtHMS(sec); });
     } else if(!window._wtState.running){
       clearInterval(_wtInterval); _wtInterval = null;
     }
@@ -4078,6 +4097,7 @@ function wtStartTimer(){
   window._wtState.clientName = sel.options[sel.selectedIndex]?.text || '';
   window._wtState.note = document.getElementById('wt-timer-note')?.value || '';
   window._wtState.pendingMinutes = 0;
+  _wtPersist();
   _startWtInterval();
   renderPage();
 }
@@ -4088,6 +4108,7 @@ function wtStopTimer(){
   window._wtState.startedISO = new Date(window._wtState.startedAt).toISOString();
   window._wtState.endedISO = new Date().toISOString();
   window._wtState.running = false;
+  _wtClearPersist();
   window._wtState.pendingMinutes = minutes;
   if(_wtInterval){ clearInterval(_wtInterval); _wtInterval = null; }
   renderPage();
@@ -4170,52 +4191,202 @@ function hrApplyFilters(){
   hr.client=document.getElementById('hr-client')?.value||'';
   loadHoursReport();
 }
+function _hrFiltered(){
+  const hr=_hrInit();
+  return (hr.rows||[]).filter(r=>(!hr.employee||(r.employeeName||'—')===hr.employee)&&(!hr.client||(r.clientName||'—')===hr.client));
+}
+function hrSetView(v){ _hrInit().view=v; renderPage(); }
+function hrExportCSV(){
+  const hr=_hrInit();
+  const rows=_hrFiltered();
+  if(!rows.length){ toast('⚠️ אין נתונים לייצוא'); return; }
+  const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const head=['תאריך','עובדת','לקוח','התחלה','סיום','דקות','משך','הערה'];
+  const lines=[head.map(esc).join(',')].concat(rows.map(r=>[r.date,r.employeeName,r.clientName,_hrTime(r.startedAt),_hrTime(r.endedAt),r.minutes,_fmtHHMM(r.minutes||0),r.note].map(esc).join(',')));
+  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='דוח-שעות-'+hr.from+'_'+hr.to+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
 function renderHoursReportPage(){
   const hr=_hrInit();
+  if(!hr.view) hr.view='detail';
   if(!hr.loaded && !hr.loading) setTimeout(loadHoursReport,0);
   const all=hr.rows||[];
   const emps=[...new Set(all.map(r=>r.employeeName||'—'))].sort();
   const clients=[...new Set(all.map(r=>r.clientName||'—'))].sort();
-  const rows=all.filter(r=>(!hr.employee||(r.employeeName||'—')===hr.employee)&&(!hr.client||(r.clientName||'—')===hr.client));
+  const rows=_hrFiltered();
   const total=rows.reduce((s,r)=>s+(r.minutes||0),0);
-  const sum=(key)=>{const m={};rows.forEach(r=>{const k=r[key]||'—';m[k]=(m[k]||0)+(r.minutes||0);});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
-  const sumTbl=(title,entries)=>`
-    <div style="flex:1;min-width:240px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-      <div style="padding:8px 12px;font-size:12px;font-weight:700;background:var(--surface3)">${title}</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        ${entries.length?entries.map(([k,m])=>`<tr style="border-top:1px solid var(--border)"><td style="padding:6px 12px;font-weight:600">${_hrEsc(k)}</td><td style="padding:6px 12px;text-align:left">${_fmtHHMM(m)}</td></tr>`).join(''):'<tr><td style="padding:10px 12px;color:var(--text3)">אין נתונים</td></tr>'}
-      </table>
-    </div>`;
   const opt=(arr,sel)=>arr.map(v=>`<option value="${_hrEsc(v)}" ${v===sel?'selected':''}>${_hrEsc(v)}</option>`).join('');
+  const lbl='font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px';
+  const tab=(v,t)=>`<button class="btn ${hr.view===v?'primary':''}" onclick="hrSetView('${v}')">${t}</button>`;
+  const detailRow=(r,cols)=>`<tr>${cols.includes('date')?`<td>${_hrEsc(r.date)}</td>`:''}${cols.includes('emp')?`<td style="font-weight:600">${_hrEsc(r.employeeName||'—')}</td>`:''}${cols.includes('client')?`<td style="font-weight:600">${_hrEsc(r.clientName||'—')}</td>`:''}<td>${_hrRange(r)}</td><td>${_fmtHHMM(r.minutes||0)}</td><td style="color:var(--text2)">${_hrEsc(r.note)}</td></tr>`;
+  const head=cols=>`<tr>${cols.includes('date')?'<th>תאריך</th>':''}${cols.includes('emp')?'<th>עובדת</th>':''}${cols.includes('client')?'<th>לקוח</th>':''}<th>שעות</th><th>משך</th><th>הערה</th></tr>`;
+  let body='';
+  if(!rows.length){
+    body='<div class="empty-state" style="padding:20px">אין רשומות בטווח שנבחר</div>';
+  } else if(hr.view==='detail'){
+    const cols=['date','emp','client'];
+    body=`<div style="overflow-x:auto"><table class="wt-hours-tbl"><thead>${head(cols)}</thead><tbody>${rows.map(r=>detailRow(r,cols)).join('')}</tbody><tfoot><tr><td colspan="${cols.length+1}">סה"כ</td><td>${_fmtHHMM(total)}</td><td></td></tr></tfoot></table></div>`;
+  } else {
+    const gkey=hr.view==='employee'?'employeeName':'clientName';
+    const cols=hr.view==='employee'?['date','client']:['date','emp'];
+    const groups={};
+    rows.forEach(r=>{const k=r[gkey]||'—';(groups[k]=groups[k]||[]).push(r);});
+    body=Object.keys(groups).sort((a,b)=>a.localeCompare(b,'he')).map(k=>{
+      const g=groups[k];
+      const sub=g.reduce((s,r)=>s+(r.minutes||0),0);
+      const other=hr.view==='employee'?'clientName':'employeeName';
+      const m={};g.forEach(r=>{const o=r[other]||'—';m[o]=(m[o]||0)+(r.minutes||0);});
+      const chips=Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([o,mm])=>`<span style="background:var(--surface3);border-radius:20px;padding:2px 10px;font-size:11px">${_hrEsc(o)} · ${_fmtHHMM(mm)}</span>`).join(' ');
+      return `<div style="margin-bottom:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+        <div style="padding:10px 14px;background:var(--surface3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div style="font-size:14px;font-weight:700">${hr.view==='employee'?'👩‍💼':'👥'} ${_hrEsc(k)}</div>
+          <div style="font-weight:700">${_fmtHHMM(sub)} שעות</div>
+        </div>
+        <div style="padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap">${chips}</div>
+        <div style="overflow-x:auto"><table class="wt-hours-tbl"><thead>${head(cols)}</thead><tbody>${g.map(r=>detailRow(r,cols)).join('')}</tbody></table></div>
+      </div>`;
+    }).join('')+`<div style="text-align:left;font-weight:700;padding:6px 4px">סה"כ כללי: ${_fmtHHMM(total)} שעות</div>`;
+  }
   return `
   <div style="max-width:1000px">
     <div class="s-card">
-      <div class="s-card-title">⏱ דוח שעות עבודה — מי עבדה על מה ומתי</div>
+      <div class="s-card-title">⏱ דוחות שעות עבודה</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        ${tab('detail','📋 כל הרשומות')}${tab('employee','👩‍💼 דוח לפי עובדת')}${tab('client','👥 דוח לפי לקוח')}
+        <button class="btn" onclick="hrExportCSV()" style="margin-right:auto">⬇ ייצוא לאקסל</button>
+      </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
-        <div><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">מתאריך</label><input class="form-input" type="date" id="hr-from" value="${hr.from}"/></div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">עד תאריך</label><input class="form-input" type="date" id="hr-to" value="${hr.to}"/></div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">עובדת</label><select class="form-input" id="hr-emp" onchange="S._hr.employee=this.value;renderPage()"><option value="">הכל</option>${opt(emps,hr.employee)}</select></div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">לקוח</label><select class="form-input" id="hr-client" onchange="S._hr.client=this.value;renderPage()"><option value="">הכל</option>${opt(clients,hr.client)}</select></div>
+        <div><label style="${lbl}">מתאריך</label><input class="form-input" type="date" id="hr-from" value="${hr.from}"/></div>
+        <div><label style="${lbl}">עד תאריך</label><input class="form-input" type="date" id="hr-to" value="${hr.to}"/></div>
+        <div><label style="${lbl}">עובדת</label><select class="form-input" id="hr-emp" onchange="S._hr.employee=this.value;renderPage()"><option value="">הכל</option>${opt(emps,hr.employee)}</select></div>
+        <div><label style="${lbl}">לקוח</label><select class="form-input" id="hr-client" onchange="S._hr.client=this.value;renderPage()"><option value="">הכל</option>${opt(clients,hr.client)}</select></div>
         <button class="btn primary" onclick="hrApplyFilters()">הצג</button>
       </div>
-      ${hr.loading?'<div class="empty-state" style="padding:20px">⏳ טוען...</div>':`
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-        ${sumTbl('סה"כ לפי עובדת',sum('employeeName'))}
-        ${sumTbl('סה"כ לפי לקוח',sum('clientName'))}
+      ${hr.loading?'<div class="empty-state" style="padding:20px">⏳ טוען...</div>':body}
+    </div>
+  </div>`;
+}
+
+// ── שעון נוכחות לעובדת: התחלה/סיום עבודה לכל לקוח ──
+function _wtPersist(){
+  try{
+    const w=window._wtState;
+    localStorage.setItem('wt_running_'+(S.user?.uid||'')+'_'+_hrEmpId(), JSON.stringify({clientId:w.clientId,clientName:w.clientName,startedAt:w.startedAt,note:w.note||''}));
+  }catch(e){}
+}
+function _wtClearPersist(){
+  try{ localStorage.removeItem('wt_running_'+(S.user?.uid||'')+'_'+_hrEmpId()); }catch(e){}
+}
+function _wtRestore(){
+  const w=window._wtState;
+  if(w.running) return;
+  try{
+    const raw=localStorage.getItem('wt_running_'+(S.user?.uid||'')+'_'+_hrEmpId());
+    if(!raw) return;
+    const d=JSON.parse(raw);
+    if(!d||!d.clientId||!d.startedAt) return;
+    w.running=true; w.startedAt=d.startedAt; w.clientId=d.clientId; w.clientName=d.clientName||''; w.note=d.note||'';
+    w.pendingMinutes=0;
+    _startWtInterval();
+  }catch(e){}
+}
+async function _wtPostEntry(en){
+  try{
+    const res=await fetch(_API+'/api/hours',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({userId:S.user?.uid||'',clientId:en.clientId,clientName:en.clientName,minutes:en.minutes,date:en.date,note:en.note||'',
+        employeeId:_hrEmpId(),employeeName:S.user?.name||'',startedAt:en.startedISO,endedAt:en.endedISO})});
+    if(!res.ok) throw new Error('שמירה נכשלה');
+    toast('✅ נשמרו '+_fmtHHMM(en.minutes)+' שעות — '+en.clientName);
+    S._workerHoursLoaded=false;
+    _loadWorkerHoursIfNeeded();
+  }catch(e){
+    toast('⚠️ '+e.message+' — הרשומה לא נשמרה');
+  }
+  renderPage();
+}
+async function wtStopClient(){
+  const w=window._wtState;
+  if(!w.running) return;
+  const endMs=Date.now();
+  const en={clientId:w.clientId,clientName:w.clientName,note:w.note||'',
+    minutes:Math.max(1,Math.round((endMs-w.startedAt)/60000)),
+    date:new Date(w.startedAt).toISOString().slice(0,10),
+    startedISO:new Date(w.startedAt).toISOString(),endedISO:new Date(endMs).toISOString()};
+  w.running=false; w.startedAt=null; w.clientId=''; w.clientName=''; w.note=''; w.pendingMinutes=0;
+  if(_wtInterval){ clearInterval(_wtInterval); _wtInterval=null; }
+  _wtClearPersist();
+  await _wtPostEntry(en);
+}
+async function wtStartClient(id){
+  const c=(S.officeClients||[]).find(x=>x.id===id);
+  if(!c) return;
+  const w=window._wtState;
+  if(w.running){
+    if(w.clientId===id) return;
+    await wtStopClient();
+  }
+  w.running=true; w.startedAt=Date.now(); w.clientId=c.id; w.clientName=c.name; w.note=''; w.pendingMinutes=0;
+  _wtPersist();
+  _startWtInterval();
+  toast('▶ התחלת עבודה — '+c.name);
+  renderPage();
+}
+function renderWorkerHoursPage(){
+  _wtRestore();
+  _loadWorkerHoursIfNeeded();
+  const w=window._wtState;
+  const clients=S.officeClients||[];
+  const todayRows=S._workerHoursToday||[];
+  const byClient={};
+  todayRows.forEach(e=>{byClient[e.clientId]=(byClient[e.clientId]||0)+(e.minutes||0);});
+  const todayTotal=todayRows.reduce((s,e)=>s+(e.minutes||0),0);
+  const weekTotal=(S._workerHoursWeek||[]).reduce((s,e)=>s+(e.minutes||0),0);
+  if(w.running && !_wtInterval) _startWtInterval();
+  const curSec=w.running?Math.floor((Date.now()-w.startedAt)/1000):0;
+  const banner=w.running?`
+    <div style="background:var(--success-bg,#dcfce7);border:1.5px solid var(--success,#16a34a);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:12px;color:var(--text2)">עובדת כעת אצל</div>
+        <div style="font-size:16px;font-weight:700">${_hrEsc(w.clientName)}</div>
+        <div class="wt-live wt-timer-display running" style="font-size:28px;padding:4px 0;text-align:right">${_fmtHMS(curSec)}</div>
       </div>
-      ${rows.length?`
-      <div style="overflow-x:auto">
-      <table class="wt-hours-tbl">
-        <thead><tr><th>תאריך</th><th>עובדת</th><th>לקוח</th><th>שעות</th><th>משך</th><th>הערה</th></tr></thead>
-        <tbody>${rows.map(r=>`<tr>
-          <td>${_hrEsc(r.date)}</td>
-          <td style="font-weight:600">${_hrEsc(r.employeeName||'—')}</td>
-          <td>${_hrEsc(r.clientName||'—')}</td>
-          <td>${_hrRange(r)}</td>
-          <td>${_fmtHHMM(r.minutes||0)}</td>
-          <td style="color:var(--text2)">${_hrEsc(r.note)}</td></tr>`).join('')}</tbody>
-        <tfoot><tr><td colspan="4">סה"כ</td><td>${_fmtHHMM(total)}</td><td></td></tr></tfoot>
-      </table></div>`:'<div class="empty-state" style="padding:20px">אין רשומות בטווח שנבחר</div>'}`}
+      <button class="btn danger" onclick="wtStopClient()" style="font-size:14px;padding:10px 20px">⏹ סיום עבודה</button>
+    </div>`:'';
+  const rowsHtml=clients.length?clients.map(c=>{
+    const running=w.running&&w.clientId===c.id;
+    const mins=byClient[c.id]||0;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid var(--border);${running?'background:var(--success-bg,#dcfce7)':''}">
+      <div style="min-width:0">
+        <div style="font-weight:600;font-size:14px">${_hrEsc(c.name)}</div>
+        <div style="font-size:11px;color:var(--text2)">${mins?'היום: '+_fmtHHMM(mins):'טרם עבדת היום'}</div>
+      </div>
+      ${running
+        ?`<button class="btn danger" onclick="wtStopClient()" style="white-space:nowrap">⏹ סיום עבודה</button>`
+        :`<button class="btn primary" onclick="wtStartClient('${c.id}')" style="white-space:nowrap;background:var(--success,#16a34a);border-color:var(--success,#16a34a)">▶ התחלת עבודה</button>`}
+    </div>`;
+  }).join(''):'<div class="empty-state" style="padding:20px">אין לקוחות ברשימה. המנהלת צריכה להוסיף לקוחות.</div>';
+  const entries=todayRows.length?`<div style="overflow-x:auto"><table class="wt-hours-tbl">
+    <thead><tr><th>לקוח</th><th>שעות</th><th>משך</th><th></th></tr></thead>
+    <tbody>${todayRows.map(e=>`<tr><td style="font-weight:600">${_hrEsc(e.clientName||'—')}</td><td>${_hrRange(e)}</td><td>${_fmtHHMM(e.minutes||0)}</td><td><button class="btn sm danger" onclick="wtDeleteEntry('${e.id}')">🗑</button></td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="2">סה"כ היום</td><td>${_fmtHHMM(todayTotal)}</td><td></td></tr></tfoot></table></div>`:'<div style="padding:12px;color:var(--text3);font-size:12px">אין רשומות היום עדיין</div>';
+  return `
+  <div style="max-width:700px;margin:0 auto">
+    <div style="margin-bottom:12px">
+      <h2 style="font-size:20px;font-weight:700">⏱ שעות עבודה</h2>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">היום: ${_fmtHHMM(todayTotal)} · השבוע: ${_fmtHHMM(weekTotal)}</div>
+    </div>
+    ${banner}
+    <div class="s-card" style="padding:0;overflow:hidden;margin-bottom:14px">
+      <div style="padding:10px 14px;font-size:12px;font-weight:700;background:var(--surface3)">הלקוחות שלי — לחצי על התחלת עבודה כשאת מתחילה לעבוד על לקוח</div>
+      ${rowsHtml}
+    </div>
+    <div class="s-card">
+      <div class="s-card-title">רשומות היום</div>
+      ${entries}
     </div>
   </div>`;
 }
@@ -4238,7 +4409,7 @@ async function _loadWorkerHoursIfNeeded(){
     S._workerHoursToday = todayData.hours||[];
     S._workerHoursWeek  = weekData.hours||[];
     S._workerWeeklySummary = weekData.summary||{};
-    if(S.page==='settings') renderPage();
+    if(S.page==='settings'||S.page==='worker-hours') renderPage();
   } catch(e){ console.warn('_loadWorkerHoursIfNeeded:', e.message); }
 }
 
