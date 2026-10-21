@@ -83,11 +83,21 @@ const SITE_URL          = 'https://cosmic-daifuku-4d8c28.netlify.app';
 async function sendWhatsAppReply(chatId, message) {
   const instance = process.env.GREENAPI_INSTANCE;
   const token    = process.env.GREENAPI_TOKEN;
-  await fetch(
-    `https://7107.api.greenapi.com/waInstance${instance}/sendMessage/${token}`,
-    { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ chatId, message }) }
-  );
+  try {
+    const r = await fetch(
+      `https://7107.api.greenapi.com/waInstance${instance}/sendMessage/${token}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ chatId, message }) }
+    );
+    if (!r.ok) {
+      const body = await r.text().catch(() => '');
+      console.error(`[sendWhatsApp] ERROR ${r.status} chatId=${chatId} body=${body}`);
+    } else {
+      console.log(`[sendWhatsApp] OK chatId=${chatId} status=${r.status}`);
+    }
+  } catch (e) {
+    console.error(`[sendWhatsApp] fetch exception chatId=${chatId}`, e.message);
+  }
 }
 
 // ───────────────────────────────────────────
