@@ -1,6 +1,7 @@
 const FormData = require('form-data');
 const fetch    = require('node-fetch');
 const { google } = require('googleapis');
+const { matchOfficeClient } = require('../lib/officeClientMatch');
 
 // ═══════════════════════════════════════════════════════════════════
 // לוח שנה עברי — מימוש מקומי, ללא ספריה חיצונית
@@ -286,6 +287,28 @@ async function getClients(userId) {
         whatsapp: item.document.fields?.whatsapp?.stringValue || ''
       })).filter(c => c.name);
   } catch(e) { return []; }
+}
+
+// הלקוחות הקבועים של המשרד (officeClients) — לשיוך אוטומטי של משימות
+async function getOfficeClients(userId) {
+  try {
+    const resp = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ structuredQuery:{
+          from:[{collectionId:'officeClients'}],
+          where:{ fieldFilter:{ field:{fieldPath:'userId'}, op:'EQUAL', value:{stringValue: userId||''} }},
+          limit:500
+        }})
+      }
+    );
+    const data = await resp.json();
+    if (!Array.isArray(data)) return [];
+    return data
+      .filter(item => item.document)
+      .map(item => ({ id: item.document.name.split('/').pop(), name: item.document.fields?.name?.stringValue || '' }))
+      .filter(c => c.name);
+  } catch(e) { console.error('getOfficeClients error:', e.message); return []; }
 }
 
 async function createClient(name, email, whatsapp, userId) {
@@ -1055,13 +1078,14 @@ function cleanTitleFromWorker(title, workerName) {
 }
 
 // שמירת משימה — נשמרת ב-users/{uid}/data/tasks (המקום שהאפליקציה קוראת ממנו)
-async function saveTask(title, clientName, source, userDocId, assignee, assigneeEmail) {
+async function saveTask(title, clientName, source, userDocId, assignee, assigneeEmail, taskClient) {
   const taskId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const taskFields = {
     id:          { stringValue: taskId },
     title:       { stringValue: title.trim() },
     assignee:    { stringValue: assignee || '' },
-    clientName:  { stringValue: clientName || '' },
+    clientName:  { stringValue: taskClient || '' },
+    client:      { stringValue: taskClient || '' },
     source:      { stringValue: source || 'bot' },
     status:      { stringValue: 'pending' },
     priority:    { stringValue: 'normal' },
@@ -1880,14 +1904,29 @@ module.exports = async (req, res) => {
   const assigneeName  = workerMatch ? workerMatch.name  : clientName;
   const assigneeEmail = workerMatch ? workerMatch.email : clientEmail;
 
+  // שיוך אוטומטי ללקוח מהרשימה הקבועה לפי הטקסט המלא של ההודעה
+  let taskClient = '';
+  let clientNote = '';
+  try {
+    const officeClients = await getOfficeClients(userDocId);
+    const cm = matchOfficeClient(officeClients, msgText);
+    if (cm.client) {
+      taskClient = cm.client.name;
+      clientNote = `\n🏢 לקוח: ${taskClient}`;
+    } else if (cm.ambiguous) {
+      clientNote = `\n⚠️ לא שויכה ללקוח — כמה לקוחות מתאימים (${cm.ambiguous.join(' / ')}). ציינ/י את השם המלא.`;
+    }
+    console.log(`🏢 client match: "${taskClient}" | ambiguous: ${cm.ambiguous ? cm.ambiguous.join(', ') : '-'} | lists=${officeClients.length}`);
+  } catch(e) { console.error('client match failed:', e.message); }
+
   const { ok: firestoreOk, docId: taskDocId } = await saveTask(
     cleanTitle, clientName, source, userDocId,
-    assigneeName, assigneeEmail
+    assigneeName, assigneeEmail, taskClient
   );
 
   // sharedTask + התרעה — רק כשמשובצת לעובד (לא לכללי)
   if (firestoreOk && workerMatch && taskDocId) {
-    await createSharedTask(taskDocId, cleanTitle, workerMatch.name, workerMatch.email, clientEmail, clientName, source);
+    await createSharedTask(taskDocId, cleanTitle, workerMatch.name, workerMatch.email, clientEmail, taskClient, source);
     await notifyWorkerOfTask(workerMatch, cleanTitle, clientName);
   }
 
@@ -1896,7 +1935,7 @@ module.exports = async (req, res) => {
       ? `\n👤 שובצה ל: *${workerMatch.name}*`
       : `\n👤 שובצה כללי (${clientName})`;
     await sendWhatsAppReply(chatId, firestoreOk
-      ? `✅ המשימה נוצרה בהצלחה!${assignMsg}\n📝 ${cleanTitle}`
+      ? `✅ המשימה נוצרה בהצלחה!${assignMsg}${clientNote}\n📝 ${cleanTitle}`
       : '⚠️ ההודעה התקבלה אך הייתה בעיה בשמירה.');
   }
   return res.status(200).json({ ok:true, type:'task', task:cleanTitle });
