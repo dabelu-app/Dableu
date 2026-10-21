@@ -2,6 +2,7 @@ const FormData = require('form-data');
 const fetch    = require('node-fetch');
 const { google } = require('googleapis');
 const { matchOfficeClient } = require('../lib/officeClientMatch');
+const { fsFetch } = require('../lib/firestore');
 
 // ═══════════════════════════════════════════════════════════════════
 // לוח שנה עברי — מימוש מקומי, ללא ספריה חיצונית
@@ -292,16 +293,15 @@ async function getClients(userId) {
 // הלקוחות הקבועים של המשרד (officeClients) — לשיוך אוטומטי של משימות
 async function getOfficeClients(userId) {
   try {
-    const resp = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
-      { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ structuredQuery:{
-          from:[{collectionId:'officeClients'}],
-          where:{ fieldFilter:{ field:{fieldPath:'userId'}, op:'EQUAL', value:{stringValue: userId||''} }},
-          limit:500
-        }})
-      }
-    );
+    // officeClients סגורה לציבור בכללי האבטחה — קוראים דרך חשבון השירות
+    const resp = await fsFetch(':runQuery', {
+      method: 'POST',
+      body: JSON.stringify({ structuredQuery:{
+        from:[{collectionId:'officeClients'}],
+        where:{ fieldFilter:{ field:{fieldPath:'userId'}, op:'EQUAL', value:{stringValue: userId||''} }},
+        limit:500
+      }})
+    });
     const data = await resp.json();
     if (!Array.isArray(data)) return [];
     return data
