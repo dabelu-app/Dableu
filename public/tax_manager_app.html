@@ -7970,17 +7970,60 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   // ── שמירת משימות ──
+  // הבוט מוסיף משימות ישירות ל-Firestore; שמירה מהאפליקציה לא יכולה לדרוס אותן —
+  // לפני כתיבה ממזגים משימות שהאפליקציה עוד לא ראתה (לא נמצאות מקומית ולא ב-_knownTaskIds).
   window.saveTasksToDB = async function(uid, tasks) {
     try {
-      await setDoc(doc(db, 'users', uid, 'data', 'tasks'), { tasks: tasks });
+      const ref = doc(db, 'users', uid, 'data', 'tasks');
+      const known = (window._knownTaskIds = window._knownTaskIds || new Set());
+      try {
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const remote = snap.data().tasks || [];
+          const local = new Set(tasks.map(t => String(t.id)));
+          const fresh = remote.filter(t => t && t.id != null && !local.has(String(t.id)) && !known.has(String(t.id)));
+          if (fresh.length) {
+            fresh.forEach(t => tasks.push(t));
+            setTimeout(() => { try { renderPage(); } catch(e) {} }, 0);
+          }
+          remote.forEach(t => { if (t && t.id != null) known.add(String(t.id)); });
+        }
+      } catch(e) { console.warn('saveTasks merge read failed:', e); }
+      tasks.forEach(t => { if (t && t.id != null) known.add(String(t.id)); });
+      await setDoc(ref, { tasks: tasks });
     } catch(e) { console.error('saveTasks:', e); }
   };
+
+  // משיכת משימות חדשות שהבוט הוסיף, בלי רענון ידני
+  window.syncBotTasks = async function() {
+    try {
+      const uid = S.user?.uid;
+      if (!uid || !Array.isArray(S.tasks)) return;
+      if (S.user.role === 'worker' || S.user.role === 'employee') return;
+      const snap = await getDoc(doc(db, 'users', uid, 'data', 'tasks'));
+      if (!snap.exists()) return;
+      const remote = snap.data().tasks || [];
+      const known = (window._knownTaskIds = window._knownTaskIds || new Set());
+      const local = new Set(S.tasks.map(t => String(t.id)));
+      const fresh = remote.filter(t => t && t.id != null && !local.has(String(t.id)) && !known.has(String(t.id)));
+      if (!fresh.length) return;
+      fresh.forEach(t => { known.add(String(t.id)); S.tasks.push(t); });
+      try { localStorage.setItem('dabelu_tasks_' + (S.user.uid || S.user.email || 'guest'), JSON.stringify(S.tasks)); } catch(e) {}
+      renderPage();
+      if (typeof toast === 'function') toast('📥 ' + fresh.length + ' משימות חדשות נקלטו');
+    } catch(e) { console.warn('syncBotTasks:', e); }
+  };
+  setInterval(() => { if (document.visibilityState === 'visible') window.syncBotTasks(); }, 45000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') window.syncBotTasks(); });
 
   // ── טעינת משימות ──
   window.loadTasksFromDB = async function(uid) {
     try {
       const snap = await getDoc(doc(db, 'users', uid, 'data', 'tasks'));
-      return snap.exists() ? snap.data().tasks : [];
+      const loaded = snap.exists() ? snap.data().tasks : [];
+      const known = (window._knownTaskIds = window._knownTaskIds || new Set());
+      (loaded || []).forEach(t => { if (t && t.id != null) known.add(String(t.id)); });
+      return loaded;
     } catch(e) { console.error('loadTasks:', e); return []; }
   };
 
