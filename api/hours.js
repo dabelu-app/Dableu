@@ -77,14 +77,15 @@ module.exports = async (req, res) => {
     // POST { userId, clientId, clientName, minutes, date, note?, employeeId, employeeName }
     if (req.method === 'POST') {
       const { userId, clientId, clientName, minutes, date, note, employeeId, employeeName } = req.body || {};
-      if (!userId || !clientId || !minutes || !date || !employeeId) {
-        return res.status(400).json({ error: 'userId, clientId, minutes, date, employeeId required' });
+      const minutesNum = Number(minutes);
+      if (!userId || !clientId || !date || !employeeId || !minutes || isNaN(minutesNum) || minutesNum <= 0) {
+        return res.status(400).json({ error: 'userId, clientId, minutes (positive), date, employeeId required' });
       }
 
       const fields = {
         clientId:     fsStr(clientId),
         clientName:   fsStr(clientName   || ''),
-        minutes:      fsInt(minutes),
+        minutes:      fsInt(minutesNum),
         date:         fsStr(date),
         employeeId:   fsStr(employeeId),
         employeeName: fsStr(employeeName || ''),

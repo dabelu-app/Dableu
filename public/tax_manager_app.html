@@ -3363,8 +3363,8 @@ function renderClientsPage(){
             <td class="mob-hide" style="color:var(--text2);direction:ltr">${c.whatsapp||'—'}</td>
             <td class="mob-hide" style="color:var(--text2);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.notes||'—'}</td>
             <td onclick="event.stopPropagation()" style="white-space:nowrap">
-              <button class="btn sm" onclick="openEditClientModal('${c.id}')">✏️</button>
-              <button class="btn sm danger" onclick="confirmDeleteClient('${c.id}','${c.name.replace(/'/g,'')}')">🗑</button>
+              <button class="btn sm" onclick="openEditClientModal('${c.apiId||c.id}')">✏️</button>
+              <button class="btn sm danger" onclick="confirmDeleteClient('${c.apiId||c.id}','${c.name.replace(/'/g,'')}')">🗑</button>
             </td>
           </tr>`;
         }).join('')}
@@ -3836,7 +3836,7 @@ function renderClientDetailPage(){
           ${c.taxId?'תיק '+c.taxId+' · ':''}${c.assignedTo||S.user?.name||''}
         </div>
       </div>
-      <button class="btn sm" onclick="openEditClientModal('${c.id}')">✏️ עריכה</button>
+      <button class="btn sm" onclick="openEditClientModal('${c.apiId||c.id}')">✏️ עריכה</button>
     </div>
 
     <!-- טיימר זמן עבודה -->
@@ -4106,7 +4106,7 @@ async function _loadWorkerHoursIfNeeded(){
 
 function renderWorkerTimeTracker(){
   const wts = window._wtState;
-  const clientOpts = (S.waClients||[]).map(c=>`<option value="${c.id||c.name}" ${wts.clientId===(c.id||c.name)?'selected':''}>${c.name}</option>`).join('');
+  const clientOpts = (S.waClients||[]).map(c=>`<option value="${c.apiId||c.id||c.name}" ${wts.clientId===(c.apiId||c.id||c.name)?'selected':''}>${c.name}</option>`).join('');
 
   // Timer display
   const curSec = wts.running ? Math.floor((Date.now()-wts.startedAt)/1000) : 0;
@@ -4182,7 +4182,7 @@ function renderWorkerTimeTracker(){
           <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">לקוח *</label>
           <select class="form-input" id="wt-form-client" style="width:100%">
             <option value="">בחרי לקוח...</option>
-            ${(S.waClients||[]).map(c=>`<option value="${c.id||c.name}" ${wts.pendingMinutes&&wts.clientId===(c.id||c.name)?'selected':''}>${c.name}</option>`).join('')}
+            ${(S.waClients||[]).map(c=>`<option value="${c.apiId||c.id||c.name}" ${wts.pendingMinutes&&wts.clientId===(c.apiId||c.id||c.name)?'selected':''}>${c.name}</option>`).join('')}
           </select>
         </div>
         <div>
