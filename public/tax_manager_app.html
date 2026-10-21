@@ -635,7 +635,8 @@ textarea.form-input{resize:vertical}
       <div class="nav-item" onclick="nav('tasks',this)"><span class="nav-icon">✅</span><span class="nav-label">משימות</span><span class="nav-badge" id="nb-tasks">0</span></div>
       <div class="nav-item" onclick="nav('calendar',this)"><span class="nav-icon">📆</span><span class="nav-label">יומן</span></div>
       <div class="nav-item" onclick="nav('appointments',this)"><span class="nav-icon">🤝</span><span class="nav-label">פגישות</span><span class="nav-badge" id="nb-appts" style="display:none">0</span></div>
-      <div class="nav-item" onclick="nav('clients',this)"><span class="nav-icon">👥</span><span class="nav-label">לקוחות</span></div>
+      <div class="nav-item" onclick="nav('officeClients',this)"><span class="nav-icon">👥</span><span class="nav-label">לקוחות</span></div>
+      <div class="nav-item" onclick="nav('clients',this)"><span class="nav-icon">📞</span><span class="nav-label">רשימת טלפונים</span></div>
       <div class="nav-item" onclick="nav('hoursReport',this)"><span class="nav-icon">⏱</span><span class="nav-label">שעות עבודה</span></div>
       <div class="nav-item" onclick="nav('deadlines',this)"><span class="nav-icon">📅</span><span class="nav-label">דדליינים</span></div>
       <div class="nav-item" onclick="nav('reminders',this)"><span class="nav-icon">🔔</span><span class="nav-label">תזכורות</span></div>
@@ -1553,7 +1554,7 @@ function _doLogout(){
 // ══════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════
-const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'לקוחות',clientDetail:'כרטיס לקוח',timeReport:'דוח זמנים',hoursReport:'⏱ שעות עבודה',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
+const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'רשימת טלפונים',officeClients:'לקוחות',clientDetail:'כרטיס לקוח',timeReport:'דוח זמנים',hoursReport:'⏱ שעות עבודה',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
 function nav(page,el){
   S.page=page;
   if(el){
@@ -1762,6 +1763,7 @@ function toggleSidebar(){
 // ══════════════════════════════════════
 function renderPage(){
   const el=document.getElementById('page-area');
+  _ocEnsure();
   updateNavBadge();
   try{
     if(S.page==='dashboard')el.innerHTML=renderDashboard();
@@ -1775,6 +1777,7 @@ function renderPage(){
     else if(S.page==='clientDetail'){el.innerHTML=renderClientDetailPage();loadWAClientsIfNeeded();}
     else if(S.page==='timeReport'){el.innerHTML=renderTimeReportPage();loadWAClientsIfNeeded();}
     else if(S.page==='hoursReport')el.innerHTML=renderHoursReportPage();
+    else if(S.page==='officeClients')el.innerHTML=renderOfficeClientsPage();
     else if(S.page==='settings')el.innerHTML=renderSettingsPage();
     else if(S.page==='admin'){el.innerHTML=renderAdminPage();if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();}
     else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
@@ -2154,7 +2157,7 @@ function renderTasksShell(assigneeOpts,fa,ft,fs,fv,fc,detectedClients,cp,ci,cd,t
   const clientActive = chipMode === 'client';
 
   // Build client dropdown options from S.waClients
-  const clientDropOpts = (S.waClients||[]).map(c=>`<option value="${c.name.replace(/"/g,'&quot;')}" ${fc===c.name?'selected':''}>${c.name}</option>`).join('');
+  const clientDropOpts = (S.officeClients||[]).map(c=>`<option value="${c.name.replace(/"/g,'&quot;')}" ${fc===c.name?'selected':''}>${c.name}</option>`).join('');
 
   return `
   <!-- CLIENT FILTER DROPDOWN -->
@@ -3124,7 +3127,6 @@ function loadAppointmentsIfNeeded(){
 }
 function loadWAClientsIfNeeded(){
   if(!S.waClients && typeof window.listenWAClients==='function') window.listenWAClients();
-  if(!S._apiClientsLoaded){ S._apiClientsLoaded=true; _loadClientsFromApi(); }
 }
 
 // ══════════════════════════════════════
@@ -3303,18 +3305,18 @@ function renderClientsPage(){
   <div style="max-width:800px;margin:0 auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div>
-        <h2 style="font-size:20px;font-weight:700">👥 לקוחות</h2>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">${S.waClients.length} לקוחות רשומים</div>
+        <h2 style="font-size:20px;font-weight:700">📞 רשימת טלפונים</h2>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${S.waClients.length} אנשי קשר</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" onclick="openTimeReport()">📊 דוח זמנים</button>
-        <button class="btn primary" onclick="openAddClientModal()">+ הוסף לקוח</button>
+        <button class="btn primary" onclick="openAddClientModal()">+ הוסף איש קשר</button>
       </div>
     </div>
 
     <!-- חיפוש מובייל — בולט, כמו פגישות -->
     <div class="mob-show" style="margin-bottom:12px">
-      <input type="search" placeholder="🔍 חיפוש לקוח..." dir="rtl"
+      <input type="search" placeholder="🔍 חיפוש איש קשר..." dir="rtl"
         value="${(S.clientSearch||'').replace(/"/g,'&quot;')}"
         oninput="S.clientSearch=this.value;renderPage()"
         style="width:100%;padding:10px 14px;border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-family:'Heebo',sans-serif;background:var(--surface);box-sizing:border-box"/>
@@ -3448,60 +3450,104 @@ function saveClientModal(){
     assignedTo
   };
   window.saveWAClient(_editClientId, data);
-  _syncClientToApi(_editClientId, data);
   document.getElementById('client-modal').style.display='none';
 }
 function confirmDeleteClient(id,name){
-  appConfirm('למחוק את הלקוח "'+name+'"?', ()=>{ window.deleteWAClient(id); _deleteClientFromApi(id); }, 'מחיקת לקוח');
+  appConfirm('למחוק את איש הקשר "'+name+'"?', ()=>{ window.deleteWAClient(id); }, 'מחיקת איש קשר');
 }
 
 // ══════════════════════════════════════
 // REST API — clients sync
 // ══════════════════════════════════════
 const _API = 'https://dabelu.vercel.app';
-async function _syncClientToApi(id, data){
-  try {
-    const userId = S.user?.uid || '';
-    if(!userId) return;
-    const payload = { userId, name: data.name, email: data.email||'', phone: data.phone||'', whatsapp: data.whatsapp||'', notes: data.notes||'' };
-    if(id) {
-      await fetch(_API+'/api/clients', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...payload, id}) });
-    } else {
-      const res = await fetch(_API+'/api/clients', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-      const j = await res.json().catch(()=>({}));
-      if(j.id) {
-        const c = S.waClients.find(x=>x.name===data.name);
-        if(c && !c.apiId) c.apiId = j.id;
-      }
-    }
-  } catch(e){ console.warn('_syncClientToApi:', e.message); }
+function _ocInit(){ if(!S._oc) S._oc={editId:null}; return S._oc; }
+function _ocEnsure(){
+  const uid=S.user?.uid||'';
+  if(!uid||S._ocUid===uid) return;
+  S._ocUid=uid; S.officeClients=[];
+  loadOfficeClients();
 }
-async function _deleteClientFromApi(id){
+async function loadOfficeClients(){
   try {
-    const userId = S.user?.uid || '';
-    if(!userId || !id) return;
-    await fetch(`${_API}/api/clients?userId=${encodeURIComponent(userId)}&id=${encodeURIComponent(id)}`, { method:'DELETE' });
-  } catch(e){ console.warn('_deleteClientFromApi:', e.message); }
+    const uid=S.user?.uid||''; if(!uid) return;
+    const res=await fetch(`${_API}/api/clients?userId=${encodeURIComponent(uid)}`);
+    const j=await res.json().catch(()=>({}));
+    S.officeClients=(j.clients||[]).sort((a,b)=>(a.name||'').localeCompare(b.name||'','he'));
+    renderPage();
+  } catch(e){ console.warn('loadOfficeClients:', e.message); }
 }
-async function _loadClientsFromApi(){
+async function ocAddByName(name){
+  name=(name||'').trim();
+  if(!name||!S.user?.uid) return;
+  if((S.officeClients||[]).some(c=>(c.name||'').trim().toLowerCase()===name.toLowerCase())) return;
   try {
-    const userId = S.user?.uid || '';
-    if(!userId) return;
-    const res = await fetch(`${_API}/api/clients?userId=${encodeURIComponent(userId)}`);
-    if(!res.ok) return;
-    const j = await res.json().catch(()=>({}));
-    const apiClients = j.clients || [];
-    // Merge notes from API into S.waClients (match by name)
-    apiClients.forEach(ac=>{
-      const local = S.waClients.find(c=>c.name===ac.name);
-      if(local){ local.notes=local.notes||ac.notes; local.apiId=ac.id; }
-      else {
-        S.waClients.push({id:ac.id, apiId:ac.id, name:ac.name, email:ac.email||'', phone:ac.phone||'', whatsapp:ac.whatsapp||'', notes:ac.notes||''});
-      }
-    });
-    S.waClients.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-    if(S.page==='clients') renderPage();
-  } catch(e){ console.warn('_loadClientsFromApi:', e.message); }
+    await fetch(_API+'/api/clients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:S.user.uid,name})});
+    await loadOfficeClients();
+  } catch(e){ console.warn('ocAddByName:', e.message); }
+}
+async function ocSave(){
+  const val=id=>document.getElementById(id)?.value.trim()||'';
+  const name=val('oc-name');
+  if(!name){ toast('⚠️ הזיני שם לקוח'); return; }
+  const oc=_ocInit();
+  if(!oc.editId && (S.officeClients||[]).some(c=>(c.name||'').trim().toLowerCase()===name.toLowerCase())){ toast('⚠️ לקוח בשם הזה כבר קיים'); return; }
+  const body={userId:S.user?.uid||'',name,taxId:val('oc-taxid'),phone:val('oc-phone'),notes:val('oc-notes')};
+  if(oc.editId) body.id=oc.editId;
+  try {
+    const res=await fetch(_API+'/api/clients',{method:oc.editId?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok) throw new Error('השמירה נכשלה');
+    oc.editId=null;
+    toast('✅ הלקוח נשמר');
+    await loadOfficeClients();
+  } catch(e){ toast('⚠️ '+e.message); }
+}
+function ocEdit(id){ _ocInit().editId=id; renderPage(); }
+function ocCancel(){ _ocInit().editId=null; renderPage(); }
+function ocDelete(id){
+  const c=(S.officeClients||[]).find(x=>x.id===id); if(!c) return;
+  appConfirm('למחוק את הלקוח "'+c.name+'" מהרשימה הקבועה?', async ()=>{
+    try {
+      await fetch(`${_API}/api/clients?userId=${encodeURIComponent(S.user?.uid||'')}&id=${encodeURIComponent(id)}`,{method:'DELETE'});
+      await loadOfficeClients();
+    } catch(e){ toast('⚠️ '+e.message); }
+  }, 'מחיקת לקוח');
+}
+function renderOfficeClientsPage(){
+  const list=S.officeClients||[];
+  const oc=_ocInit();
+  const ed=oc.editId?list.find(c=>c.id===oc.editId):null;
+  const isWorker=S.user?.role==='worker'||S.user?.role==='employee';
+  const q=(S.ocSearch||'').toLowerCase();
+  const shown=q?list.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.taxId||'').includes(q)):list;
+  const fld=(id,label,val)=>`<div style="flex:1;min-width:160px"><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">${label}</label><input class="form-input" id="${id}" value="${_hrEsc(val||'')}" style="width:100%"/></div>`;
+  return `
+  <div style="max-width:900px;margin:0 auto">
+    <div style="margin-bottom:14px">
+      <h2 style="font-size:20px;font-weight:700">👥 לקוחות</h2>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">${list.length} לקוחות ברשימה הקבועה</div>
+    </div>
+    <div class="s-card" style="margin-bottom:14px">
+      <div class="s-card-title">${ed?'עריכת לקוח':'הוספת לקוח חדש'}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        ${fld('oc-name','שם הלקוח *',ed?.name)}
+        ${fld('oc-taxid','ח.פ / מספר עוסק',ed?.taxId)}
+        ${fld('oc-phone','טלפון',ed?.phone)}
+        ${fld('oc-notes','הערות',ed?.notes)}
+        <button class="btn primary" onclick="ocSave()">${ed?'שמור שינויים':'+ הוסף לקוח'}</button>
+        ${ed?'<button class="btn" onclick="ocCancel()">ביטול</button>':''}
+      </div>
+    </div>
+    <input type="search" id="oc-search" placeholder="🔍 חיפוש לקוח..." dir="rtl" value="${_hrEsc(S.ocSearch||'')}" oninput="S.ocSearch=this.value;renderPage();var i=document.getElementById('oc-search');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}" style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;background:var(--surface);box-sizing:border-box;margin-bottom:10px"/>
+    ${shown.length?`<div style="overflow-x:auto"><table class="wt-hours-tbl">
+      <thead><tr><th>שם</th><th>ח.פ / עוסק</th><th>טלפון</th><th>הערות</th><th></th></tr></thead>
+      <tbody>${shown.map(c=>`<tr>
+        <td style="font-weight:600">${_hrEsc(c.name)}</td>
+        <td>${_hrEsc(c.taxId)}</td>
+        <td>${_hrEsc(c.phone)}</td>
+        <td style="color:var(--text2)">${_hrEsc(c.notes)}</td>
+        <td style="white-space:nowrap"><button class="btn sm" onclick="ocEdit('${c.id}')">✏️</button>${isWorker?'':` <button class="btn sm danger" onclick="ocDelete('${c.id}')">🗑</button>`}</td>
+      </tr>`).join('')}</tbody></table></div>`:'<div class="empty-state" style="padding:20px">אין לקוחות להצגה</div>'}
+  </div>`;
 }
 
 // ══════════════════════════════════════
@@ -4198,7 +4244,7 @@ async function _loadWorkerHoursIfNeeded(){
 
 function renderWorkerTimeTracker(){
   const wts = window._wtState;
-  const clientOpts = (S.waClients||[]).map(c=>`<option value="${c.apiId||c.id||c.name}" ${wts.clientId===(c.apiId||c.id||c.name)?'selected':''}>${c.name}</option>`).join('');
+  const clientOpts = (S.officeClients||[]).map(c=>`<option value="${c.id}" ${wts.clientId===c.id?'selected':''}>${c.name}</option>`).join('');
 
   // Timer display
   const curSec = wts.running ? Math.floor((Date.now()-wts.startedAt)/1000) : 0;
@@ -4274,7 +4320,7 @@ function renderWorkerTimeTracker(){
           <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">לקוח *</label>
           <select class="form-input" id="wt-form-client" style="width:100%">
             <option value="">בחרי לקוח...</option>
-            ${(S.waClients||[]).map(c=>`<option value="${c.apiId||c.id||c.name}" ${wts.pendingMinutes&&wts.clientId===(c.apiId||c.id||c.name)?'selected':''}>${c.name}</option>`).join('')}
+            ${(S.officeClients||[]).map(c=>`<option value="${c.id}" ${wts.pendingMinutes&&wts.clientId===c.id?'selected':''}>${c.name}</option>`).join('')}
           </select>
         </div>
         <div>
@@ -5081,12 +5127,7 @@ function confirmSnooze(){
 // ══════════════════════════════════════
 function _allClientNames(){
   const names=new Set();
-  (S.waClients||[]).forEach(c=>{ if(c.name) names.add(c.name.trim()); });
-  (S.clients||[]).forEach(c=>{ if(c.name) names.add(c.name.trim()); });
-  // also collect from tasks explicit client field
-  (S.tasks||[]).forEach(t=>{
-    if(t.client && t.client.trim()) names.add(t.client.trim());
-  });
+  (S.officeClients||[]).forEach(c=>{ if(c.name) names.add(c.name.trim()); });
   return [...names].sort((a,b)=>a.localeCompare(b,'he'));
 }
 
@@ -5173,6 +5214,7 @@ function confirmAssignClient(){
   if(!clientName){toast('⚠️ בחר לקוח');return;}
   t.client=clientName;
   t.clientName=clientName; // sync both fields
+  ocAddByName(clientName);
   _saveTasks();
   closeModal('assign-client');
   renderPage();

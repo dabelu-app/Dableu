@@ -10,6 +10,8 @@ function setCors(res) {
   for (const [k, v] of Object.entries(CORS)) res.setHeader(k, v);
 }
 
+const COL = 'officeClients';
+
 function fsStr(v) { return { stringValue: String(v) }; }
 
 function docToClient(doc) {
@@ -21,6 +23,7 @@ function docToClient(doc) {
     phone:    f.phone?.stringValue    || '',
     whatsapp: f.whatsapp?.stringValue || '',
     notes:    f.notes?.stringValue    || '',
+    taxId:    f.taxId?.stringValue    || '',
   };
 }
 
@@ -38,7 +41,7 @@ module.exports = async (req, res) => {
         method: 'POST',
         body: JSON.stringify({
           structuredQuery: {
-            from: [{ collectionId: 'clients' }],
+            from: [{ collectionId: COL }],
             where: {
               fieldFilter: {
                 field: { fieldPath: 'userId' },
@@ -46,7 +49,7 @@ module.exports = async (req, res) => {
                 value: { stringValue: userId },
               },
             },
-            limit: 200,
+            limit: 500,
           },
         }),
       });
@@ -59,7 +62,7 @@ module.exports = async (req, res) => {
 
     // POST { userId, name, email?, phone?, whatsapp?, notes? }
     if (req.method === 'POST') {
-      const { userId, name, email, phone, whatsapp, notes } = req.body || {};
+      const { userId, name, email, phone, whatsapp, notes, taxId } = req.body || {};
       if (!userId || !name) return res.status(400).json({ error: 'userId and name required' });
 
       const fields = {
@@ -71,8 +74,9 @@ module.exports = async (req, res) => {
       if (phone    !== undefined) fields.phone    = fsStr(phone);
       if (whatsapp !== undefined) fields.whatsapp = fsStr(whatsapp);
       if (notes    !== undefined) fields.notes    = fsStr(notes);
+      if (taxId    !== undefined) fields.taxId    = fsStr(taxId);
 
-      const resp = await fsFetch('/clients', {
+      const resp = await fsFetch('/' + COL, {
         method: 'POST',
         body: JSON.stringify({ fields }),
       });
@@ -84,10 +88,10 @@ module.exports = async (req, res) => {
 
     // PATCH { userId, id, name?, email?, phone?, whatsapp?, notes? }
     if (req.method === 'PATCH') {
-      const { userId, id, name, email, phone, whatsapp, notes } = req.body || {};
+      const { userId, id, name, email, phone, whatsapp, notes, taxId } = req.body || {};
       if (!userId || !id) return res.status(400).json({ error: 'userId and id required' });
 
-      const getResp = await fsFetch('/clients/' + id);
+      const getResp = await fsFetch('/' + COL + '/' + id);
       const existing = await getResp.json();
       if (!getResp.ok) return res.status(404).json({ error: 'not found' });
       if (existing.fields?.userId?.stringValue !== userId) {
@@ -104,11 +108,12 @@ module.exports = async (req, res) => {
       add('phone',    phone);
       add('whatsapp', whatsapp);
       add('notes',    notes);
+      add('taxId',    taxId);
 
       if (mask.length === 0) return res.status(200).json({ ok: true });
 
       const qs = mask.map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join('&');
-      const patchResp = await fsFetch(`/clients/${id}?${qs}`, {
+      const patchResp = await fsFetch(`/${COL}/${id}?${qs}`, {
         method: 'PATCH',
         body: JSON.stringify({ fields: updates }),
       });
@@ -124,14 +129,14 @@ module.exports = async (req, res) => {
       const { userId, id } = req.query;
       if (!userId || !id) return res.status(400).json({ error: 'userId and id required' });
 
-      const getResp = await fsFetch('/clients/' + id);
+      const getResp = await fsFetch('/' + COL + '/' + id);
       const existing = await getResp.json();
       if (!getResp.ok) return res.status(404).json({ error: 'not found' });
       if (existing.fields?.userId?.stringValue !== userId) {
         return res.status(403).json({ error: 'forbidden' });
       }
 
-      const delResp = await fsFetch('/clients/' + id, { method: 'DELETE' });
+      const delResp = await fsFetch('/' + COL + '/' + id, { method: 'DELETE' });
       if (!delResp.ok) {
         const err = await delResp.json();
         return res.status(502).json({ error: err.error?.message || 'firestore error' });
