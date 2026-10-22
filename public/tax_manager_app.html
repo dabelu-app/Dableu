@@ -5328,7 +5328,7 @@ function _renderAcmList(q, currentClient){
   const cur=currentClient||(S.tasks.find(t=>String(t.id)===String(S._acmTaskId))?.client||'').trim();
   list.innerHTML=filtered.map(n=>{
     const isSel=S._acmSelected?S._acmSelected===n:n===cur;
-    return `<div onclick="selectAcmClient('${n.replace(/'/g,"\\'")}',this)"
+    return `<div onclick="selectAcmClient('${_hrEsc(n.replace(/'/g,"\\'"))}',this)"
       style="padding:9px 12px;border-radius:var(--radius);border:1.5px solid ${isSel?'var(--accent)':'var(--border)'};
       background:${isSel?'var(--accent-light,#ede9fe)':'var(--surface)'};cursor:pointer;
       font-size:13px;font-weight:${isSel?'700':'400'};color:${isSel?'var(--accent)':'var(--text)'};
@@ -7116,7 +7116,7 @@ function renderWorkerAllTasksPage(){
             ${isMine && t.status!=='inprogress'&&t.status!=='done'?`<button class="wt-btn start" onclick="workerSetStatus('${t.id}','inprogress')">▶ התחלתי</button>`:''}
             ${isMine && t.status!=='done'?`<button class="wt-btn done" onclick="workerSetStatus('${t.id}','done')">✓ בוצע</button>`:''}
             ${isMine && t.status!=='problem'&&t.status!=='done'?`<button class="wt-btn problem" onclick="workerSetStatus('${t.id}','problem')">⚠ בעיה</button>`:''}
-            <button class="wt-btn chat" onclick="openTaskChat('${t.id}','${(t.title||'').replace(/'/g,"\\'")}')">💬 שיחה${unread>0?`<span class="chat-unread" style="background:#16a34a">${unread}</span>`:''}</button>
+            <button class="wt-btn chat" onclick="openTaskChat('${t.id}','${_hrEsc((t.title||'').replace(/'/g,"\\'"))}')">💬 שיחה${unread>0?`<span class="chat-unread" style="background:#16a34a">${unread}</span>`:''}</button>
           </div>
         </div>`;
       }).join('')}
