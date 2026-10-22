@@ -24,6 +24,9 @@ function docToClient(doc) {
     whatsapp: f.whatsapp?.stringValue || '',
     notes:    f.notes?.stringValue    || '',
     taxId:    f.taxId?.stringValue    || '',
+    startDate:   f.startDate?.stringValue   || '',
+    monthlyFee:  f.monthlyFee?.stringValue  || '',
+    paidMonths:  f.paidMonths?.stringValue  || '',
   };
 }
 
@@ -62,7 +65,7 @@ module.exports = async (req, res) => {
 
     // POST { userId, name, email?, phone?, whatsapp?, notes? }
     if (req.method === 'POST') {
-      const { userId, name, email, phone, whatsapp, notes, taxId } = req.body || {};
+      const { userId, name, email, phone, whatsapp, notes, taxId, startDate, monthlyFee, paidMonths } = req.body || {};
       if (!userId || !name) return res.status(400).json({ error: 'userId and name required' });
 
       const fields = {
@@ -75,6 +78,9 @@ module.exports = async (req, res) => {
       if (whatsapp !== undefined) fields.whatsapp = fsStr(whatsapp);
       if (notes    !== undefined) fields.notes    = fsStr(notes);
       if (taxId    !== undefined) fields.taxId    = fsStr(taxId);
+      if (startDate  !== undefined) fields.startDate  = fsStr(startDate);
+      if (monthlyFee !== undefined) fields.monthlyFee = fsStr(monthlyFee);
+      if (paidMonths !== undefined) fields.paidMonths = fsStr(paidMonths);
 
       const resp = await fsFetch('/' + COL, {
         method: 'POST',
@@ -88,7 +94,7 @@ module.exports = async (req, res) => {
 
     // PATCH { userId, id, name?, email?, phone?, whatsapp?, notes? }
     if (req.method === 'PATCH') {
-      const { userId, id, name, email, phone, whatsapp, notes, taxId } = req.body || {};
+      const { userId, id, name, email, phone, whatsapp, notes, taxId, startDate, monthlyFee, paidMonths } = req.body || {};
       if (!userId || !id) return res.status(400).json({ error: 'userId and id required' });
 
       const getResp = await fsFetch('/' + COL + '/' + id);
@@ -109,6 +115,9 @@ module.exports = async (req, res) => {
       add('whatsapp', whatsapp);
       add('notes',    notes);
       add('taxId',    taxId);
+      add('startDate',  startDate);
+      add('monthlyFee', monthlyFee);
+      add('paidMonths', paidMonths);
 
       if (mask.length === 0) return res.status(200).json({ ok: true });
 

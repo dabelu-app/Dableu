@@ -637,6 +637,7 @@ textarea.form-input{resize:vertical}
       <div class="nav-item" onclick="nav('appointments',this)"><span class="nav-icon">🤝</span><span class="nav-label">פגישות</span><span class="nav-badge" id="nb-appts" style="display:none">0</span></div>
       <div class="nav-item" onclick="nav('officeClients',this)"><span class="nav-icon">👥</span><span class="nav-label">לקוחות</span></div>
       <div class="nav-item" onclick="nav('clients',this)"><span class="nav-icon">📞</span><span class="nav-label">רשימת טלפונים</span></div>
+      <div class="nav-item" onclick="nav('billing',this)"><span class="nav-icon">💰</span><span class="nav-label">גביה</span></div>
       <div class="nav-item" onclick="nav('hoursReport',this)"><span class="nav-icon">⏱</span><span class="nav-label">שעות עבודה</span></div>
       <div class="nav-item" onclick="nav('deadlines',this)"><span class="nav-icon">📅</span><span class="nav-label">דדליינים</span></div>
       <div class="nav-item" onclick="nav('reminders',this)"><span class="nav-icon">🔔</span><span class="nav-label">תזכורות</span></div>
@@ -1561,7 +1562,7 @@ function _doLogout(){
 // ══════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════
-const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'רשימת טלפונים',officeClients:'לקוחות',clientDetail:'כרטיס לקוח',timeReport:'דוח זמנים',hoursReport:'⏱ שעות עבודה',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-hours':'⏱ שעות עבודה','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
+const pageTitles={dashboard:'לוח בקרה',tasks:'משימות',reminders:'תזכורות',deadlines:'דדליינים',calendar:'יומן',appointments:'פגישות',clients:'רשימת טלפונים',officeClients:'לקוחות',clientDetail:'כרטיס לקוח',timeReport:'דוח זמנים',hoursReport:'⏱ שעות עבודה',billing:'💰 גביה',settings:'הגדרות',admin:'👑 ניהול משתמשים','worker-tasks':'📋 המשימות שלי','worker-hours':'⏱ שעות עבודה','worker-all':'👥 כל המשימות','worker-chat':'💬 שיחות','worker-chats':'💬 הודעות'};
 function nav(page,el){
   S.page=page;
   if(el){
@@ -1785,6 +1786,7 @@ function renderPage(){
     else if(S.page==='timeReport'){el.innerHTML=renderTimeReportPage();loadWAClientsIfNeeded();}
     else if(S.page==='hoursReport')el.innerHTML=renderHoursReportPage();
     else if(S.page==='officeClients')el.innerHTML=renderOfficeClientsPage();
+    else if(S.page==='billing')el.innerHTML=renderBillingPage();
     else if(S.page==='settings')el.innerHTML=renderSettingsPage();
     else if(S.page==='admin'){el.innerHTML=renderAdminPage();if(typeof window.loadAdminUsers==='function')window.loadAdminUsers();}
     else if(S.page==='worker-tasks')el.innerHTML=renderWorkerTasksPage();
@@ -3509,6 +3511,94 @@ async function ocSave(){
     await loadOfficeClients();
   } catch(e){ toast('⚠️ '+e.message); }
 }
+// ── גביה: תאריך תחילת עבודה, דמי טיפול וסטטוס תשלום חודשי לכל לקוח ──
+function _billInit(){ if(!S._bill) S._bill={month:today().slice(0,7)}; return S._bill; }
+function _billMonths(fromYM,toYM){
+  const out=[]; if(!fromYM) return out;
+  let [y,m]=fromYM.split('-').map(Number); const [ty,tm]=toYM.split('-').map(Number);
+  while((y<ty||(y===ty&&m<=tm)) && out.length<600){ out.push(y+'-'+String(m).padStart(2,'0')); m++; if(m>12){m=1;y++;} }
+  return out;
+}
+function _billPaid(c){ return new Set((c.paidMonths||'').split(',').filter(Boolean)); }
+function _billLabel(ym){
+  const [y,m]=ym.split('-');
+  return ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'][+m-1]+' '+y;
+}
+function _billDate(d){ if(!d) return '—'; const p=d.split('-'); return p.length===3?`${p[2]}.${p[1]}.${p[0].slice(2)}`:d; }
+function _billFee(c){ const n=Number(c.monthlyFee); return isFinite(n)&&n>0?n:0; }
+function _billMoney(n){ return '₪'+Math.round(n).toLocaleString('he-IL'); }
+async function billSetField(id,field,value){
+  const c=(S.officeClients||[]).find(x=>x.id===id); if(!c) return;
+  try{
+    const res=await fetch(_API+'/api/clients',{method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({userId:S.user?.uid||'',id,[field]:String(value)})});
+    if(!res.ok) throw new Error('השמירה נכשלה');
+    c[field]=String(value);
+    toast('✅ נשמר');
+    renderPage();
+  }catch(e){ toast('⚠️ '+e.message); }
+}
+function billTogglePaid(id){
+  const c=(S.officeClients||[]).find(x=>x.id===id); if(!c) return;
+  const set=_billPaid(c); const m=_billInit().month;
+  if(set.has(m)) set.delete(m); else set.add(m);
+  billSetField(id,'paidMonths',[...set].sort().join(','));
+}
+function billSetMonth(v){ if(v){ _billInit().month=v; renderPage(); } }
+function renderBillingPage(){
+  const month=_billInit().month;
+  const nowYM=today().slice(0,7);
+  const list=S.officeClients||[];
+  let expected=0, collected=0, totalDebt=0, startedCount=0;
+  const rows=list.map(c=>{
+    const start=(c.startDate||'').slice(0,7);
+    const fee=_billFee(c);
+    const started=!!start && start<=month;
+    const paidSet=_billPaid(c);
+    const paid=paidSet.has(month);
+    const dueMonths=_billMonths(start,nowYM).filter(m=>!paidSet.has(m));
+    const debt=dueMonths.length*fee;
+    if(started){ startedCount++; expected+=fee; if(paid) collected+=fee; }
+    totalDebt+=debt;
+    let status, action;
+    if(!started){ status='<span style="color:var(--text3)">טרם התחיל</span>'; action=''; }
+    else if(paid){ status='<span style="color:var(--success,#16a34a);font-weight:700">✓ שולם</span>'; action=`<button class="btn sm" onclick="billTogglePaid('${c.id}')">בטל תשלום</button>`; }
+    else { status='<span style="color:#b45309;font-weight:700">ממתין לגביה</span>'; action=`<button class="btn sm primary" onclick="billTogglePaid('${c.id}')">סמן כשולם</button>`; }
+    const debtCell=!start?'—':dueMonths.length?`<span style="color:#b91c1c;font-weight:700">${dueMonths.length} חודשים${fee?' · '+_billMoney(debt):''}</span>`:'<span style="color:var(--success,#16a34a)">אין חוב</span>';
+    return `<tr>
+      <td style="font-weight:600">${_hrEsc(c.name)}</td>
+      <td><input class="form-input" type="date" value="${_hrEsc(c.startDate||'')}" onchange="billSetField('${c.id}','startDate',this.value)" style="width:140px"/></td>
+      <td><input class="form-input" type="number" min="0" step="1" value="${_hrEsc(c.monthlyFee||'')}" placeholder="₪" onchange="billSetField('${c.id}','monthlyFee',this.value)" style="width:100px"/></td>
+      <td>${status}</td>
+      <td>${debtCell}</td>
+      <td>${action}</td>
+    </tr>`;
+  }).join('');
+  const card=(t,v,sub)=>`<div style="flex:1;min-width:150px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px"><div style="font-size:11px;color:var(--text2)">${t}</div><div style="font-size:20px;font-weight:800;margin-top:2px">${v}</div>${sub?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${sub}</div>`:''}</div>`;
+  return `
+  <div style="max-width:1000px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div>
+        <h2 style="font-size:20px;font-weight:700">💰 גביה</h2>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">מעקב דמי טיפול חודשיים לפי לקוח</div>
+      </div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px">חודש</label>
+        <input class="form-input" type="month" value="${month}" onchange="billSetMonth(this.value)"/></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      ${card('לגביה ב'+_billLabel(month),_billMoney(expected),startedCount+' לקוחות פעילים')}
+      ${card('נגבה',_billMoney(collected),'')}
+      ${card('נותר לגביה',_billMoney(expected-collected),'')}
+      ${card('חוב מצטבר (עד היום)',_billMoney(totalDebt),'כל החודשים שלא סומנו כשולמו')}
+    </div>
+    ${list.length?`<div style="overflow-x:auto"><table class="wt-hours-tbl">
+      <thead><tr><th>לקוח</th><th>תחילת עבודה</th><th>דמי טיפול חודשי</th><th>סטטוס ב${_billLabel(month)}</th><th>חוב מצטבר</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">הזיני תאריך תחילת עבודה וסכום חודשי לכל לקוח. חיוב מתחיל מחודש תחילת העבודה.</div>`
+      :'<div class="empty-state" style="padding:20px">אין לקוחות ברשימה</div>'}
+  </div>`;
+}
+
 function ocOpenCount(name){
   const n=(name||'').trim().toLowerCase();
   return (S.tasks||[]).filter(t=>t.status!=='done'&&((t.client||t.clientName||'').trim().toLowerCase()===n)).length;
