@@ -3470,16 +3470,33 @@ function confirmDeleteClient(id,name){
 // REST API — clients sync
 // ══════════════════════════════════════
 const _API = 'https://dabelu.vercel.app';
+function _isWorkerUser(){ return S.user?.role==='worker'||S.user?.role==='employee'; }
+function _ownerUid(){ return (S.user&&S.user._owner)||S.user?.uid||''; }
+async function _ownerResolve(){
+  const u=S.user;
+  if(!u||!u.uid||u._ownerDone||u._ownerBusy||!_isWorkerUser()) return;
+  u._ownerBusy=true;
+  try{
+    const eu=typeof window.fetchEmployerUid==='function'?await window.fetchEmployerUid(u.uid):'';
+    if(eu&&eu!==u.uid) u._owner=eu;
+    u._ownerDone=true;
+    S._ocUid=null; S._workerHoursLoaded=false;
+    renderPage();
+  }catch(e){ console.warn('_ownerResolve:',e.message); }
+  u._ownerBusy=false;
+}
 function _ocInit(){ if(!S._oc) S._oc={editId:null}; return S._oc; }
 function _ocEnsure(){
-  const uid=S.user?.uid||'';
+  _ownerResolve();
+  if(_isWorkerUser()&&!S.user?._ownerDone) return;
+  const uid=_ownerUid();
   if(!uid||S._ocUid===uid) return;
   S._ocUid=uid; S.officeClients=[];
   loadOfficeClients();
 }
 async function loadOfficeClients(){
   try {
-    const uid=S.user?.uid||''; if(!uid) return;
+    const uid=_ownerUid(); if(!uid) return;
     const res=await fetch(`${_API}/api/clients?userId=${encodeURIComponent(uid)}`);
     const j=await res.json().catch(()=>({}));
     S.officeClients=(j.clients||[]).sort((a,b)=>(a.name||'').localeCompare(b.name||'','he'));
@@ -3488,10 +3505,10 @@ async function loadOfficeClients(){
 }
 async function ocAddByName(name){
   name=(name||'').trim();
-  if(!name||!S.user?.uid) return;
+  if(!name||!_ownerUid()) return;
   if((S.officeClients||[]).some(c=>(c.name||'').trim().toLowerCase()===name.toLowerCase())) return;
   try {
-    await fetch(_API+'/api/clients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:S.user.uid,name})});
+    await fetch(_API+'/api/clients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:_ownerUid(),name})});
     await loadOfficeClients();
   } catch(e){ console.warn('ocAddByName:', e.message); }
 }
@@ -3501,7 +3518,7 @@ async function ocSave(){
   if(!name){ toast('⚠️ הזיני שם לקוח'); return; }
   const oc=_ocInit();
   if(!oc.editId && (S.officeClients||[]).some(c=>(c.name||'').trim().toLowerCase()===name.toLowerCase())){ toast('⚠️ לקוח בשם הזה כבר קיים'); return; }
-  const body={userId:S.user?.uid||'',name,taxId:val('oc-taxid'),phone:val('oc-phone'),notes:val('oc-notes')};
+  const body={userId:_ownerUid(),name,taxId:val('oc-taxid'),phone:val('oc-phone'),notes:val('oc-notes')};
   if(oc.editId) body.id=oc.editId;
   try {
     const res=await fetch(_API+'/api/clients',{method:oc.editId?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -3531,7 +3548,7 @@ async function billSetField(id,field,value){
   const c=(S.officeClients||[]).find(x=>x.id===id); if(!c) return;
   try{
     const res=await fetch(_API+'/api/clients',{method:'PATCH',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({userId:S.user?.uid||'',id,[field]:String(value)})});
+      body:JSON.stringify({userId:_ownerUid(),id,[field]:String(value)})});
     if(!res.ok) throw new Error('השמירה נכשלה');
     c[field]=String(value);
     toast('✅ נשמר');
@@ -3615,7 +3632,7 @@ function ocDelete(id){
   const c=(S.officeClients||[]).find(x=>x.id===id); if(!c) return;
   appConfirm('למחוק את הלקוח "'+c.name+'" מהרשימה הקבועה?', async ()=>{
     try {
-      await fetch(`${_API}/api/clients?userId=${encodeURIComponent(S.user?.uid||'')}&id=${encodeURIComponent(id)}`,{method:'DELETE'});
+      await fetch(`${_API}/api/clients?userId=${encodeURIComponent(_ownerUid())}&id=${encodeURIComponent(id)}`,{method:'DELETE'});
       await loadOfficeClients();
     } catch(e){ toast('⚠️ '+e.message); }
   }, 'מחיקת לקוח');
@@ -4216,7 +4233,7 @@ async function wtSaveEntry(){
   if(!clientId){ toast('⚠️ בחרי לקוח'); return; }
   if(!minutes){ toast('⚠️ הזיני זמן גדול מ-0'); return; }
   try {
-    const userId = S.user?.uid||'';
+    const userId = _ownerUid();
     const fromTimer = !!window._wtState.pendingMinutes && window._wtState.startedISO;
     const res = await fetch(_API+'/api/hours', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -4239,7 +4256,7 @@ async function wtSaveEntry(){
 
 async function wtDeleteEntry(id){
   try {
-    const userId = S.user?.uid||'';
+    const userId = _ownerUid();
     await fetch(`${_API}/api/hours?userId=${encodeURIComponent(userId)}&id=${encodeURIComponent(id)}`, {method:'DELETE'});
     S._workerHoursLoaded = false;
     _loadWorkerHoursIfNeeded();
@@ -4265,7 +4282,7 @@ async function loadHoursReport(){
   const hr=_hrInit(); hr.loading=true; hr.loaded=false;
   if(S.page==='hoursReport') renderPage();
   try {
-    const userId=S.user?.uid||'';
+    const userId=_ownerUid();
     const res=await fetch(`${_API}/api/hours?userId=${encodeURIComponent(userId)}&from=${hr.from}&to=${hr.to}`);
     const j=await res.json().catch(()=>({}));
     hr.rows=(j.hours||[]).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.startedAt||b.createdAt||'').localeCompare(a.startedAt||a.createdAt||''));
@@ -4387,7 +4404,7 @@ function _wtRestore(){
 async function _wtPostEntry(en){
   try{
     const res=await fetch(_API+'/api/hours',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({userId:S.user?.uid||'',clientId:en.clientId,clientName:en.clientName,minutes:en.minutes,date:en.date,note:en.note||'',
+      body:JSON.stringify({userId:_ownerUid(),clientId:en.clientId,clientName:en.clientName,minutes:en.minutes,date:en.date,note:en.note||'',
         employeeId:_hrEmpId(),employeeName:S.user?.name||'',startedAt:en.startedISO,endedAt:en.endedISO})});
     if(!res.ok) throw new Error('שמירה נכשלה');
     toast('✅ נשמרו '+_fmtHHMM(en.minutes)+' שעות — '+en.clientName);
@@ -4483,9 +4500,10 @@ function renderWorkerHoursPage(){
 
 async function _loadWorkerHoursIfNeeded(){
   if(S._workerHoursLoaded) return;
+  if(_isWorkerUser() && !S.user?._ownerDone) return;
   S._workerHoursLoaded = true;
   try {
-    const userId = S.user?.uid||'';
+    const userId = _ownerUid();
     if(!userId) return;
     const todayStr = today();
     const mondayStr = _getMondayISO();
@@ -8082,6 +8100,12 @@ document.addEventListener('DOMContentLoaded', function(){
       tasks.forEach(t => { if (t && t.id != null) known.add(String(t.id)); });
       await setDoc(ref, { tasks: tasks });
     } catch(e) { console.error('saveTasks:', e); }
+  };
+
+  // עובדת: מזהה המעסיק (מקום האחסון של לקוחות ושעות)
+  window.fetchEmployerUid = async function(uid) {
+    const snap = await getDoc(doc(db, 'users', uid));
+    return snap.exists() ? (snap.data().employerUid || '') : '';
   };
 
   // משיכת משימות חדשות שהבוט הוסיף, בלי רענון ידני
