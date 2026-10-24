@@ -10,6 +10,8 @@ function setCors(res) {
   for (const [k, v] of Object.entries(CORS)) res.setHeader(k, v);
 }
 
+const HOURS_COL = 'hoursLog';
+
 function fsStr(v) { return { stringValue: String(v) }; }
 function fsInt(v) { return { integerValue: String(Number(v)) }; }
 
@@ -40,15 +42,12 @@ module.exports = async (req, res) => {
       const { userId, from, to, clientId, employeeId } = req.query;
       if (!userId) return res.status(400).json({ error: 'userId required' });
 
+      // רק סינון תאריכים בשאילתה (אינדקס חד-שדה אוטומטי); שאר הסינון בקוד — בלי אינדקס מורכב
       const filters = [];
       if (from)
         filters.push({ fieldFilter: { field: { fieldPath: 'date' }, op: 'GREATER_THAN_OR_EQUAL', value: { stringValue: from } } });
       if (to)
         filters.push({ fieldFilter: { field: { fieldPath: 'date' }, op: 'LESS_THAN_OR_EQUAL',    value: { stringValue: to }   } });
-      if (clientId)
-        filters.push({ fieldFilter: { field: { fieldPath: 'clientId'   }, op: 'EQUAL', value: { stringValue: clientId   } } });
-      if (employeeId)
-        filters.push({ fieldFilter: { field: { fieldPath: 'employeeId' }, op: 'EQUAL', value: { stringValue: employeeId } } });
 
       const where = filters.length === 0
         ? undefined
@@ -56,15 +55,19 @@ module.exports = async (req, res) => {
           ? filters[0]
           : { compositeFilter: { op: 'AND', filters } };
 
-      const structuredQuery = { from: [{ collectionId: 'hours' }] };
+      const structuredQuery = { from: [{ collectionId: HOURS_COL }] };
       if (where) structuredQuery.where = where;
 
-      const resp = await fsFetch(`/users/${userId}/data:runQuery`, {
+      const resp = await fsFetch(`/users/${userId}:runQuery`, {
         method: 'POST',
         body: JSON.stringify({ structuredQuery }),
       });
       const rows = await resp.json();
-      const hours = rows.filter(r => r.document).map(r => docToHour(r.document));
+      if (!Array.isArray(rows) || (rows[0] && rows[0].error)) {
+        return res.status(502).json({ error: (rows[0] && rows[0].error && rows[0].error.message) || (rows && rows.error && rows.error.message) || 'firestore error' });
+      }
+      const hours = rows.filter(r => r.document).map(r => docToHour(r.document))
+        .filter(h => (!clientId || h.clientId === clientId) && (!employeeId || h.employeeId === employeeId));
 
       const summary = { totalMinutes: 0, byClient: {}, byEmployee: {} };
       for (const h of hours) {
@@ -97,7 +100,7 @@ module.exports = async (req, res) => {
       if (startedAt) fields.startedAt = fsStr(startedAt);
       if (endedAt)   fields.endedAt   = fsStr(endedAt);
 
-      const resp = await fsFetch(`/users/${userId}/data/hours`, {
+      const resp = await fsFetch(`/users/${userId}/${HOURS_COL}`, {
         method: 'POST',
         body: JSON.stringify({ fields }),
       });
@@ -112,7 +115,7 @@ module.exports = async (req, res) => {
       const { userId, id } = req.query;
       if (!userId || !id) return res.status(400).json({ error: 'userId and id required' });
 
-      const docPath = `/users/${userId}/data/hours/${id}`;
+      const docPath = `/users/${userId}/${HOURS_COL}/${id}`;
       const getResp = await fsFetch(docPath);
       if (!getResp.ok) return res.status(404).json({ error: 'not found' });
 
