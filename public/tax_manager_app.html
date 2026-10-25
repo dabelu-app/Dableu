@@ -2645,6 +2645,13 @@ function pinTask(id){
   renderPage();toast(t.pinned?'📌 המשימה הוצמדה לראש!':'📌 ההצמדה הוסרה');
 }
 
+function _isDeletedTask(id){
+  try{
+    const list=JSON.parse(localStorage.getItem('dabelu_del_'+(S.user?.uid||S.user?.email||''))||'[]');
+    return list.map(String).includes(String(id));
+  }catch(e){ return false; }
+}
+
 function deleteTask(id){
   const t=S.tasks.find(t=>String(t.id)===String(id));if(!t)return;
   appConfirm(`למחוק את המשימה "${t.title}"?`, ()=>{
@@ -2657,6 +2664,7 @@ function deleteTask(id){
       window.deleteSharedTaskFromDB(t.sharedTaskId).catch(()=>{});
     }
     S.tasks=S.tasks.filter(t=>String(t.id)!==String(id));
+    (window._knownTaskIds=window._knownTaskIds||new Set()).add(String(id));
     // שמור ב-blacklist כדי למנוע שה-WhatsApp listener יחזיר את המשימה
     try{
       const _delKey='dabelu_del_'+(S.user?.uid||S.user?.email||'');
@@ -8089,7 +8097,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (snap.exists()) {
           const remote = snap.data().tasks || [];
           const local = new Set(tasks.map(t => String(t.id)));
-          const fresh = remote.filter(t => t && t.id != null && !local.has(String(t.id)) && !known.has(String(t.id)));
+          const fresh = remote.filter(t => t && t.id != null && !local.has(String(t.id)) && !known.has(String(t.id)) && !_isDeletedTask(t.id));
           if (fresh.length) {
             fresh.forEach(t => tasks.push(t));
             setTimeout(() => { try { renderPage(); } catch(e) {} }, 0);
@@ -8119,7 +8127,7 @@ document.addEventListener('DOMContentLoaded', function(){
       const remote = snap.data().tasks || [];
       const known = (window._knownTaskIds = window._knownTaskIds || new Set());
       const local = new Set(S.tasks.map(t => String(t.id)));
-      const fresh = remote.filter(t => t && t.id != null && !local.has(String(t.id)) && !known.has(String(t.id)));
+      const fresh = remote.filter(t => t && t.id != null && !local.has(String(t.id)) && !known.has(String(t.id)) && !_isDeletedTask(t.id));
       if (!fresh.length) return;
       fresh.forEach(t => { known.add(String(t.id)); S.tasks.push(t); });
       try { localStorage.setItem('dabelu_tasks_' + (S.user.uid || S.user.email || 'guest'), JSON.stringify(S.tasks)); } catch(e) {}

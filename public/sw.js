@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dabelu-v55';
+const CACHE_NAME = 'dabelu-v56';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
