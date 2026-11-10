@@ -1,6 +1,7 @@
 const FormData = require('form-data');
 const fetch    = require('node-fetch');
 const { google } = require('googleapis');
+const gcal = require('../lib/calendar');
 const { matchOfficeClient } = require('../lib/officeClientMatch');
 const { fsFetch } = require('../lib/firestore');
 
@@ -837,28 +838,16 @@ async function classifyMessage(text) {
 // ───────────────────────────────────────────
 // Google Calendar
 // ───────────────────────────────────────────
+// בניית האירוע (כולל תזכורות של שעה ו-10 דקות לפני) נמצאת ב-lib/calendar.js ומשותפת עם סנכרון האפליקציה
 async function createCalendarEvent(title, date, time, clientName, calendarId, clientEmail) {
   try {
-    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-    const auth = new google.auth.GoogleAuth({ credentials, scopes:['https://www.googleapis.com/auth/calendar'] });
-    const calendar = google.calendar({ version:'v3', auth });
     calendarId = calendarId || process.env.GOOGLE_CALENDAR_ID || 'primary';
-    const startTime = time || '09:00';
-    const [h] = startTime.split(':').map(Number);
-    const endTime = `${String(h+1).padStart(2,'0')}:00`;
-    const attendees = clientEmail ? [{ email:clientEmail, displayName:clientName }] : [];
-    const event = await calendar.events.insert({
+    return await gcal.insertEvent(
       calendarId,
-      sendUpdates: clientEmail ? 'all' : 'none',
-      resource:{
-        summary:`📋 ${title} — ${clientName}`,
-        description:`פגישה שנקבעה דרך WhatsApp עם ${clientName}`,
-        start:{ dateTime:`${date}T${startTime}:00`, timeZone:'Asia/Jerusalem' },
-        end:  { dateTime:`${date}T${endTime}:00`,   timeZone:'Asia/Jerusalem' },
-        attendees
-      }
-    });
-    return event.data.id;
+      gcal.buildEvent({ title, date, time, clientName, attendeeEmail: clientEmail,
+                        description: `פגישה שנקבעה דרך WhatsApp עם ${clientName}` }),
+      clientEmail ? 'all' : 'none'
+    );
   } catch(err) { console.error('Calendar error:', err); return null; }
 }
 
@@ -933,6 +922,9 @@ async function cancelAppointmentInFirestore(ownerUserId, date, clientName) {
     const doc           = data[0].document;
     const docPath       = doc.name;
     const googleEventId = doc.fields?.googleEventId?.stringValue || '';
+    const personalEventId = doc.fields?.personalEventId?.stringValue || '';
+    const personalCalId   = doc.fields?.personalCalendarId?.stringValue || '';
+    if (personalEventId && personalCalId) await deleteCalendarEvent(personalEventId, personalCalId);
 
     await fetch(`https://firestore.googleapis.com/v1/${docPath}?key=${FIREBASE_API_KEY}`, { method: 'DELETE' });
     console.log(`🗑️ appointment deleted: ${docPath} | googleEventId=${googleEventId}`);
@@ -1301,7 +1293,7 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
         apptWith, process.env.GOOGLE_CALENDAR_ID, apptEmail
       );
       // יומן אישי של השולח (אם חיבר)
-      if (senderCalId) {
+      if (senderCalId && senderCalId !== process.env.GOOGLE_CALENDAR_ID) {
         personalEventId = await createCalendarEvent(
           cleanTitle, pending.date, pending.time||null,
           apptWith, senderCalId, apptEmail

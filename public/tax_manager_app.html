@@ -3256,19 +3256,31 @@ async function deleteAppointment(apptId, googleEventId){
   appConfirm('למחוק את הפגישה? היא תוסר גם מהיומן.', _doDeleteAppointment, 'מחיקת פגישה');
 }
 let _pendingDeleteAppt=null;
+// ── סנכרון פגישות ליומן Google (יומן דבליו המרכזי + היומן האישי שחובר בהגדרות) ──
+const CAL_API='https://dabelu.vercel.app/api/delete-appointment';
+function syncApptToGoogle(apptId){
+  if(!S.user?.uid || !apptId) return;
+  fetch(CAL_API,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'upsert',uid:S.user.uid,apptId:String(apptId)})})
+    .then(r=>r.json()).then(r=>{
+      if(r && r.personalError) toast('⚠️ הפגישה לא נרשמה ביומן האישי: '+r.personalError);
+    }).catch(()=>{});
+}
 async function _doDeleteAppointment(){
   const {apptId, googleEventId} = _pendingDeleteAppt||{};
   if(!apptId) return;
+  const _gone=(S.appointments||[]).find(a=>String(a.id)===String(apptId))||{};
   // מחק מ-Firestore
   if(typeof window.deleteAppointmentFromDB==='function'){
     await window.deleteAppointmentFromDB(apptId).catch(()=>{});
   }
   // מחק מ-Google Calendar דרך Vercel API
-  if(googleEventId){
-    fetch('https://dabelu.vercel.app/api/delete-appointment', {
+  if(googleEventId || _gone.personalEventId){
+    fetch(CAL_API, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ googleEventId })
+      body: JSON.stringify({ action:'delete', uid:S.user?.uid||'', googleEventId,
+        personalEventId:_gone.personalEventId||'', personalCalendarId:_gone.personalCalendarId||'' })
     }).catch(()=>{});
   }
   // עדכן ממשק מיידית
@@ -5044,7 +5056,7 @@ function renderCalendarSettings(){
         </div>
         <div style="margin-right:auto;background:#16a34a;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">✓ פעיל</div>
       </div>
-      <div style="font-size:11px;color:#64748b">פגישות שנקבעות דרך WhatsApp מופיעות אוטומטית ביומן המשותף של דבליו.</div>
+      <div style="font-size:11px;color:#64748b">פגישות שנקבעות דרך WhatsApp או באפליקציה מופיעות אוטומטית ביומן המשותף של דבליו.</div>
     </div>
 
     <!-- סנכרון יומן אישי -->
@@ -5053,7 +5065,7 @@ function renderCalendarSettings(){
         <div style="font-size:24px">🗓️</div>
         <div>
           <div style="font-size:13px;font-weight:700">יומן Google אישי</div>
-          <div style="font-size:11px;color:var(--text2)">סנכרון פגישות גם ליומן האישי שלך</div>
+          <div style="font-size:11px;color:var(--text2)">פגישות מהבוט ומהאפליקציה נרשמות גם ביומן שלך, עם התראה שעה ו-10 דקות לפני</div>
         </div>
         <div style="margin-right:auto;background:${isConnected?'#16a34a':'#94a3b8'};color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">${isConnected?'✓ מחובר':'לא מחובר'}</div>
       </div>
@@ -5067,7 +5079,7 @@ function renderCalendarSettings(){
         <b>איך מחברים?</b><br/>
         1. פתחו <b>calendar.google.com</b><br/>
         2. לחצו ⋮ על היומן → <b>הגדרות ושיתוף</b><br/>
-        3. הוסיפו: <code style="background:#e2e8f0;padding:1px 4px;border-radius:3px">dabelu-calendar@dabelu.iam.gserviceaccount.com</code> עם הרשאת <b>עריכה</b><br/>
+        3. הוסיפו: <code style="background:#e2e8f0;padding:1px 4px;border-radius:3px">dabelu-calendar@dabelu.iam.gserviceaccount.com</code> עם הרשאת <b>ביצוע שינויים באירועים</b><br/>
         4. העתיקו את <b>מזהה היומן</b> מאותה דף (נראה כמו: xxx@group.calendar.google.com או your@gmail.com)
       </div>
 
@@ -5087,6 +5099,13 @@ function renderCalendarSettings(){
 async function saveCalendarId(){
   const calId = (document.getElementById('cal-id-input')?.value || '').trim();
   if (!calId) { toast('⚠️ הזן מזהה יומן'); return; }
+  // בדיקת חיבור אמיתית: השרת יוצר ומוחק אירוע בדיקה ביומן
+  toast('🔌 בודק חיבור ליומן...');
+  try{
+    const r = await fetch(CAL_API,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'test',calendarId:calId})}).then(x=>x.json());
+    if(!r.ok){ toast('⚠️ '+(r.error||'לא הצלחתי להתחבר ליומן')); return; }
+  }catch(e){ toast('⚠️ לא הצלחתי להגיע לשרת, נסו שוב'); return; }
   S.user.googleCalendarId = calId;
   _saveToLocalStorage();
   if (S.user?.uid && window.saveUserProfileToDB) {
@@ -5556,7 +5575,7 @@ function saveAddAppointment(){
       a.clientName=client; a.title=title; a.date=dateVal; a.time=time; a.notes=notes;
       S.appointments.sort((x,y)=>(x.date||'').localeCompare(y.date||''));
       // עדכן ב-Firestore רק את השדות שהשתנו (שומר googleEventId, type, chatId וכו')
-      if(window.updateAppointmentInDB) window.updateAppointmentInDB(a.id,{clientName:client,title,date:dateVal,time,notes});
+      if(window.updateAppointmentInDB) Promise.resolve(window.updateAppointmentInDB(a.id,{clientName:client,title,date:dateVal,time,notes})).then(()=>syncApptToGoogle(a.id));
       try{
         const key='dabelu_appts_'+(S.user?.uid||'guest');
         localStorage.setItem(key,JSON.stringify(S.appointments));
@@ -5585,7 +5604,8 @@ function saveAddAppointment(){
   S.appointments.push(appt);
   S.appointments.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   // שמור ל-Firestore אם אפשר
-  if(window.saveAppointmentToDB) window.saveAppointmentToDB(appt);
+  // הסנכרון ליומן Google רץ רק אחרי שהפגישה נשמרה ב-Firestore (השרת קורא אותה משם)
+  if(window.saveAppointmentToDB) Promise.resolve(window.saveAppointmentToDB(appt)).then(()=>syncApptToGoogle(appt.id));
   // אם הלקוח המוזמן הוא גם משתמש Dabelu — שמור לו פגישה ביומן שלו
   if(window.checkClientIsUser) window.checkClientIsUser(appt);
   // שמור ב-localStorage כגיבוי
