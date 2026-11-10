@@ -77,7 +77,8 @@ console.log('[startup] Hebrew calendar: inline math v3 loaded OK (no @hebcal/cor
 
 const FIREBASE_API_KEY = 'AIzaSyDFlOUqSUmdN6aGQe-Qz1LkGxlVg0c0BM0';
 const FIREBASE_PROJECT  = 'dabelu';
-const SITE_URL          = 'https://cosmic-daifuku-4d8c28.netlify.app';
+// אתר ההרשמה הציבורי (היה מוגדר לדומיין Netlify ישן)
+const SITE_URL          = process.env.PUBLIC_SITE_URL || 'https://dabelu.web.app';
 
 // ───────────────────────────────────────────
 // WhatsApp
@@ -864,24 +865,25 @@ async function createCalendarEvent(title, date, time, clientName, calendarId, cl
 // ───────────────────────────────────────────
 // Firestore — שמירת פגישה / משימה
 // ───────────────────────────────────────────
-async function saveAppointment(title, date, time, clientName, chatId, googleEventId, userId) {
+// extra: שדות נוספים (מחרוזות) — inviteeWa/rsvp/ownerName לאישור מוזמן, personalEventId/personalCalendarId ליומן האישי
+async function saveAppointment(title, date, time, clientName, chatId, googleEventId, userId, extra) {
+  const fields = {
+    title:        {stringValue: title||''},
+    date:         {stringValue: date||''},
+    time:         {stringValue: time||''},
+    clientName:   {stringValue: clientName},
+    chatId:       {stringValue: chatId},
+    googleEventId:{stringValue: googleEventId||''},
+    userId:       {stringValue: userId||''},
+    status:       {stringValue: 'confirmed'},
+    type:         {stringValue: 'appointment'},
+    createdAt:    {stringValue: new Date().toISOString()},
+    reminderSent: {booleanValue: false}
+  };
+  for (const [k, v] of Object.entries(extra || {})) if (v) fields[k] = {stringValue: String(v)};
   await fetch(
     `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/appointments?key=${FIREBASE_API_KEY}`,
-    { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ fields:{
-        title:        {stringValue: title||''},
-        date:         {stringValue: date||''},
-        time:         {stringValue: time||''},
-        clientName:   {stringValue: clientName},
-        chatId:       {stringValue: chatId},
-        googleEventId:{stringValue: googleEventId||''},
-        userId:       {stringValue: userId||''},
-        status:       {stringValue: 'confirmed'},
-        type:         {stringValue: 'appointment'},
-        createdAt:    {stringValue: new Date().toISOString()},
-        reminderSent: {booleanValue: false}
-      }})
-    }
+    { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ fields }) }
   );
 }
 
@@ -954,6 +956,72 @@ async function deleteCalendarEvent(eventId, calendarId) {
   } catch(e) {
     console.error('deleteCalendarEvent error:', e.message);
   }
+}
+
+// ───────────────────────────────────────────
+// אישור/ביטול פגישה ע"י מוזמן שאינו משתמש Dabelu
+// הסטטוס נשמר על מסמך הפגישה עצמו (inviteeWa + rsvp) — בלי אוסף חדש ובלי שינוי בכללי האבטחה.
+// ───────────────────────────────────────────
+function normalizeWa(p) {
+  const d = (p || '').replace(/[^\d]/g, '');
+  return d.startsWith('972') ? d : '972' + d.replace(/^0/, '');
+}
+
+// מחזיר true אם ההודעה טופלה (יש למספר הזה הזמנה ממתינה), אחרת false
+async function handleExternalRsvp(chatId, phone, text) {
+  if (!chatId || !phone || chatId.endsWith('@g.us')) return false;
+  let docs = [];
+  try {
+    const resp = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ structuredQuery:{
+          from:[{collectionId:'appointments'}],
+          where:{ fieldFilter:{ field:{fieldPath:'inviteeWa'}, op:'EQUAL', value:{stringValue: normalizeWa(phone)} }},
+          limit: 20
+        }})
+      }
+    );
+    const data = await resp.json();
+    if (Array.isArray(data)) docs = data.filter(i => i.document).map(i => i.document);
+  } catch(e) { console.error('[rsvp] lookup failed:', e.message); return false; }
+
+  const pendingDocs = docs
+    .filter(d => d.fields?.rsvp?.stringValue === 'pending')
+    .sort((a, b) => (b.fields?.createdAt?.stringValue || '').localeCompare(a.fields?.createdAt?.stringValue || ''));
+  if (!pendingDocs.length) return false;
+
+  const d = pendingDocs[0];
+  const f = d.fields;
+  const ownerChatId = f.chatId?.stringValue || '';
+  const ownerName   = f.ownerName?.stringValue || 'העסק';
+  const guestName   = f.clientName?.stringValue || '';
+  const dateStr     = formatDateHebrew(f.date?.stringValue || '');
+  const timeStr     = f.time?.stringValue ? ` בשעה ${f.time.stringValue}` : '';
+  const t           = (text || '').replace(/[.!?\s]+$/g, '').trim();
+
+  if (/^(אשר|מאשר|מאשרת|אישור|מאושר|כן|אוקיי?|בסדר)$/.test(t)) {
+    await fetch(`https://firestore.googleapis.com/v1/${d.name}?updateMask.fieldPaths=rsvp&key=${FIREBASE_API_KEY}`,
+      { method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ fields:{ rsvp:{ stringValue:'confirmed' } } }) });
+    await sendWhatsAppReply(chatId, `✅ *אישרת את הפגישה עם ${ownerName}*\n📅 ${dateStr}${timeStr}\n\nנתראה! 👋`);
+    if (ownerChatId) await sendWhatsAppReply(ownerChatId, `✅ *${guestName}* אישר/ה את הפגישה!\n📅 ${dateStr}${timeStr}`);
+    return true;
+  }
+
+  if (/^(בטל|מבטל|מבטלת|ביטול|לא|לא מגיע|לא מגיעה|לא אגיע)$/.test(t)) {
+    await fetch(`https://firestore.googleapis.com/v1/${d.name}?key=${FIREBASE_API_KEY}`, { method:'DELETE' });
+    await deleteCalendarEvent(f.googleEventId?.stringValue || '', process.env.GOOGLE_CALENDAR_ID);
+    if (f.personalEventId?.stringValue) {
+      await deleteCalendarEvent(f.personalEventId.stringValue, f.personalCalendarId?.stringValue || '');
+    }
+    await sendWhatsAppReply(chatId, `❌ ביטלת את הפגישה.\n📅 ${dateStr}${timeStr}\n\nניתן לפנות ל${ownerName} לקביעה מחדש.`);
+    if (ownerChatId) await sendWhatsAppReply(ownerChatId, `❌ *${guestName}* ביטל/ה את הפגישה.\n📅 ${dateStr}${timeStr}\n🗑️ הפגישה נמחקה מהיומן.`);
+    return true;
+  }
+
+  await sendWhatsAppReply(chatId, `📅 הוזמנת לפגישה עם ${ownerName}\n🗓 ${dateStr}${timeStr}\n\n✅ לאישור שלח: *אשר*\n❌ לביטול שלח: *בטל*`);
+  return true;
 }
 
 // ───────────────────────────────────────────
@@ -1222,6 +1290,7 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
   const cleanTitle   = `פגישה עם ${apptWith}`;
 
   let eventId = null;
+  let personalEventId = null;
   let addedToClientCalendar = false;
 
   try {
@@ -1233,7 +1302,7 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
       );
       // יומן אישי של השולח (אם חיבר)
       if (senderCalId) {
-        await createCalendarEvent(
+        personalEventId = await createCalendarEvent(
           cleanTitle, pending.date, pending.time||null,
           apptWith, senderCalId, apptEmail
         );
@@ -1287,11 +1356,18 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
     }
   } catch(e) { console.error('Calendar finalize error:', e); }
 
-  await saveAppointment(cleanTitle, pending.date, pending.time||'', apptWith, chatId, eventId, userId);
+  // מוזמן בווצאפ שאינו משתמש Dabelu — ממתין לאישור (אשר/בטל) שיטופל ב-handleExternalRsvp
+  const rsvpPending = !inviteeIsUser && !!apptWhatsapp;
+  await saveAppointment(cleanTitle, pending.date, pending.time||'', apptWith, chatId, eventId, userId, {
+    personalEventId,
+    personalCalendarId: personalEventId ? senderCalId : '',
+    ...(rsvpPending ? { inviteeWa: normalizeWa(apptWhatsapp), rsvp: 'pending', ownerName: pending.ownerName || '' } : {})
+  });
 
   const dateStr      = formatDateHebrew(pending.date);
   const timeStr      = pending.time ? ` בשעה ${pending.time}` : '';
   const inviteMsg    = apptEmail ? `\n📧 זימון נשלח ל-${apptEmail}` : '';
+  const rsvpMsg      = rsvpPending ? `\n📲 נשלח זימון בווצאפ ל-${apptWith} — תקבל/י עדכון כשיאשר/תאשר.` : '';
   const clientCalMsg = addedToClientCalendar ? `\n📅 נוסף גם ליומן של ${apptWith} אוטומטית!` : '';
 
   if (inviteeIsUser) {
@@ -1301,7 +1377,7 @@ async function finalizeAppointment(chatId, userDocName, pending, senderCalId, us
     );
   } else {
     await sendWhatsAppReply(chatId,
-      `✅ הפגישה נקבעה! 📆\n👤 עם: ${apptWith}\n📅 ${dateStr}${timeStr}${inviteMsg}${clientCalMsg}\n\n🔔 תקבל/י תזכורת יום לפני!`
+      `✅ הפגישה נקבעה! 📆\n👤 עם: ${apptWith}\n📅 ${dateStr}${timeStr}${inviteMsg}${rsvpMsg}${clientCalMsg}\n\n🔔 תקבל/י תזכורת יום לפני!`
     );
   }
 }
@@ -1322,7 +1398,7 @@ function formatDateHebrew(dateStr) {
 // אם כן → קבע. אם לא → שאל פרטי קשר.
 // ───────────────────────────────────────────
 // בניית הודעת זימון ברורה למוזמן לפגישה
-function buildInviteMessage(ownerName, date, time) {
+function buildInviteMessage(ownerName, date, time, withRsvp) {
   const dateStr     = formatDateHebrew(date || '');
   // displayName: שם הבעלים, או 'העסק' כ-fallback מוחלט
   const displayName = ownerName || 'העסק';
@@ -1332,7 +1408,8 @@ function buildInviteMessage(ownerName, date, time) {
   ];
   if (dateStr) lines.push(`🗓 ${dateStr}`);
   if (time)    lines.push(`🕐 בשעה ${time}`);
-  lines.push('', 'נתראה! 👋');
+  if (withRsvp) lines.push('', '───────────────', '✅ לאישור שלח: *אשר*', '❌ לביטול שלח: *בטל*');
+  else          lines.push('', 'נתראה! 👋');
   return lines.join('\n');
 }
 
@@ -1369,7 +1446,7 @@ async function sendInviteWithConfirmation(clientPhoneClean, effectiveOwner, date
     return true;  // המוזמן הוא משתמש רשום — נשלחה בקשת אישור
   } else {
     // לא משתמש מערכת — שלח זימון רגיל
-    await sendWhatsAppReply(waId, buildInviteMessage(effectiveOwner, date, time));
+    await sendWhatsAppReply(waId, buildInviteMessage(effectiveOwner, date, time, true));
     return false;
   }
 }
@@ -1379,7 +1456,7 @@ async function tryFinalize(chatId, userDocName, pending, senderCalId, res, userI
   const effectiveOwner = pending.ownerName || ownerName || '';
   if (pending.withEmail || pending.withWhatsapp) {
     let inviteeIsUser = false;
-    if (pending.withWhatsapp && !pending.withEmail) {
+    if (pending.withWhatsapp) {
       const phoneClean = pending.withWhatsapp.replace(/[-\s+]/g, '');
       inviteeIsUser = await sendInviteWithConfirmation(phoneClean, effectiveOwner, pending.date, pending.time, chatId, userDocName, pending.withName || '').catch(()=>false);
     }
@@ -1437,6 +1514,8 @@ module.exports = async (req, res) => {
   try { userDoc = await getUserDoc(phone); } catch(err) { console.error('getUserDoc:', err); }
 
   if (!userDoc) {
+    // מוזמן שאינו משתמש Dabelu עונה אשר/בטל להזמנה שקיבל
+    if (await handleExternalRsvp(chatId, phone, inText)) return res.status(200).send('rsvp');
     if (chatId) await sendWhatsAppReply(chatId, `❌ אינך מנוי במערכת Dabelu.\n\nלהרשמה:\n${SITE_URL}`);
     return res.status(200).send('not registered');
   }
@@ -1649,11 +1728,12 @@ module.exports = async (req, res) => {
       const upd = { ...pending, withName: matched.name, withEmail: matched.email || '' };
       if (matched.email || matched.whatsapp) {
         // יש פרטי קשר שמורים — שלח זימון ישירות ללא שאלה
-        if (matched.whatsapp && !matched.email) {
+        let inviteeIsUser = false;
+        if (matched.whatsapp) {
           const phoneClean = matched.whatsapp.replace(/[-\s+]/g, '');
-          await sendInviteWithConfirmation(phoneClean, upd.ownerName || ownerName, upd.date, upd.time, chatId, userDocName, matched.name).catch(()=>{});
+          inviteeIsUser = await sendInviteWithConfirmation(phoneClean, upd.ownerName || ownerName, upd.date, upd.time, chatId, userDocName, matched.name).catch(()=>false);
         }
-        await finalizeAppointment(chatId, userDocName, upd, senderCalId, userDocId);
+        await finalizeAppointment(chatId, userDocName, { ...upd, withWhatsapp: matched.whatsapp || '' }, senderCalId, userDocId, inviteeIsUser);
       } else {
         await setPending(userDocName, { ...upd, step:'ask_contact', contactAskedAt: new Date().toISOString() });
         await sendWhatsAppReply(chatId,
@@ -1695,7 +1775,7 @@ module.exports = async (req, res) => {
       if (/^\d{9,12}$/.test(phoneClean)) {
         await upsertClient(pending.withName, '', phoneClean, userDocId);
         const inviteeIsUser = await sendInviteWithConfirmation(phoneClean, pending.ownerName || ownerName, pending.date, pending.time, chatId, userDocName, pending.withName || '').catch(()=>false);
-        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'' }, senderCalId, userDocId, inviteeIsUser);
+        await finalizeAppointment(chatId, userDocName, { ...pending, withEmail:'', withWhatsapp: normalizeWa(phoneClean) }, senderCalId, userDocId, inviteeIsUser);
         return res.status(200).send('ok');
       }
 
