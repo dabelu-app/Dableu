@@ -11,6 +11,8 @@ const handlers = {
   'reminder-daily':  require('../lib/cron/reminder-daily'),
   'notify-number-change': require('../lib/cron/notify-number-change'),
   'notify-email-change':  require('../lib/cron/notify-email-change'),
+  // סנכרון יומן Google מהאפליקציה — לא cron, אבל ה-router חוסך פונקציית serverless
+  'calendar':        require('../lib/calendar-api'),
 };
 
 module.exports = async (req, res) => {

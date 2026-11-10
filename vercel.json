@@ -6,7 +6,10 @@
     {
       "source": "/(.*).html",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
       ]
     }
   ],
@@ -48,6 +51,12 @@
     {
       "path": "/api/cron?type=trial",
       "schedule": "0 19 * * 6"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/delete-appointment",
+      "destination": "/api/cron?type=calendar"
     }
   ]
 }
